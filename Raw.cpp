@@ -85,8 +85,10 @@ shared_ptr<Raw> RawFactory::create(const string &file) {
         return shared_ptr<RawSAV>(new RawSAV(file));
     } else if ((file.length() >= 7) && (file.compare(file.length() - 7, 7, ".vcf.gz") == 0)) {
         return shared_ptr<RawVCF>(new RawVCF(file));
+    } else if ((file.length() >= 4) && (file.compare(file.length() - 4, 4, ".bcf") == 0)) {
+        return shared_ptr<RawVCF>(new RawVCF(file));
     } else {
-        //todo: throe exception "unrecognized file format"
+        //todo: throw exception "unrecognized file format"
     }
     return nullptr;
 }

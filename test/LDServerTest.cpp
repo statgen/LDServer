@@ -59,6 +59,26 @@ TEST_F(LDServerTest, SAV_one_page) {
     }
 }
 
+TEST_F(LDServerTest, BCF_one_page) {
+    map<string, double> goldstandard;
+    this->load_region_goldstandard("region_ld_22_51241101_51241385.hap.ld", goldstandard);
+
+    LDServer server;
+    LDQueryResult result(1000);
+
+    server.set_file("chr22.test.bcf");
+    server.compute_region_ld("22", 51241101, 51241385, result);
+
+    ASSERT_EQ(result.limit, 1000);
+    ASSERT_EQ(result.get_last(), "");
+    ASSERT_EQ(result.data.size(), goldstandard.size());
+    for (auto&& entry : result.data) {
+        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+        ASSERT_EQ(goldstandard.count(key), 1);
+        ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
+    }
+}
+
 
 TEST_F(LDServerTest, VCF_one_page) {
     map<string, double> goldstandard;
