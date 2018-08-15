@@ -100,6 +100,26 @@ TEST_F(LDServerTest, VCF_one_page) {
     }
 }
 
+TEST_F(LDServerTest, SAV_chrX_one_page) {
+    map<string, double> goldstandard;
+    this->load_region_goldstandard("region_ld_X_60100_60150.hap.ld", goldstandard);
+
+    LDServer server;
+    LDQueryResult result(1000);
+
+    server.set_file("chrX.test.sav");
+    ASSERT_TRUE(server.compute_region_ld("X", 60100, 60150, result));
+
+    ASSERT_EQ(result.limit, 1000);
+    ASSERT_EQ(result.get_last(), "");
+    ASSERT_EQ(result.data.size(), goldstandard.size());
+    for (auto&& entry : result.data) {
+        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+        ASSERT_EQ(goldstandard.count(key), 1);
+        ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.000000001);
+    }
+}
+
 
 TEST_F(LDServerTest, region_with_paging) {
     map<string, double> goldstandard;

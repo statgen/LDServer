@@ -22,6 +22,9 @@ install(FILES
         chr22.test.bcf.csi
         chr22.test.sav
         chr22.test.sav.s1r
+        chrX.test.sav
+        chrX.test.sav.s1r
         region_ld_22_51241101_51241385.hap.ld
         variant_ld_22_51241101_vs_51241101_51241385.hap.ld
+        region_ld_X_60100_60150.hap.ld
         DESTINATION test)
