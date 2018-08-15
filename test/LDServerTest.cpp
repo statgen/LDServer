@@ -47,7 +47,7 @@ TEST_F(LDServerTest, SAV_one_page) {
     LDQueryResult result(1000);
 
     server.set_file("chr22.test.sav");
-    server.compute_region_ld("22", 51241101, 51241385, result);
+    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241385, result));
 
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
@@ -67,7 +67,7 @@ TEST_F(LDServerTest, BCF_one_page) {
     LDQueryResult result(1000);
 
     server.set_file("chr22.test.bcf");
-    server.compute_region_ld("22", 51241101, 51241385, result);
+    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241385, result));
 
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
@@ -88,7 +88,7 @@ TEST_F(LDServerTest, VCF_one_page) {
     LDQueryResult result(1000);
 
     server.set_file("chr22.test.vcf.gz");
-    server.compute_region_ld("22", 51241101, 51241385, result);
+    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241385, result));
 
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
@@ -110,8 +110,7 @@ TEST_F(LDServerTest, region_with_paging) {
     int result_total_size = 0;
 
     server.set_file("chr22.test.sav");
-    do {
-        server.compute_region_ld("22", 51241101, 51241385, result, LDServer::ALL_SAMPLES_KEY);
+    while (server.compute_region_ld("22", 51241101, 51241385, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 4);
         ASSERT_LE(result.data.size(), 4);
         for (auto &&entry : result.data) {
@@ -120,7 +119,7 @@ TEST_F(LDServerTest, region_with_paging) {
             ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
         }
         result_total_size += result.data.size();
-    } while (result.has_next());
+    }
     ASSERT_EQ(result_total_size, goldstandard.size());
 }
 
@@ -134,8 +133,7 @@ TEST_F(LDServerTest, variant_with_paging) {
     int result_total_size = 0;
 
     server.set_file("chr22.test.sav");
-    do {
-        server.compute_variant_ld("22:51241101_A/T", "22", 51241101, 51241385, result, LDServer::ALL_SAMPLES_KEY);
+    while (server.compute_variant_ld("22:51241101_A/T", "22", 51241101, 51241385, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
         ASSERT_LE(result.data.size(), 2);
         for (auto&& entry : result.data) {
@@ -144,6 +142,6 @@ TEST_F(LDServerTest, variant_with_paging) {
             ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
         }
         result_total_size += result.data.size();
-    } while (result.has_next());
+    };
     ASSERT_EQ(result_total_size, goldstandard.size());
 }

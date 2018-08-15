@@ -49,17 +49,22 @@ void LDServer::parse_variant(const std::string& variant, std::string& chromosome
     alt_allele = variant_name_tokens[3];
 }
 
-void LDServer::compute_region_ld(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, LDQueryResult& result, const std::string& samples_name) {
+bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, LDQueryResult& result, const std::string& samples_name) const {
+    if (result.is_last()) {
+        return false;
+    }
+
     result.clear_data();
+
     auto raw_it = raw.find(region_chromosome);
     if (raw_it == raw.end()) { // no such chromosome - return empty result
         result.clear_last();
-        return;
+        return false;
     }
     auto samples_it = this->samples.find(samples_name);
     if (samples_it == this->samples.end()) { // no such samples - return empty result
         result.clear_last();
-        return;
+        return false;
     }
 
     std::map<std::uint64_t, Segment> segments;
@@ -74,16 +79,22 @@ void LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
         cell.extract(region_start_bp, region_stop_bp, result);
         ++cells_it;
     }
+    result.page += 1;
+    return true;
 }
 
-void LDServer::compute_variant_ld(const std::string& index_variant, const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result, const std::string& samples_name) {
+bool LDServer::compute_variant_ld(const std::string& index_variant, const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result, const std::string& samples_name) const {
+    if (result.is_last()) {
+        return false;
+    }
+
     std::string index_chromosome, index_ref_allele, index_alt_allele;
     std::uint64_t index_bp;
 
     parse_variant(index_variant, index_chromosome, index_bp, index_ref_allele, index_alt_allele);
 
     if (index_chromosome.compare(region_chromosome) != 0) {
-        return; // todo: raise exception - index variant must be from the same chromosome as the region
+        return false; // todo: raise exception - index variant must be from the same chromosome as the region
     }
 
     result.clear_data();
@@ -91,13 +102,13 @@ void LDServer::compute_variant_ld(const std::string& index_variant, const std::s
     auto raw_it = raw.find(index_chromosome);
     if (raw_it == raw.end()) { // no such chromosome - return empty result
         result.clear_last();
-        return;
+        return false;
     }
 
     auto samples_it = this->samples.find(samples_name);
     if (samples_it == this->samples.end()) { // no such samples - return empty result
         result.clear_last();
-        return;
+        return false;
     }
 
     std::map<std::uint64_t, Segment> segments;
@@ -112,4 +123,6 @@ void LDServer::compute_variant_ld(const std::string& index_variant, const std::s
         cell.extract(index_variant, index_bp, region_start_bp, region_stop_bp, result);
         ++cells_it;
     }
+    result.page += 1;
+    return true;
 }

@@ -58,23 +58,28 @@ struct LDQueryResult {
     uint64_t last_cell;
     int last_i;
     int last_j;
+    int page;
     vector<VariantsPairLD> data;
-    LDQueryResult(uint32_t page_limit): limit(page_limit), last_cell(0), last_i(-1), last_j(-1) {}
+    LDQueryResult(uint32_t page_limit): limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0) {}
     LDQueryResult(const string& last) : limit(0), last_cell(0), last_i(-1), last_j(-1) {
         vector<std::string> tokens;
         copy(sregex_token_iterator(last.begin(), last.end(), regex(":"), -1), sregex_token_iterator(), back_inserter(tokens));
-        if (tokens.size() > 2) {
+        if (tokens.size() > 3) {
             last_cell = std::stoull(tokens[0]);
             last_i = std::stoi(tokens[1]);
             last_j = std::stoi(tokens[2]);
+            page = std::stoi(tokens[3]);
         }
     }
     bool has_next() const {
         return ((last_i >= 0) || (last_j >= 0));
     }
+    bool is_last() const {
+        return ((page > 0) && (last_i < 0) && (last_j < 0));
+    }
     string get_last() const {
         if (has_next()) {
-            return string(to_string(last_cell) + ":" + to_string(last_i) + ":" + to_string(last_j));
+            return string(to_string(last_cell) + ":" + to_string(last_i) + ":" + to_string(last_j) + ":" + to_string(page));
         }
         return string("");
     }

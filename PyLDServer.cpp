@@ -7,8 +7,8 @@
 #include "LDServer.h"
 
 void (LDServer::*set_file)(const std::string& file) = &LDServer::set_file;
-void (LDServer::*compute_region_ld)(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result, const std::string& subset_name) = &LDServer::compute_region_ld;
-void (LDServer::*compute_variant_ld)(const std::string& index_variant, const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result, const std::string& subset_name) = &LDServer::compute_variant_ld;
+bool (LDServer::*compute_region_ld)(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result, const std::string& subset_name) const = &LDServer::compute_region_ld;
+bool (LDServer::*compute_variant_ld)(const std::string& index_variant, const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result, const std::string& subset_name) const = &LDServer::compute_variant_ld;
 
 BOOST_PYTHON_MODULE(PyLDServer) {
 
@@ -32,6 +32,7 @@ BOOST_PYTHON_MODULE(PyLDServer) {
             .def_readonly("limit", &LDQueryResult::limit)
             .def_readonly("data", &LDQueryResult::data)
             .def("has_next", &LDQueryResult::has_next)
+            .def("is_last", &LDQueryResult::is_last)
             .def("get_last", &LDQueryResult::get_last)
             ;
 
