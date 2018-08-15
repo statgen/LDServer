@@ -61,7 +61,7 @@ struct LDQueryResult {
     int page;
     vector<VariantsPairLD> data;
     LDQueryResult(uint32_t page_limit): limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0) {}
-    LDQueryResult(const string& last) : limit(0), last_cell(0), last_i(-1), last_j(-1) {
+    LDQueryResult(uint32_t page_limit, const string& last) : limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0) {
         vector<std::string> tokens;
         copy(sregex_token_iterator(last.begin(), last.end(), regex(":"), -1), sregex_token_iterator(), back_inserter(tokens));
         if (tokens.size() > 3) {

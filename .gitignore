@@ -1,3 +1,7 @@
 .idea
 cget
 cmake-build-debug
+*.pyc
+*.so
+*.o
+venv

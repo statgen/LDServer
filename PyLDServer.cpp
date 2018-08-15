@@ -28,7 +28,7 @@ BOOST_PYTHON_MODULE(PyLDServer) {
             ;
 
     boost::python::class_<LDQueryResult, boost::noncopyable>("LDQueryResult", boost::python::init<boost::uint32_t>())
-            .def(boost::python::init<const string&>())
+            .def(boost::python::init<boost::uint32_t, const string&>())
             .def_readonly("limit", &LDQueryResult::limit)
             .def_readonly("data", &LDQueryResult::data)
             .def("has_next", &LDQueryResult::has_next)
