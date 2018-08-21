@@ -1,4 +1,0 @@
-Flask
-webargs
-gevent
-gunicorn
