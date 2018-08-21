@@ -1,0 +1,6 @@
+Flask
+webargs
+gevent
+gunicorn
+pytest
+click
