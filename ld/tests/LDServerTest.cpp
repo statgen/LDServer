@@ -36,8 +36,15 @@ protected:
             tokens.clear();
         }
     }
-};
 
+    void load_samples(const string &file, vector<string>& samples) {
+        ifstream input_file(file);
+        string line;
+        while (getline(input_file, line)) {
+            samples.emplace_back(line);
+        }
+    }
+};
 
 TEST_F(LDServerTest, SAV_one_page) {
     map<string, double> goldstandard;
@@ -102,7 +109,9 @@ TEST_F(LDServerTest, VCF_one_page) {
 
 TEST_F(LDServerTest, SAV_chrX_one_page) {
     map<string, double> goldstandard;
+    vector<string> samples;
     this->load_region_goldstandard("region_ld_X_60100_60150.hap.ld", goldstandard);
+    this->load_samples("EUR.samples.txt", samples);
 
     LDServer server;
     LDQueryResult result(1000);
@@ -162,6 +171,31 @@ TEST_F(LDServerTest, variant_with_paging) {
             ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
         }
         result_total_size += result.data.size();
-    };
+    }
     ASSERT_EQ(result_total_size, goldstandard.size());
 }
+
+TEST_F(LDServerTest, AFR_region_with_paging) {
+    map<string, double> goldstandard;
+    vector<string> samples;
+    this->load_region_goldstandard("region_ld_22_51241101_51241385.AFR.hap.ld", goldstandard);
+    this->load_samples("AFR.samples.txt", samples);
+
+    LDServer server;
+    LDQueryResult result(2);
+    int result_total_size = 0;
+
+    server.set_file("chr22.test.sav");
+    server.set_samples("AFR", samples);
+    while (server.compute_region_ld("22", 51241101, 51241385, result, "AFR")) {
+        ASSERT_LE(result.limit, 4);
+        ASSERT_LE(result.data.size(), 4);
+        for (auto &&entry : result.data) {
+            string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
+        }
+        result_total_size += result.data.size();
+    }
+}
+

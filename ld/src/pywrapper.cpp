@@ -7,6 +7,7 @@
 #include "LDServer.h"
 
 void (LDServer::*set_file)(const std::string& file) = &LDServer::set_file;
+void (LDServer::*set_samples)(const std::string& name, const std::vector<std::string>& samples) = &LDServer::set_samples;
 bool (LDServer::*compute_region_ld)(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result, const std::string& subset_name) const = &LDServer::compute_region_ld;
 bool (LDServer::*compute_variant_ld)(const std::string& index_variant, const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result, const std::string& subset_name) const = &LDServer::compute_variant_ld;
 
@@ -38,6 +39,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
 
     boost::python::class_<LDServer, boost::noncopyable>("LDServer")
             .def("set_file", set_file)
+            .def("set_samples", set_samples)
             .def("compute_region_ld", compute_region_ld)
             .def("compute_variant_ld", compute_variant_ld)
             ;
