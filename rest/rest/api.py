@@ -1,52 +1,40 @@
-from flask import Flask, request, jsonify, make_response, abort
+from flask import current_app, Blueprint, request, jsonify, make_response, abort
 from webargs.flaskparser import parser
 from webargs import fields
-import PyLDServer
+from model import Reference, File, Sample
+from ld.pywrapper import LDServer, LDQueryResult
 
-app = Flask(__name__, instance_relative_config = True)
+API_VERSION = 1.0
 
-app.config.from_object('config.default')
-app.config.from_pyfile('config.py', silent = True)
-app.config.from_envvar('RESTLD_CONFIG_FILE', silent = True)
+bp = Blueprint('api', __name__)
 
-
-API_VERSION = '1.0'
-API_MAX_PAGE_SIZE = 1000
-
-
-datasets = dict()
-for dataset in app.config['DATASETS']:
-    datasets[dataset['Name']] = { 'LD': PyLDServer.LDServer(), 'Meta': dataset } 
-    datasets[dataset['Name']]['LD'].set_file(dataset['Datafile'])
-
-
-@app.route('/')
+@bp.route('/')
 def get_all_datasets():
     response = { 'api_version': API_VERSION, 'references': [] }
-    for dataset in app.config['DATASETS']:
-        response['references'].append({ 'Name': dataset['Name'], 'Description': dataset['Description'], 'Genome build': dataset['Genome build'], 'Populations': dataset['Samples'].keys() })
+    for reference in Reference.query.all():
+        response['references'].append({'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples]))})
     return make_response(jsonify(response), 200)
 
 
-@app.route('/<reference>', methods = ['GET'])
-def get_reference_info(reference):
-    dataset = datasets.get(reference, None)
-    if dataset:
-        response = { 'name': dataset['Meta']['Name'], 'description': dataset['Meta']['Description'], 'genome build': dataset['Meta']['Genome build'], 'populations': dataset['Meta']['Samples'].keys() } 
+@bp.route('/<reference_name>', methods = ['GET'])
+def get_reference_info(reference_name):
+    reference = Reference.query.filter_by(name = reference_name).first()
+    print reference
+    if reference:
+        response = { 'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples])) }
         return make_response(jsonify(response), 200)
     abort(404)
 
 
-@app.route('/<reference>/<population>', methods = ['GET'])
-def get_population_info(reference, population):
-    dataset = datasets.get(reference, None)
-    if dataset is None:
-        abort(404)
-    samples = dataset['Meta']['Samples'].get(population, None)
-    if samples is None:
-        abort(404)
-    response = { 'name': population, 'size': len(samples) }
-    return make_response(jsonify(response), 200)
+@bp.route('/<reference_name>/<population_name>', methods = ['GET'])
+def get_population_info(reference_name, population_name):
+    reference = Reference.query.filter_by(name = reference_name).first()
+    if reference is not None:
+        samples = Sample.query.with_parent(reference).filter_by(subset = population_name).all()
+        if samples:
+            response = { 'name': population_name, 'size': len(samples) }
+            return make_response(jsonify(response), 200)
+    abort(404)
 
 
 def validate_query(value):
@@ -64,28 +52,34 @@ def build_link_next(args, result):
     return None
 
 
-@app.route('/<reference>/<population>/ld/region', methods = ['GET'])
-def get_region_ld(reference, population):
+@bp.route('/<reference_name>/<population_name>/ld/region', methods = ['GET'])
+def get_region_ld(reference_name, population_name):
     arguments = {
         'chrom': fields.Str(required = True, validate = lambda x: len(x) > 0),
         'start': fields.Int(required = True, validate = lambda x: x >= 0),
         'stop': fields.Int(required = True, validate = lambda x: x > 0),
-        'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = API_MAX_PAGE_SIZE),
+        'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE']),
         'last': fields.Str(required = False, validate = lambda x: len(x) > 0)
     }
     args = parser.parse(arguments, validate = validate_query)
-    print args
-    dataset = datasets.get(reference, None)
-    if dataset is None:
+    reference = Reference.query.filter_by(name = reference_name).first()
+    if reference is None:
         abort(404)
-    if population not in dataset['Meta']['Samples']:
+    samples = Sample.query.with_parent(reference).filter_by(subset = population_name).all()
+    if not samples:
         abort(404)
+    files = File.query.with_parent(reference).all()
+    if not files:
+        abort(404)
+    ldserver = LDServer()
+    for file in files:
+        ldserver.set_file(str(file.path))
     response = {}
     if 'last' in args:
-        result = PyLDServer.LDQueryResult(args['limit'], str(args['last']))
+        result = LDQueryResult(args['limit'], str(args['last']))
     else:
-        result = PyLDServer.LDQueryResult(args['limit'])
-    dataset['LD'].compute_region_ld(str(args['chrom']), args['start'], args['stop'], result, str(population))
+        result = LDQueryResult(args['limit'])
+    ldserver.compute_region_ld(str(args['chrom']), args['start'], args['stop'], result, str(population_name))
     response['data'] = {
         'chromosome1': [str(args['chrom'])] * len(result.data),
         'variant1': [None] * len(result.data),
@@ -107,28 +101,35 @@ def get_region_ld(reference, population):
     return make_response(jsonify(response), 200)
 
 
-@app.route('/<reference>/<population>/ld/variant', methods = ['GET'])
-def get_variant_ld(reference, population):
+@bp.route('/<reference_name>/<population_name>/ld/variant', methods = ['GET'])
+def get_variant_ld(reference_name, population_name):
     arguments = {
         'variant': fields.Str(required = True, validate = lambda x: len(x) > 0),
         'chrom': fields.Str(required = True, validate = lambda x: x > 0),
         'start': fields.Int(required = True, validate = lambda x: x >= 0),
         'stop': fields.Int(required = True, validate = lambda x: x > 0),
-        'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = API_MAX_PAGE_SIZE),
+        'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE']),
         'last': fields.Str(required = False, validate = lambda x: len(x) > 0)
     }
     args = parser.parse(arguments, validate = validate_query)
-    dataset = datasets.get(reference, None)
-    if dataset is None:
+    reference = Reference.query.filter_by(name = reference_name).first()
+    if reference is None:
         abort(404)
-    if population not in dataset['Meta']['Samples']:
+    samples = Sample.query.with_parent(reference).filter_by(subset = population_name).all()
+    if not samples:
         abort(404)
+    files = File.query.with_parent(reference).all()
+    if not files:
+        abort(404)
+    ldserver = LDServer()
+    for file in files:
+        ldserver.set_file(str(file.path))
     response = {}
     if 'last' in args:
-        result = PyLDServer.LDQueryResult(args['limit'], str(args['last']))
+        result = LDQueryResult(args['limit'], str(args['last']))
     else:
-        result = PyLDServer.LDQueryResult(args['limit'])
-    dataset['LD'].compute_variant_ld(str(args['variant']), str(args['chrom']), args['start'], args['stop'], result, str(population))
+        result = LDQueryResult(args['limit'])
+    ldserver.compute_variant_ld(str(args['variant']), str(args['chrom']), args['start'], args['stop'], result, str(population_name))
     response['data'] = {
         'chromosome1': [str(args['chrom'])] * len(result.data),
         'variant1': [None] * len(result.data),
@@ -149,8 +150,9 @@ def get_variant_ld(reference, population):
     response['next'] = build_link_next(args, result)
     return make_response(jsonify(response), 200)
 
+
 # TODO: LD between arbitrary variants
-# @app.route('/<reference>/<population>/ld/cartesian', methods = ['GET'])
+# @bp.route('/<reference>/<population>/ld/cartesian', methods = ['GET'])
 # def get_ld(reference, population):
 #     arguments = {
 #         'variants1': fields.DelimitedList(fields.Str()),
@@ -186,7 +188,3 @@ def get_variant_ld(reference, population):
 #         response['data']['rsquare'][i] = pair.rsquare
 #     response['next'] = None
 #     return make_response(jsonify(response), 200)
-
-
-if __name__ == '__main__':
-    app.run()
