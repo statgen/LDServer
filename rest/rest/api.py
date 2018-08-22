@@ -2,7 +2,7 @@ from flask import current_app, Blueprint, request, jsonify, make_response, abort
 from webargs.flaskparser import parser
 from webargs import fields
 from model import Reference, File, Sample
-from ld.pywrapper import LDServer, LDQueryResult
+from ld.pywrapper import LDServer, LDQueryResult, StringVec
 
 API_VERSION = 1.0
 
@@ -79,6 +79,10 @@ def get_region_ld(reference_name, population_name):
         result = LDQueryResult(args['limit'], str(args['last']))
     else:
         result = LDQueryResult(args['limit'])
+    if population_name != 'ALL':
+        s = StringVec()
+        s.extend(str(sample.sample) for sample in samples)
+        ldserver.set_samples(str(population_name), s)
     ldserver.compute_region_ld(str(args['chrom']), args['start'], args['stop'], result, str(population_name))
     response['data'] = {
         'chromosome1': [str(args['chrom'])] * len(result.data),
@@ -129,6 +133,10 @@ def get_variant_ld(reference_name, population_name):
         result = LDQueryResult(args['limit'], str(args['last']))
     else:
         result = LDQueryResult(args['limit'])
+    if population_name != 'ALL':
+        s = StringVec()
+        s.extend(str(sample.sample) for sample in samples)
+        ldserver.set_samples(str(population_name), s)
     ldserver.compute_variant_ld(str(args['variant']), str(args['chrom']), args['start'], args['stop'], result, str(population_name))
     response['data'] = {
         'chromosome1': [str(args['chrom'])] * len(result.data),

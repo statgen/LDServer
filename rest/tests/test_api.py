@@ -39,6 +39,16 @@ def test_region_ld(client):
     assert 'position2' in response['data']
     assert 'rsquare' in response['data']
 
+    response = client.get('/1000G_GRCh37/AFR/ld/region?chrom=22&start=51241101&stop=51241385').get_json()
+    assert 'data' in response
+    assert 'next' in response
+    assert 'variant1' in response['data']
+    assert 'chromosome1' in response['data']
+    assert 'position1' in response['data']
+    assert 'chromosome2' in response['data']
+    assert 'position2' in response['data']
+    assert 'rsquare' in response['data']
+
 def test_variant_ld(client):
     response = client.get('/1000G_GRCh37/ALL/ld/variant?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385').get_json()
     assert 'data' in response
