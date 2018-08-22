@@ -30,11 +30,11 @@ void RawVCF::load(const vector<string>& samples, Segment& segment) const {
     savvy::site_info anno;
     savvy::armadillo::sparse_vector<float> alleles;
     while (f.read(anno, alleles)) {
-        ss.str("");
-        ss << anno.chromosome() << ":" << anno.position() << "_" << anno.ref() << "/" << anno.alt();
-        segment.names.emplace_back(ss.str());
-        segment.positions.push_back(anno.position());
         if (alleles.n_nonzero > 0) {
+            ss.str("");
+            ss << anno.chromosome() << ":" << anno.position() << "_" << anno.ref() << "/" << anno.alt();
+            segment.names.emplace_back(ss.str());
+            segment.positions.push_back(anno.position());
             segment.sp_mat_colind.push_back(segment.sp_mat_rowind.size());
             for (auto it = alleles.begin(); it != alleles.end(); ++it) {
                 segment.sp_mat_rowind.push_back(it.row());
@@ -66,11 +66,10 @@ void RawSAV::load(const vector<string>& samples, Segment& segment) const {
     savvy::site_info anno;
     savvy::armadillo::sparse_vector<float> alleles;
     while (f.read(anno, alleles)) {
-        ss.str("");
-        ss << anno.chromosome() << ":" << anno.position() << "_" << anno.ref() << "/" << anno.alt();
-        segment.names.emplace_back(ss.str());
-        segment.positions.push_back(anno.position());
         if (alleles.n_nonzero > 0) {
+            ss.str("");
+            segment.names.emplace_back(ss.str());
+            segment.positions.push_back(anno.position());
             segment.sp_mat_colind.push_back(segment.sp_mat_rowind.size());
             for (auto it = alleles.begin(); it != alleles.end(); ++it) {
                 segment.sp_mat_rowind.push_back(it.row());

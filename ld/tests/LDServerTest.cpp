@@ -193,7 +193,7 @@ TEST_F(LDServerTest, AFR_region_with_paging) {
         for (auto &&entry : result.data) {
             string key(to_string(entry.position1) + "_" + to_string(entry.position2));
             ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
+            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.0000000001);
         }
         result_total_size += result.data.size();
     }
