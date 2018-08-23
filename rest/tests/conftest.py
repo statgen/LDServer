@@ -21,3 +21,15 @@ def app():
 @pytest.fixture
 def client(app):
     return app.test_client()
+
+@pytest.fixture
+def goldstandard_ld():
+    def _goldstandard_ld(filename):
+        goldstandard = dict()
+        with open(filename, 'r') as f:
+            header = f.readline().rstrip().split('\t')
+            for line in f:
+                record = dict(zip(header, line.rstrip().split('\t')))
+                goldstandard[record['POS1'] + '_' + record['POS2']] = float(record['R^2'])
+        return goldstandard
+    yield _goldstandard_ld
