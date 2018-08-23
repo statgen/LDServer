@@ -68,6 +68,7 @@ void RawSAV::load(const vector<string>& samples, Segment& segment) const {
     while (f.read(anno, alleles)) {
         if (alleles.n_nonzero > 0) {
             ss.str("");
+            ss << anno.chromosome() << ":" << anno.position() << "_" << anno.ref() << "/" << anno.alt();
             segment.names.emplace_back(ss.str());
             segment.positions.push_back(anno.position());
             segment.sp_mat_colind.push_back(segment.sp_mat_rowind.size());

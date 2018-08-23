@@ -61,6 +61,8 @@ TEST_F(LDServerTest, SAV_one_page) {
     ASSERT_EQ(result.data.size(), goldstandard.size());
     for (auto&& entry : result.data) {
         string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+        ASSERT_NE(entry.variant1, "");
+        ASSERT_NE(entry.variant2, "");
         ASSERT_EQ(goldstandard.count(key), 1);
         ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
     }
@@ -81,6 +83,8 @@ TEST_F(LDServerTest, BCF_one_page) {
     ASSERT_EQ(result.data.size(), goldstandard.size());
     for (auto&& entry : result.data) {
         string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+        ASSERT_NE(entry.variant1, "");
+        ASSERT_NE(entry.variant2, "");
         ASSERT_EQ(goldstandard.count(key), 1);
         ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
     }
@@ -102,6 +106,8 @@ TEST_F(LDServerTest, VCF_one_page) {
     ASSERT_EQ(result.data.size(), goldstandard.size());
     for (auto&& entry : result.data) {
         string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+        ASSERT_NE(entry.variant1, "");
+        ASSERT_NE(entry.variant2, "");
         ASSERT_EQ(goldstandard.count(key), 1);
         ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
     }
@@ -124,6 +130,8 @@ TEST_F(LDServerTest, SAV_chrX_one_page) {
     ASSERT_EQ(result.data.size(), goldstandard.size());
     for (auto&& entry : result.data) {
         string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+        ASSERT_NE(entry.variant1, "");
+        ASSERT_NE(entry.variant2, "");
         ASSERT_EQ(goldstandard.count(key), 1);
         ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.000000001);
     }
@@ -144,6 +152,8 @@ TEST_F(LDServerTest, region_with_paging) {
         ASSERT_LE(result.data.size(), 4);
         for (auto &&entry : result.data) {
             string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+            ASSERT_NE(entry.variant1, "");
+            ASSERT_NE(entry.variant2, "");
             ASSERT_EQ(goldstandard.count(key), 1);
             ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
         }
@@ -167,6 +177,8 @@ TEST_F(LDServerTest, variant_with_paging) {
         ASSERT_LE(result.data.size(), 2);
         for (auto&& entry : result.data) {
             string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+            ASSERT_NE(entry.variant1, "");
+            ASSERT_NE(entry.variant2, "");
             ASSERT_EQ(goldstandard.count(key), 1);
             ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
         }
@@ -192,6 +204,8 @@ TEST_F(LDServerTest, AFR_region_with_paging) {
         ASSERT_LE(result.data.size(), 4);
         for (auto &&entry : result.data) {
             string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+            ASSERT_NE(entry.variant1, "");
+            ASSERT_NE(entry.variant2, "");
             ASSERT_EQ(goldstandard.count(key), 1);
             ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.0000000001);
         }
