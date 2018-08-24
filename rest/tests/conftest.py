@@ -23,6 +23,10 @@ def client(app):
     return app.test_client()
 
 @pytest.fixture
+def config(app):
+    return app.config
+
+@pytest.fixture
 def goldstandard_ld():
     def _goldstandard_ld(filename):
         goldstandard = dict()

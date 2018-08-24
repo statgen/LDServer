@@ -19,7 +19,6 @@ def get_all_datasets():
 @bp.route('/<reference_name>', methods = ['GET'])
 def get_reference_info(reference_name):
     reference = Reference.query.filter_by(name = reference_name).first()
-    print reference
     if reference:
         response = { 'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples])) }
         return make_response(jsonify(response), 200)
