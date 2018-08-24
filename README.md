@@ -33,7 +33,7 @@ python -m pytest
 flask load-references
 ```
 
-- Run REST API
+## Run REST API
 ```
 export FLASK_APP=rest
 flask run
