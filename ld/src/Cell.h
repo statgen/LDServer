@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <savvy/reader.hpp>
 #include <savvy/armadillo_vector.hpp>
+#include <hiredis/hiredis.h>
 #include "Raw.h"
 #include "Morton.h"
 #include "Segment.h"
@@ -33,7 +34,6 @@ public:
 
     void extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result);
     void extract(const std::string& index_variant, std::uint64_t index_bp, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result);
-
 };
 
 #endif

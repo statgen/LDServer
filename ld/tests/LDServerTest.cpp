@@ -3,15 +3,32 @@
 #include <fstream>
 #include <regex>
 #include <map>
+#include <boost/process/system.hpp>
 #include "../src/LDServer.h"
 
 using namespace std;
 
 class LDServerTest: public::testing::Test {
 protected:
+    static boost::process::child redis_server;
+
     virtual ~LDServerTest() {}
-    virtual void SetUp() {}
-    virtual void TearDown() {}
+
+    static void SetUpTestCase() {
+        LDServerTest::redis_server = boost::process::child("../bin/redis-server --port 6379 --bind 127.0.0.1 --daemonize no");
+    }
+
+    static void TearDownTestCase() {
+        LDServerTest::redis_server.terminate();
+    }
+
+    virtual void SetUp() {
+
+    }
+
+    virtual void TearDown() {
+
+    }
 
     void load_region_goldstandard(const string &file, map<string, double> &values) {
         ifstream input_file(file);
@@ -45,6 +62,8 @@ protected:
         }
     }
 };
+
+boost::process::child LDServerTest::redis_server = boost::process::child();
 
 TEST_F(LDServerTest, SAV_one_page) {
     map<string, double> goldstandard;
@@ -211,5 +230,15 @@ TEST_F(LDServerTest, AFR_region_with_paging) {
         }
         result_total_size += result.data.size();
     }
+}
+
+TEST_F(LDServerTest, hiredis) {
+    redisContext *c = nullptr;
+    const char *hostname = "127.0.0.1";
+    int port = 6379;
+    struct timeval timeout = { 1, 500000 }; // 1.5 seconds
+    c = redisConnectWithTimeout(hostname, port, timeout);
+    ASSERT_NE(c, nullptr);
+    ASSERT_EQ(c->err, 0);
 }
 
