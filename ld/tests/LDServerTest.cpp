@@ -1,4 +1,5 @@
-#include <gtest/gtest.h>
+//#include <gtest/gtest.h>
+#include <gmock/gmock.h>
 #include <string>
 #include <fstream>
 #include <regex>
@@ -15,7 +16,7 @@ protected:
     virtual ~LDServerTest() {}
 
     static void SetUpTestCase() {
-        LDServerTest::redis_server = boost::process::child("../bin/redis-server --port 6379 --bind 127.0.0.1 --daemonize no");
+        LDServerTest::redis_server = boost::process::child("../bin/redis-server --port 6379 --bind 127.0.0.1 --daemonize no --save \"\"");
     }
 
     static void TearDownTestCase() {
@@ -240,5 +241,83 @@ TEST_F(LDServerTest, hiredis) {
     c = redisConnectWithTimeout(hostname, port, timeout);
     ASSERT_NE(c, nullptr);
     ASSERT_EQ(c->err, 0);
+}
+
+TEST_F(LDServerTest, segment_key) {
+    uint64_t start_bp = 0u, stop_bp = 0u;
+
+    Segment segment1("", 0, 1);
+    ASSERT_EQ(16, segment1.get_key_size());
+    memcpy(&start_bp, segment1.get_key(), 8);
+    memcpy(&stop_bp, segment1.get_key() + 8, 8);
+    ASSERT_EQ(start_bp, 0);
+    ASSERT_EQ(stop_bp, 1);
+
+    Segment segment2("chr22", 10, 20);
+    ASSERT_EQ(21, segment2.get_key_size());
+    string chromosome(segment2.get_key(), 5);
+    ASSERT_EQ(chromosome, "chr22");
+    memcpy(&start_bp, segment2.get_key() + 5 , 8);
+    memcpy(&stop_bp, segment2.get_key() + 13, 8);
+    ASSERT_EQ(start_bp, 10);
+    ASSERT_EQ(stop_bp, 20);
+}
+
+TEST_F(LDServerTest, segment_to_redis) {
+    redisContext* context = nullptr;
+    const char* hostname = "127.0.0.1";
+    int port = 6379;
+    struct timeval timeout = { 1, 500000 }; // 1.5 seconds
+    context = redisConnectWithTimeout(hostname, port, timeout);
+    ASSERT_NE(context, nullptr);
+    ASSERT_EQ(context->err, 0);
+    RawSAV raw("chr22.test.sav");
+    Segment segment("22", 51241101, 51241385);
+    raw.load(raw.get_samples(), segment);
+    strstreambuf buffer;
+    basic_ostream<char> os(&buffer);
+    {
+        cereal::BinaryOutputArchive oarchive(os);
+        oarchive(segment);
+    } // needs to exit the scope to flush the output - see cereal docs.
+    redisReply* reply = nullptr;
+    reply = (redisReply*)redisCommand(context, "SET %b %b", segment.get_key(), segment.get_key_size(), buffer.str(), buffer.pcount());
+    ASSERT_NE(reply, nullptr);
+    ASSERT_EQ(reply->type, REDIS_REPLY_STATUS);
+    ASSERT_STREQ(reply->str, "OK");
+    freeReplyObject(reply);
+}
+
+TEST_F(LDServerTest, segment_from_redis) {
+    redisContext* context = nullptr;
+    const char* hostname = "127.0.0.1";
+    int port = 6379;
+    struct timeval timeout = { 1, 500000 }; // 1.5 seconds
+    context = redisConnectWithTimeout(hostname, port, timeout);
+    ASSERT_NE(context, nullptr);
+    ASSERT_EQ(context->err, 0);
+
+    RawSAV raw("chr22.test.sav");
+    Segment segment_from_file("22", 51241101, 51241385);
+    raw.load(raw.get_samples(), segment_from_file);
+
+    Segment segment_from_redis("22", 51241101, 51241385);
+    ASSERT_EQ(segment_from_redis.names.size(), 0);
+    ASSERT_EQ(segment_from_redis.positions.size(), 0);
+
+    redisReply* reply = nullptr;
+    reply = (redisReply*)redisCommand(context, "GET %b", segment_from_redis.get_key(), segment_from_redis.get_key_size());
+    ASSERT_EQ(reply->type, REDIS_REPLY_STRING);
+
+    strstreambuf buffer(reply->str, reply->len);
+    basic_istream<char> is(&buffer);
+    {
+        cereal::BinaryInputArchive iarchive(is);
+        iarchive(segment_from_redis);
+    }
+    freeReplyObject(reply);
+
+    ASSERT_THAT(segment_from_file.names, ::testing::ContainerEq(segment_from_redis.names));
+    ASSERT_THAT(segment_from_file.positions, ::testing::ContainerEq(segment_from_redis.positions));
 }
 

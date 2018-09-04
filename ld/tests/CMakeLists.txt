@@ -1,4 +1,4 @@
-find_library(GTEST_LIB gtest HINT ${CGET_PREFIX}/lib)
+find_library(GTEST_LIB gmock HINT ${CGET_PREFIX}/lib)
 
 find_package(Threads REQUIRED)
 
