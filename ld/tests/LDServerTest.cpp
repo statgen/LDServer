@@ -337,3 +337,51 @@ TEST_F(LDServerTest, cell_key) {
     memcpy(&morton_code, cell2.get_key() + 5 , 8);
     ASSERT_EQ(morton_code, 300);
 }
+
+TEST_F(LDServerTest, cell_to_redis) {
+    redisContext* context = nullptr;
+    const char* hostname = "127.0.0.1";
+    int port = 6379;
+    struct timeval timeout = { 1, 500000 }; // 1.5 seconds
+    context = redisConnectWithTimeout(hostname, port, timeout);
+    ASSERT_NE(context, nullptr);
+    ASSERT_EQ(context->err, 0);
+
+    std::map<std::uint64_t, Segment> segments;
+    LDQueryResult result(1000);
+
+    RawSAV raw("chr22.test.sav");
+
+    Cell cell("22", to_morton_code(51241101 / 100, 51241385 / 100));
+
+    cell.load(reinterpret_cast<const Raw*>(&raw), raw.get_samples(), segments);
+    cell.extract(51241101, 51241385, result);
+
+
+    cout << result.data.size() << endl;
+
+    cell.save(context);
+
+    Cell cell2("22", to_morton_code(51241101 / 100, 51241385 / 100));
+    cell.load(reinterpret_cast<const Raw*>(&raw), raw.get_samples(), segments, context);
+
+
+
+//    strstreambuf buffer;
+//    basic_ostream<char> os(&buffer);
+//
+//    cout << buffer.pcount() << endl;
+//    {
+//        cereal::BinaryOutputArchive oarchive(os);
+//        cell.save(oarchive);
+//    } // needs to exit the scope to flush the output - see cereal docs.
+//
+//    cout << buffer.pcount() << endl;
+//    redisReply* reply = nullptr;
+//    reply = (redisReply*)redisCommand(context, "SET %b %b", segment.get_key(), segment.get_key_size(), buffer.str(), buffer.pcount());
+//    ASSERT_NE(reply, nullptr);
+//    ASSERT_EQ(reply->type, REDIS_REPLY_STATUS);
+//    ASSERT_STREQ(reply->str, "OK");
+//    freeReplyObject(reply);
+    redisFree(context);
+}

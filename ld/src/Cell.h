@@ -9,6 +9,8 @@
 #include <savvy/reader.hpp>
 #include <savvy/armadillo_vector.hpp>
 #include <hiredis/hiredis.h>
+#include <cereal/archives/binary.hpp>
+#include <cereal/types/string.hpp>
 #include "Raw.h"
 #include "Morton.h"
 #include "Segment.h"
@@ -17,7 +19,6 @@
 using namespace std;
 
 class Cell {
-private:
 private:
     char* key;
     uint64_t key_size;
@@ -38,10 +39,12 @@ public:
     const char* get_key() const;
     uint64_t get_key_size() const;
 
-    void load(const Raw* raw, const vector<string>& samples, map<uint64_t, Segment>& segments);
+    void load(const Raw* raw, const vector<string>& samples, map<uint64_t, Segment>& segments, redisContext* redis_cache = nullptr);
+    void save(redisContext* redis_cache) const;
 
     void extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result);
     void extract(const std::string& index_variant, std::uint64_t index_bp, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result);
+
 };
 
 #endif
