@@ -1,11 +1,29 @@
 #include "Cell.h"
 
-Cell::Cell(const string &chromosome, uint64_t morton_code) : chromosome(chromosome), morton_code(morton_code) {
+Cell::Cell(const string &chromosome, uint64_t morton_code) : key(nullptr), key_size(0u), chromosome(chromosome), morton_code(morton_code) {
+    strstreambuf buffer;
+    basic_ostream<char> os(&buffer);
+    os.write(chromosome.c_str(), chromosome.size());
+    os.write(reinterpret_cast<const char*>(&morton_code), sizeof(morton_code));
+    key_size = buffer.pcount();
+    key = new char[key_size];
+    memcpy(key, buffer.str(), key_size);
     from_morton_code(morton_code, this->i, this->j);
 }
 
 Cell::~Cell() {
+    if (key != nullptr) {
+        free(key);
+        key = nullptr;
+    }
+}
 
+const char* Cell::get_key() const {
+    return key;
+}
+
+uint64_t Cell::get_key_size() const {
+    return key_size;
 }
 
 void Cell::load(const Raw* raw,  const vector<string>& samples, map<uint64_t, Segment>& segments) {

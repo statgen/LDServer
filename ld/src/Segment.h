@@ -4,9 +4,9 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <strstream>
 #include <savvy/armadillo_vector.hpp>
 #include <hiredis/hiredis.h>
-#include <strstream>
 #include <cereal/archives/binary.hpp>
 #include <cereal/types/string.hpp>
 #include <cereal/types/vector.hpp>

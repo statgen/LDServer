@@ -48,5 +48,4 @@ public:
     bool compute_variant_ld(const string& index_variant, const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, struct LDQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY) const;
 };
 
-
 #endif

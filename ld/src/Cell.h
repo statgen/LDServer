@@ -5,6 +5,7 @@
 #include <map>
 #include <string>
 #include <algorithm>
+#include <strstream>
 #include <savvy/reader.hpp>
 #include <savvy/armadillo_vector.hpp>
 #include <hiredis/hiredis.h>
@@ -17,6 +18,10 @@ using namespace std;
 
 class Cell {
 private:
+private:
+    char* key;
+    uint64_t key_size;
+
     arma::fmat R;
     map<std::uint64_t, Segment>::iterator segment_i_it;
     map<std::uint64_t, Segment>::iterator segment_j_it;
@@ -27,8 +32,11 @@ public:
     uint64_t i;
     uint64_t j;
 
-    Cell(const string& chromosome, uint64_t morton_conde);
+    Cell(const string& chromosome, uint64_t morton_code);
     virtual ~Cell();
+
+    const char* get_key() const;
+    uint64_t get_key_size() const;
 
     void load(const Raw* raw, const vector<string>& samples, map<uint64_t, Segment>& segments);
 

@@ -323,3 +323,17 @@ TEST_F(LDServerTest, segment_from_redis) {
     redisFree(context);
 }
 
+TEST_F(LDServerTest, cell_key) {
+    uint64_t morton_code = 0;
+    Cell cell1("", 3);
+    ASSERT_EQ(8, cell1.get_key_size());
+    memcpy(&morton_code, cell1.get_key(), 8);
+    ASSERT_EQ(morton_code, 3);
+
+    Cell cell2("chr22", 300);
+    ASSERT_EQ(13, cell2.get_key_size());
+    string chromosome(cell2.get_key(), 5);
+    ASSERT_EQ(chromosome, "chr22");
+    memcpy(&morton_code, cell2.get_key() + 5 , 8);
+    ASSERT_EQ(morton_code, 300);
+}
