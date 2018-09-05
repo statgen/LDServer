@@ -37,7 +37,13 @@ public:
     uint64_t get_key_size() const;
 
     template <class Archive>
-    void serialize( Archive & ar )
+    void save( Archive & ar ) const
+    {
+        ar( names, positions );
+    }
+
+    template <class Archive>
+    void load( Archive & ar )
     {
         ar( names, positions );
     }
