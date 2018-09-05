@@ -286,6 +286,7 @@ TEST_F(LDServerTest, segment_to_redis) {
     ASSERT_EQ(reply->type, REDIS_REPLY_STATUS);
     ASSERT_STREQ(reply->str, "OK");
     freeReplyObject(reply);
+    redisFree(context);
 }
 
 TEST_F(LDServerTest, segment_from_redis) {
@@ -319,5 +320,6 @@ TEST_F(LDServerTest, segment_from_redis) {
 
     ASSERT_THAT(segment_from_file.names, ::testing::ContainerEq(segment_from_redis.names));
     ASSERT_THAT(segment_from_file.positions, ::testing::ContainerEq(segment_from_redis.positions));
+    redisFree(context);
 }
 

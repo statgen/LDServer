@@ -44,6 +44,8 @@ BOOST_PYTHON_MODULE(pywrapper) {
     boost::python::class_<LDServer, boost::noncopyable>("LDServer")
             .def("set_file", set_file)
             .def("set_samples", &LDServer::set_samples)
+            .def("enable_cache", &LDServer::enable_cache)
+            .def("disable_cache", &LDServer::disable_cache)
             .def("compute_region_ld", compute_region_ld)
             .def("compute_variant_ld", compute_variant_ld)
             ;

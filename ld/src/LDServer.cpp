@@ -2,12 +2,15 @@
 
 const std::string LDServer::ALL_SAMPLES_KEY("ALL");
 
-LDServer::LDServer() {
+LDServer::LDServer() : cache_enabled(false), cache_hostname(""), cache_port(0), cache_context(nullptr) {
 
 }
 
 LDServer::~LDServer() {
-
+    if (cache_context != nullptr) {
+        redisFree(cache_context);
+        cache_context = nullptr;
+    }
 }
 
 void LDServer::set_file(const std::string &file) {
@@ -34,6 +37,28 @@ void LDServer::set_samples(const std::string &name, const std::vector<std::strin
     auto e = this->samples.emplace(name, std::vector<std::string>()).first;
     for (auto&& sample: samples) {
         e->second.push_back(sample);
+    }
+}
+
+void LDServer::enable_cache(const string& hostname, int port) {
+    if (cache_context == nullptr) {
+        cache_hostname = hostname;
+        cache_port = port;
+        struct timeval timeout = {1, 500000}; // 1.5 seconds
+        cache_context = redisConnectWithTimeout(cache_hostname.c_str(), cache_port, timeout);
+        if (cache_context == nullptr) {
+            return; // todo: exception "can't connect to Redis cache server" (see code in context->err)
+        }
+    }
+}
+
+void LDServer::disable_cache() {
+    if (cache_enabled) {
+        if (cache_context != nullptr) {
+            redisFree(cache_context);
+            cache_context = nullptr;
+        }
+        cache_enabled = false;
     }
 }
 
