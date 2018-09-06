@@ -2,6 +2,7 @@
 #define LDSERVER_CELL_H
 
 #include <iostream>
+#include <memory>
 #include <map>
 #include <string>
 #include <algorithm>
@@ -22,10 +23,9 @@ class Cell {
 private:
     char* key;
     uint64_t key_size;
-
+    shared_ptr<Segment> segment_i;
+    shared_ptr<Segment> segment_j;
     arma::fmat R;
-    map<std::uint64_t, Segment>::iterator segment_i_it;
-    map<std::uint64_t, Segment>::iterator segment_j_it;
 
 public:
     string chromosome;
@@ -39,7 +39,7 @@ public:
     const char* get_key() const;
     uint64_t get_key_size() const;
 
-    void load(const Raw* raw, const vector<string>& samples, map<uint64_t, Segment>& segments, redisContext* redis_cache = nullptr);
+    void load(const Raw* raw, const vector<string>& samples, map<uint64_t, shared_ptr<Segment>>& segments, redisContext* redis_cache = nullptr);
     void save(redisContext* redis_cache) const;
 
     void extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result);

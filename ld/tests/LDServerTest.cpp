@@ -275,16 +275,16 @@ TEST_F(LDServerTest, segment_key) {
 
 TEST_F(LDServerTest, segment_to_redis) {
     RawSAV raw("chr22.test.sav");
-    Segment segment("22", 51241101, 51241385);
+    auto segment = make_shared<Segment>("22", 51241101, 51241385);
     raw.load(raw.get_samples(), segment);
     strstreambuf buffer;
     basic_ostream<char> os(&buffer);
     {
         cereal::BinaryOutputArchive oarchive(os);
-        segment.save(oarchive);
+        segment->save(oarchive);
     } // needs to exit the scope to flush the output - see cereal docs
     redisReply* reply = nullptr;
-    reply = (redisReply*)redisCommand(redis_cache, "SET %b %b", segment.get_key(), segment.get_key_size(), buffer.str(), buffer.pcount());
+    reply = (redisReply*)redisCommand(redis_cache, "SET %b %b", segment->get_key(), segment->get_key_size(), buffer.str(), buffer.pcount());
     ASSERT_NE(reply, nullptr);
     ASSERT_EQ(reply->type, REDIS_REPLY_STATUS);
     ASSERT_STREQ(reply->str, "OK");
@@ -293,26 +293,26 @@ TEST_F(LDServerTest, segment_to_redis) {
 
 TEST_F(LDServerTest, segment_from_redis) {
     RawSAV raw("chr22.test.sav");
-    Segment segment_from_file("22", 51241101, 51241385);
+    auto segment_from_file = make_shared<Segment>("22", 51241101, 51241385);
     raw.load(raw.get_samples(), segment_from_file);
 
-    Segment segment_from_redis("22", 51241101, 51241385);
-    ASSERT_EQ(segment_from_redis.names.size(), 0);
-    ASSERT_EQ(segment_from_redis.positions.size(), 0);
+    auto segment_from_redis = make_shared<Segment>("22", 51241101, 51241385);
+    ASSERT_EQ(segment_from_redis->names.size(), 0);
+    ASSERT_EQ(segment_from_redis->positions.size(), 0);
 
     redisReply* reply = nullptr;
-    reply = (redisReply*)redisCommand(redis_cache, "GET %b", segment_from_redis.get_key(), segment_from_redis.get_key_size());
+    reply = (redisReply*)redisCommand(redis_cache, "GET %b", segment_from_redis->get_key(), segment_from_redis->get_key_size());
     ASSERT_EQ(reply->type, REDIS_REPLY_STRING);
 
     strstreambuf buffer(reply->str, reply->len);
     basic_istream<char> is(&buffer);
     {
         cereal::BinaryInputArchive iarchive(is);
-        segment_from_redis.load(iarchive);
+        segment_from_redis->load(iarchive);
     } // needs to exit the scope to flush the output - see cereal docs.
     freeReplyObject(reply);
-    ASSERT_THAT(segment_from_file.names, ::testing::ContainerEq(segment_from_redis.names));
-    ASSERT_THAT(segment_from_file.positions, ::testing::ContainerEq(segment_from_redis.positions));
+    ASSERT_THAT(segment_from_file->names, ::testing::ContainerEq(segment_from_redis->names));
+    ASSERT_THAT(segment_from_file->positions, ::testing::ContainerEq(segment_from_redis->positions));
 }
 
 TEST_F(LDServerTest, cell_key) {
@@ -331,7 +331,7 @@ TEST_F(LDServerTest, cell_key) {
 }
 
 TEST_F(LDServerTest, cell_to_redis) {
-    std::map<std::uint64_t, Segment> segments;
+    std::map<std::uint64_t, shared_ptr<Segment>> segments;
     LDQueryResult result(1000);
 
     RawSAV raw("chr22.test.sav");

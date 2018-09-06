@@ -18,6 +18,7 @@ private:
     char* key;
     uint64_t key_size;
 
+    bool has_genotypes;
 
 public:
     string chromosome;
@@ -48,6 +49,5 @@ public:
         ar( names, positions );
     }
 };
-
 
 #endif

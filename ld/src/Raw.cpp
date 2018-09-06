@@ -19,13 +19,13 @@ vector<string> RawVCF::get_chromosomes() const {
     return savvy::vcf::indexed_reader<1>(file, {""}, savvy::fmt::gt).chromosomes();
 }
 
-void RawVCF::load(const vector<string>& samples, Segment& segment) const {
-    savvy::vcf::indexed_reader<1> f(file, {segment.chromosome, segment.start_bp, segment.stop_bp}, savvy::fmt::gt);
+void RawVCF::load(const vector<string>& samples, const shared_ptr<Segment>& segment) const {
+    savvy::vcf::indexed_reader<1> f(file, {segment->chromosome, segment->start_bp, segment->stop_bp}, savvy::fmt::gt);
     f.subset_samples({samples.begin(), samples.end()});
-    segment.sp_mat_rowind.clear();
-    segment.sp_mat_colind.clear();
-    segment.names.clear();
-    segment.positions.clear();
+    segment->sp_mat_rowind.clear();
+    segment->sp_mat_colind.clear();
+    segment->names.clear();
+    segment->positions.clear();
     std::stringstream ss;
     savvy::site_info anno;
     savvy::armadillo::sparse_vector<float> alleles;
@@ -33,15 +33,15 @@ void RawVCF::load(const vector<string>& samples, Segment& segment) const {
         if (alleles.n_nonzero > 0) {
             ss.str("");
             ss << anno.chromosome() << ":" << anno.position() << "_" << anno.ref() << "/" << anno.alt();
-            segment.names.emplace_back(ss.str());
-            segment.positions.push_back(anno.position());
-            segment.sp_mat_colind.push_back(segment.sp_mat_rowind.size());
+            segment->names.emplace_back(ss.str());
+            segment->positions.push_back(anno.position());
+            segment->sp_mat_colind.push_back(segment->sp_mat_rowind.size());
             for (auto it = alleles.begin(); it != alleles.end(); ++it) {
-                segment.sp_mat_rowind.push_back(it.row());
+                segment->sp_mat_rowind.push_back(it.row());
             }
         }
     }
-    segment.sp_mat_colind.push_back(segment.sp_mat_rowind.size());
+    segment->sp_mat_colind.push_back(segment->sp_mat_rowind.size());
 }
 
 RawSAV::~RawSAV() {
@@ -55,13 +55,13 @@ vector<string> RawSAV::get_chromosomes() const {
     return savvy::indexed_reader(file, {""}, savvy::fmt::gt).chromosomes();
 }
 
-void RawSAV::load(const vector<string>& samples, Segment& segment) const {
-    savvy::indexed_reader f(file, {segment.chromosome, segment.start_bp, segment.stop_bp}, savvy::fmt::gt);
+void RawSAV::load(const vector<string>& samples, const shared_ptr<Segment>& segment) const {
+    savvy::indexed_reader f(file, {segment->chromosome, segment->start_bp, segment->stop_bp}, savvy::fmt::gt);
     f.subset_samples({samples.begin(), samples.end()});
-    segment.sp_mat_rowind.clear();
-    segment.sp_mat_colind.clear();
-    segment.names.clear();
-    segment.positions.clear();
+    segment->sp_mat_rowind.clear();
+    segment->sp_mat_colind.clear();
+    segment->names.clear();
+    segment->positions.clear();
     std::stringstream ss;
     savvy::site_info anno;
     savvy::armadillo::sparse_vector<float> alleles;
@@ -69,15 +69,15 @@ void RawSAV::load(const vector<string>& samples, Segment& segment) const {
         if (alleles.n_nonzero > 0) {
             ss.str("");
             ss << anno.chromosome() << ":" << anno.position() << "_" << anno.ref() << "/" << anno.alt();
-            segment.names.emplace_back(ss.str());
-            segment.positions.push_back(anno.position());
-            segment.sp_mat_colind.push_back(segment.sp_mat_rowind.size());
+            segment->names.emplace_back(ss.str());
+            segment->positions.push_back(anno.position());
+            segment->sp_mat_colind.push_back(segment->sp_mat_rowind.size());
             for (auto it = alleles.begin(); it != alleles.end(); ++it) {
-                segment.sp_mat_rowind.push_back(it.row());
+                segment->sp_mat_rowind.push_back(it.row());
             }
         }
     }
-    segment.sp_mat_colind.push_back(segment.sp_mat_rowind.size());
+    segment->sp_mat_colind.push_back(segment->sp_mat_rowind.size());
 }
 
 shared_ptr<Raw> RawFactory::create(const string &file) {

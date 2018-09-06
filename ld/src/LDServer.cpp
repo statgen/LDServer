@@ -92,7 +92,7 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
         return false;
     }
 
-    std::map<std::uint64_t, Segment> segments;
+    std::map<std::uint64_t, shared_ptr<Segment>> segments;
     std::set<uint64_t> cells;
 
     get_cells(region_start_bp, region_stop_bp, cells);
@@ -136,7 +136,7 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
         return false;
     }
 
-    std::map<std::uint64_t, Segment> segments;
+    std::map<std::uint64_t, shared_ptr<Segment>> segments;
     std::set<uint64_t> cells;
 
     get_cells(index_bp, region_start_bp, region_stop_bp, cells);

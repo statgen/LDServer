@@ -21,7 +21,7 @@ public:
 
     virtual vector<string> get_samples() const = 0;
     virtual vector<string> get_chromosomes() const = 0;
-    virtual void load(const vector<string>& samples, Segment& segment) const = 0;
+    virtual void load(const vector<string>& samples, const shared_ptr<Segment>& segment) const = 0;
 };
 
 class RawVCF : public Raw {
@@ -31,7 +31,7 @@ public:
 
     virtual vector<string> get_samples() const;
     virtual vector<string> get_chromosomes() const;
-    virtual void load(const vector<string>& samples, Segment& segment) const;
+    virtual void load(const vector<string>& samples, const shared_ptr<Segment>& segment) const;
 };
 
 class RawSAV : public Raw {
@@ -41,7 +41,7 @@ public:
 
     virtual vector<string> get_samples() const;
     virtual vector<string> get_chromosomes() const;
-    virtual void load(const vector<string>& samples, Segment& segment) const;
+    virtual void load(const vector<string>& samples, const shared_ptr<Segment>& segment) const;
 };
 
 class RawFactory {
