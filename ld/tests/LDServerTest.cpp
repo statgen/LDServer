@@ -36,7 +36,9 @@ protected:
     }
 
     virtual void TearDown() {
-
+        redisReply* reply = (redisReply*)redisCommand(redis_cache, "FLUSHDB");
+        assert(reply != nullptr);
+        freeReplyObject(reply);
     }
 
     void load_region_goldstandard(const string &file, map<string, double> &values) {
@@ -330,4 +332,27 @@ TEST_F(LDServerTest, cell_cache) {
         ASSERT_EQ(result1.data[i].variant2, result2.data[i].variant2);
         ASSERT_EQ(result1.data[i].r, result2.data[i].r);
     }
+}
+
+TEST_F(LDServerTest, cache_enabled) {
+    redisReply* reply = nullptr;
+    LDServer server;
+    LDQueryResult result(1000);
+
+    server.set_file("chr22.test.sav");
+    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241199, result));
+
+    reply = (redisReply*)redisCommand(redis_cache, "DBSIZE");
+    ASSERT_NE(reply, nullptr);
+    ASSERT_EQ(reply->integer, 0);
+    freeReplyObject(reply);
+
+    result.clear_last();
+    server.enable_cache("127.0.0.1", 6379);
+    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241199, result));
+    reply = (redisReply*)redisCommand(redis_cache, "DBSIZE");
+    ASSERT_NE(reply, nullptr);
+    ASSERT_EQ(reply->integer, 2);
+    freeReplyObject(reply);
+
 }

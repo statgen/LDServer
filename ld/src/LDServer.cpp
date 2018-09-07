@@ -49,6 +49,7 @@ void LDServer::enable_cache(const string& hostname, int port) {
         if (cache_context == nullptr) {
             return; // todo: exception "can't connect to Redis cache server" (see code in context->err)
         }
+        cache_enabled = true;
     }
 }
 
@@ -92,6 +93,9 @@ shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, const vec
         } else {
             raw->load(samples, *(segment_it->second));
         }
+        if (cache_enabled) {
+            segment_it->second->save(cache_context);
+        }
     }
     return segment_it->second;
 }
@@ -130,6 +134,9 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
         }
         if (!cell.is_cached()) {
             cell.compute();
+            if (cache_enabled) {
+                cell.save(cache_context);
+            }
         }
         cell.extract(region_start_bp, region_stop_bp, result);
         ++cells_it;

@@ -89,6 +89,7 @@ struct LDQueryResult {
     void clear_last() {
         last_cell = 0u;
         last_i = last_j = -1;
+        page = 0;
     }
 };
 
