@@ -82,6 +82,8 @@ def get_region_ld(reference_name, population_name):
         s = StringVec()
         s.extend(str(sample.sample) for sample in samples)
         ldserver.set_samples(str(population_name), s)
+    if current_app.config['CACHE_ENABLED']:
+        ldserver.enable_cache(file.reference_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
     ldserver.compute_region_ld(str(args['chrom']), args['start'], args['stop'], result, str(population_name))
     response['data'] = {
         'chromosome1': [str(args['chrom'])] * len(result.data),
@@ -136,6 +138,8 @@ def get_variant_ld(reference_name, population_name):
         s = StringVec()
         s.extend(str(sample.sample) for sample in samples)
         ldserver.set_samples(str(population_name), s)
+    if current_app.config['CACHE_ENABLED']:
+        ldserver.enable_cache(file.reference_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
     ldserver.compute_variant_ld(str(args['variant']), str(args['chrom']), args['start'], args['stop'], result, str(population_name))
     response['data'] = {
         'chromosome1': [str(args['chrom'])] * len(result.data),

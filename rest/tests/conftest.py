@@ -9,7 +9,10 @@ def app():
         'REFERENCES_JSON': os.path.join(os.path.dirname(__file__), 'datasets.json'),
         'SQLALCHEMY_DATABASE_URI': 'sqlite:///' + os.path.join(os.path.dirname(__file__), 'sql.db'),
         'SQLALCHEMY_TRACK_MODIFICATIONS': False,
-        'API_MAX_PAGE_SIZE': 1000
+        'API_MAX_PAGE_SIZE': 1000,
+        'CACHE_ENABLED': False,
+        'CACHE_REDIS_HOSTNAME': '127.0.0.1',
+        'CACHE_REDIS_PORT': 6379
     })
 
     from rest.model import load_references
