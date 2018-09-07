@@ -1,7 +1,7 @@
 #include "Cell.h"
 
 Cell::Cell(const string &chromosome, uint64_t morton_code) :
-        key(nullptr), key_size(0u), segment_i(nullptr), segment_j(nullptr), chromosome(chromosome), morton_code(morton_code) {
+        key(nullptr), key_size(0u), cached(false), segment_i(nullptr), segment_j(nullptr), chromosome(chromosome), morton_code(morton_code) {
     strstreambuf buffer;
     basic_ostream<char> os(&buffer);
     os.write(chromosome.c_str(), chromosome.size());
@@ -27,65 +27,19 @@ uint64_t Cell::get_key_size() const {
     return key_size;
 }
 
-void Cell::load(const Raw* raw,  const vector<string>& samples, map<uint64_t, shared_ptr<Segment>>& segments, redisContext* redis_cache) {
-//    bool load_genotypes = true;
-//
-//    if (redis_cache != nullptr) {
-//        redisReply* reply = nullptr;
-//        reply = (redisReply*)redisCommand(redis_cache, "GET %b", key, key_size);
-//        if (reply == nullptr) {
-//            return; // todo: throw exception, also check reply->type == REDIS_REPLY_NIL
-//        }
-//        if (reply->len > 0) {
-//            strstreambuf buffer(reply->str, reply->len);
-//            basic_istream<char> is(&buffer);
-//            R.load(is, arma::arma_binary);
-//            freeReplyObject(reply);
-//            load_genotypes = false;
-//        }
-//        freeReplyObject(reply);
-//    }
-
-    auto segment_i_it = segments.find(this->i);
-    if (segment_i_it == segments.end()) {
-        segment_i_it = segments.emplace(make_pair(this->i, make_shared<Segment>(this->chromosome, this->i * 100u, this->i * 100u + 100u - 1u))).first;
-        raw->load(samples, segment_i_it->second); // don't load genotypes if not neaded
+void Cell::load(redisContext* redis_cache) {
+    redisReply *reply = nullptr;
+    reply = (redisReply *) redisCommand(redis_cache, "GET %b", key, key_size);
+    if (reply == nullptr) {
+        return; // todo: throw exception, also check reply->type == REDIS_REPLY_NIL
     }
-    segment_i = segment_i_it->second;
-
-    unsigned int n_haplotypes = 2u * samples.size();
-    auto n_variants_i = segment_i->names.size();
-    arma::sp_fmat S_i(arma::uvec(segment_i->sp_mat_rowind.data(), segment_i->sp_mat_rowind.size(), false, false),
-                      arma::uvec(segment_i->sp_mat_colind.data(), segment_i->sp_mat_colind.size(), false, false),
-                      arma::fvec(segment_i->sp_mat_rowind.size(), arma::fill::ones),
-                      n_haplotypes, n_variants_i);
-    arma::frowvec J(n_haplotypes, arma::fill::ones); // vector of 1's
-
-    if (this->i == this->j) { // diagonal cell
-        arma::fmat C1(J * S_i); // allele1 counts per variant
-        arma::fmat C2(n_haplotypes - C1); // allele2 counts per variant
-        arma::fmat M1(C1.t() * C1); // denominator
-        this->R = ((n_haplotypes * S_i.t() * S_i - M1) / sqrt(M1 % (C2.t() * C2)));
-    } else {
-        auto segment_j_it = segments.find(this->j);
-        if (segment_j_it == segments.end()) {
-            segment_j_it = segments.emplace(make_pair(this->j, make_shared<Segment>(this->chromosome, this->j * 100u, this->j * 100u + 100u - 1u))).first;
-            raw->load(samples, segment_j_it->second);
-        }
-        segment_j = segment_j_it->second;
-
-        auto n_variants_j = segment_j->names.size();
-        arma::sp_fmat S_j(arma::uvec(segment_j->sp_mat_rowind.data(), segment_j->sp_mat_rowind.size(), false, false),
-                         arma::uvec(segment_j->sp_mat_colind.data(), segment_j->sp_mat_colind.size(), false, false),
-                         arma::fvec(segment_j->sp_mat_rowind.size(), arma::fill::ones),
-                         n_haplotypes, n_variants_j);
-        arma::fmat S_i_C1(J * S_i); // allele 1 counts for segment_i variant
-        arma::fmat S_i_C2(n_haplotypes - S_i_C1); // allele 2 counts for lead variant
-        arma::fmat S_j_C1(J * S_j); // allele 1 counts for segment_j variants
-        arma::fmat S_j_C2(n_haplotypes - S_j_C1); // allele 2 counts for region variants
-        arma::fmat M1(S_i_C1.t() * S_j_C1);
-        this->R = ((n_haplotypes * S_i.t() * S_j - M1) / sqrt(M1 % (S_i_C2.t() * S_j_C2)));
+    if (reply->len > 0) {
+        strstreambuf buffer(reply->str, reply->len);
+        basic_istream<char> is(&buffer);
+        R.load(is, arma::arma_binary);
+        cached = true;
     }
+    freeReplyObject(reply);
 }
 
 void Cell::save(redisContext* redis_cache) const {
@@ -95,10 +49,42 @@ void Cell::save(redisContext* redis_cache) const {
     R.save(os, arma::arma_binary);
     reply = (redisReply*)redisCommand(redis_cache, "SET %b %b", key, key_size, buffer.str(), buffer.pcount());
     if (reply == nullptr) {
-        return; // todo: throw exception, a
+        return; // todo: throw exception
     }
     // todo: check reply->type and reply->str
     freeReplyObject(reply);
+}
+
+bool Cell::is_cached() const {
+    return cached;
+}
+
+void Cell::compute() {
+    auto n_variants_i = segment_i->names.size();
+    arma::sp_fmat S_i(arma::uvec(segment_i->sp_mat_rowind.data(), segment_i->sp_mat_rowind.size(), false, false),
+                      arma::uvec(segment_i->sp_mat_colind.data(), segment_i->sp_mat_colind.size(), false, false),
+                      arma::fvec(segment_i->sp_mat_rowind.size(), arma::fill::ones),
+                      segment_i->n_haplotypes, n_variants_i);
+    arma::frowvec J(segment_i->n_haplotypes, arma::fill::ones); // vector of 1's
+    if (this->i == this->j) { // diagonal cell
+        arma::fmat C1(J * S_i); // allele1 counts per variant
+        arma::fmat C2(segment_i->n_haplotypes - C1); // allele2 counts per variant
+        arma::fmat M1(C1.t() * C1); // denominator
+        this->R = ((segment_i->n_haplotypes * S_i.t() * S_i - M1) / sqrt(M1 % (C2.t() * C2)));
+    } else {
+        auto n_variants_j = segment_j->names.size();
+        arma::sp_fmat S_j(
+                arma::uvec(segment_j->sp_mat_rowind.data(), segment_j->sp_mat_rowind.size(), false, false),
+                arma::uvec(segment_j->sp_mat_colind.data(), segment_j->sp_mat_colind.size(), false, false),
+                arma::fvec(segment_j->sp_mat_rowind.size(), arma::fill::ones),
+                segment_j->n_haplotypes, n_variants_j);
+        arma::fmat S_i_C1(J * S_i); // allele 1 counts for segment_i variant
+        arma::fmat S_i_C2(segment_i->n_haplotypes - S_i_C1); // allele 2 counts for lead variant
+        arma::fmat S_j_C1(J * S_j); // allele 1 counts for segment_j variants
+        arma::fmat S_j_C2(segment_j->n_haplotypes - S_j_C1); // allele 2 counts for region variants
+        arma::fmat M1(S_i_C1.t() * S_j_C1);
+        this->R = ((segment_i->n_haplotypes * S_i.t() * S_j - M1) / sqrt(M1 % (S_i_C2.t() * S_j_C2)));
+    }
 }
 
 void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result) {

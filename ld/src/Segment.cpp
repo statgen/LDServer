@@ -1,6 +1,7 @@
 #include "Segment.h"
 
-Segment::Segment(const string& chromosome, uint64_t start_bp, uint64_t stop_bp) : key(nullptr), key_size(0u), chromosome(chromosome), start_bp(start_bp), stop_bp(stop_bp) {
+Segment::Segment(const string& chromosome, uint64_t start_bp, uint64_t stop_bp) :
+        key(nullptr), key_size(0u), cached(false), chromosome(chromosome), start_bp(start_bp), stop_bp(stop_bp) {
     strstreambuf buffer;
     basic_ostream<char> os(&buffer);
     os.write(chromosome.c_str(), chromosome.size());
@@ -15,6 +16,7 @@ Segment::Segment(Segment&& segment) {
     this->key = segment.key;
     segment.key = nullptr;
     this->key_size = segment.key_size;
+    this->cached = segment.cached;
     this->chromosome = move(segment.chromosome);
     this->start_bp = segment.start_bp;
     this->stop_bp = segment.stop_bp;
@@ -39,3 +41,40 @@ uint64_t Segment::get_key_size() const {
     return key_size;
 }
 
+void Segment::load(redisContext *redis_cache) {
+    redisReply *reply = nullptr;
+    reply = (redisReply *) redisCommand(redis_cache, "GET %b", key, key_size);
+    if (reply == nullptr) {
+        return; // todo: throw exception, also check reply->type == REDIS_REPLY_NIL
+    }
+    if (reply->len > 0) {
+        strstreambuf buffer(reply->str, reply->len);
+        basic_istream<char> is(&buffer);
+        {
+            cereal::BinaryInputArchive iarchive(is);
+            load(iarchive);
+        }
+        cached = true;
+    }
+    freeReplyObject(reply);
+}
+
+void Segment::save(redisContext *redis_cache) const {
+    redisReply *reply = nullptr;
+    strstreambuf buffer;
+    basic_ostream<char> os(&buffer);
+    {
+        cereal::BinaryOutputArchive oarchive(os);
+        save(oarchive);
+    }
+    reply = (redisReply *) redisCommand(redis_cache, "SET %b %b", key, key_size, buffer.str(), buffer.pcount());
+    if (reply == nullptr) {
+        return; // todo: throw exception
+    }
+    // todo: check reply->type and reply->str
+    freeReplyObject(reply);
+}
+
+bool Segment::is_cached() const {
+    return cached;
+}

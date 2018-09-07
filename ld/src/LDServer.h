@@ -32,6 +32,7 @@ private:
     redisContext* cache_context;
 
     static void parse_variant(const string& variant, string& chromosome, uint64_t& position, string& ref_allele, string& alt_allele);
+    shared_ptr<Segment> load_segment(const shared_ptr<Raw>& raw, const vector<string>& samples, bool only_variants, const std::string& chromosome, uint64_t i, std::map<std::uint64_t, shared_ptr<Segment>>& segments) const;
 
 public:
     static const string ALL_SAMPLES_KEY;

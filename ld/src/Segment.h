@@ -1,5 +1,5 @@
-#ifndef LDSERVER_REGION_H
-#define LDSERVER_REGION_H
+#ifndef LDSERVER_SEGMENT_H
+#define LDSERVER_SEGMENT_H
 
 #include <iostream>
 #include <vector>
@@ -17,13 +17,13 @@ class Segment {
 private:
     char* key;
     uint64_t key_size;
-
-    bool has_genotypes;
+    bool cached;
 
 public:
     string chromosome;
     uint64_t start_bp;
     uint64_t stop_bp;
+    uint64_t n_haplotypes;
     vector<string> names;
     vector<uint64_t> positions;
 
@@ -37,16 +37,21 @@ public:
     const char* get_key() const;
     uint64_t get_key_size() const;
 
-    template <class Archive>
-    void save( Archive & ar ) const
-    {
-        ar( names, positions );
-    }
+    void load(redisContext* redis_cache);
+    void save(redisContext* redis_cache) const;
+
+    bool is_cached() const;
 
     template <class Archive>
     void load( Archive & ar )
     {
-        ar( names, positions );
+        ar( n_haplotypes, names, positions );
+    }
+
+    template <class Archive>
+    void save( Archive & ar ) const
+    {
+        ar( n_haplotypes, names, positions );
     }
 };
 

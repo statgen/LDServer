@@ -74,6 +74,28 @@ void LDServer::parse_variant(const std::string& variant, std::string& chromosome
     alt_allele = variant_name_tokens[3];
 }
 
+shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, const vector<string>& samples, bool only_variants, const std::string& chromosome, uint64_t i, std::map<std::uint64_t, shared_ptr<Segment>>& segments) const {
+    auto segment_it = segments.find(i);
+    if (segment_it == segments.end()) {
+        segment_it = segments.emplace(make_pair(i, make_shared<Segment>(chromosome, i * 100u, i * 100u + 100u - 1u))).first;
+        if (cache_enabled) {
+            segment_it->second->load(cache_context);
+        }
+    }
+    if (segment_it->second->is_cached()) {
+        if (!only_variants) {
+            raw->load_genotypes_only(samples, *(segment_it->second));
+        }
+    } else {
+        if (only_variants) {
+            raw->load_variants_only(samples, *(segment_it->second));
+        } else {
+            raw->load(samples, *(segment_it->second));
+        }
+    }
+    return segment_it->second;
+}
+
 bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, LDQueryResult& result, const std::string& samples_name) const {
     if (result.is_last()) {
         return false;
@@ -96,11 +118,19 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
     std::set<uint64_t> cells;
 
     get_cells(region_start_bp, region_stop_bp, cells);
-
     auto cells_it = cells.lower_bound(result.last_cell);
     while ((cells_it != cells.end()) && (result.data.size() < result.limit)) {
         Cell cell(region_chromosome, *cells_it);
-        cell.load(raw_it->second.get(), samples_it->second, segments);
+        if (cache_enabled) {
+            cell.load(cache_context);
+        }
+        cell.segment_i = load_segment(raw_it->second, samples_it->second, cell.is_cached(), region_chromosome, cell.i, segments);
+        if (cell.i != cell.j) {
+            cell.segment_j = load_segment(raw_it->second, samples_it->second, cell.is_cached(), region_chromosome, cell.j, segments);
+        }
+        if (!cell.is_cached()) {
+            cell.compute();
+        }
         cell.extract(region_start_bp, region_stop_bp, result);
         ++cells_it;
     }
@@ -144,7 +174,16 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
     auto cells_it = cells.lower_bound(result.last_cell);
     while ((cells_it != cells.end()) && (result.data.size() < result.limit)) {
         Cell cell(region_chromosome, *cells_it);
-        cell.load(raw_it->second.get(), samples_it->second, segments);
+        if (cache_enabled) {
+            cell.load(cache_context);
+        }
+        cell.segment_i = load_segment(raw_it->second, samples_it->second, cell.is_cached(), region_chromosome, cell.i, segments);
+        if (cell.i != cell.j) {
+            cell.segment_j = load_segment(raw_it->second, samples_it->second, cell.is_cached(), region_chromosome, cell.j, segments);
+        }
+        if (!cell.is_cached()) {
+            cell.compute();
+        }
         cell.extract(index_variant, index_bp, region_start_bp, region_stop_bp, result);
         ++cells_it;
     }

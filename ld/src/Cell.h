@@ -23,8 +23,7 @@ class Cell {
 private:
     char* key;
     uint64_t key_size;
-    shared_ptr<Segment> segment_i;
-    shared_ptr<Segment> segment_j;
+    bool cached;
     arma::fmat R;
 
 public:
@@ -33,14 +32,21 @@ public:
     uint64_t i;
     uint64_t j;
 
+    shared_ptr<Segment> segment_i;
+    shared_ptr<Segment> segment_j;
+
     Cell(const string& chromosome, uint64_t morton_code);
     virtual ~Cell();
 
     const char* get_key() const;
     uint64_t get_key_size() const;
 
-    void load(const Raw* raw, const vector<string>& samples, map<uint64_t, shared_ptr<Segment>>& segments, redisContext* redis_cache = nullptr);
+    void load(redisContext* redis_cache);
     void save(redisContext* redis_cache) const;
+
+    bool is_cached() const;
+
+    void compute();
 
     void extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result);
     void extract(const std::string& index_variant, std::uint64_t index_bp, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result);
