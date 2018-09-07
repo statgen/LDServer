@@ -256,32 +256,39 @@ TEST_F(LDServerTest, hiredis) {
 }
 
 TEST_F(LDServerTest, segment_key) {
+    uint32_t unique_key = 0u;
     uint64_t start_bp = 0u, stop_bp = 0u;
 
-    Segment segment1("", 0, 1);
-    ASSERT_EQ(16, segment1.get_key_size());
-    memcpy(&start_bp, segment1.get_key(), 8);
-    memcpy(&stop_bp, segment1.get_key() + 8, 8);
+    Segment segment1(1, "", "", 0, 1);
+    ASSERT_EQ(20, segment1.get_key_size());
+    memcpy(&unique_key, segment1.get_key(), 4);
+    memcpy(&start_bp, segment1.get_key() + 4, 8);
+    memcpy(&stop_bp, segment1.get_key() + 12, 8);
+    ASSERT_EQ(unique_key, 1);
     ASSERT_EQ(start_bp, 0);
     ASSERT_EQ(stop_bp, 1);
 
-    Segment segment2("chr22", 10, 20);
-    ASSERT_EQ(21, segment2.get_key_size());
-    string chromosome(segment2.get_key(), 5);
+    Segment segment2(2, "ALL", "chr22", 10, 20);
+    ASSERT_EQ(28, segment2.get_key_size());
+    memcpy(&unique_key, segment2.get_key(), 4);
+    ASSERT_EQ(unique_key, 2);
+    string samples_name(segment2.get_key() + 4, 3);
+    ASSERT_EQ(samples_name, "ALL");
+    string chromosome(segment2.get_key() + 7, 5);
     ASSERT_EQ(chromosome, "chr22");
-    memcpy(&start_bp, segment2.get_key() + 5 , 8);
-    memcpy(&stop_bp, segment2.get_key() + 13, 8);
+    memcpy(&start_bp, segment2.get_key() + 12 , 8);
+    memcpy(&stop_bp, segment2.get_key() + 20, 8);
     ASSERT_EQ(start_bp, 10);
     ASSERT_EQ(stop_bp, 20);
 }
 
 TEST_F(LDServerTest, segment_cache) {
     RawSAV raw("chr22.test.sav");
-    Segment segment1("22", 51241101, 51241385);
+    Segment segment1(1, "ALL", "22", 51241101, 51241385);
     raw.load(raw.get_samples(), segment1);
     segment1.save(redis_cache);
 
-    Segment segment2("22", 51241101, 51241385);
+    Segment segment2(1, "ALL", "22", 51241101, 51241385);
     ASSERT_EQ(segment2.names.size(), 0);
     ASSERT_EQ(segment2.positions.size(), 0);
     segment2.load(redis_cache);
@@ -291,17 +298,24 @@ TEST_F(LDServerTest, segment_cache) {
 }
 
 TEST_F(LDServerTest, cell_key) {
+    uint32_t unique_key = 0;
     uint64_t morton_code = 0;
-    Cell cell1("", 3);
-    ASSERT_EQ(8, cell1.get_key_size());
-    memcpy(&morton_code, cell1.get_key(), 8);
+    Cell cell1(1, "", "", 3);
+    ASSERT_EQ(12, cell1.get_key_size());
+    memcpy(&unique_key, cell1.get_key(), 4);
+    ASSERT_EQ(unique_key, 1);
+    memcpy(&morton_code, cell1.get_key() + 4, 8);
     ASSERT_EQ(morton_code, 3);
 
-    Cell cell2("chr22", 300);
-    ASSERT_EQ(13, cell2.get_key_size());
-    string chromosome(cell2.get_key(), 5);
+    Cell cell2(2, "ALL", "chr22", 300);
+    ASSERT_EQ(20, cell2.get_key_size());
+    memcpy(&unique_key, cell2.get_key(), 4);
+    ASSERT_EQ(unique_key, 2);
+    string samples_name(cell2.get_key() + 4, 3);
+    ASSERT_EQ(samples_name, "ALL");
+    string chromosome(cell2.get_key() + 7, 5);
     ASSERT_EQ(chromosome, "chr22");
-    memcpy(&morton_code, cell2.get_key() + 5 , 8);
+    memcpy(&morton_code, cell2.get_key() + 12 , 8);
     ASSERT_EQ(morton_code, 300);
 }
 
@@ -310,16 +324,16 @@ TEST_F(LDServerTest, cell_cache) {
     LDQueryResult result2(1000);
 
     RawSAV raw("chr22.test.sav");
-    Cell cell1("22", to_morton_code(512411, 512411));
-    cell1.segment_i = make_shared<Segment>("22", 51241100, 51241199);
+    Cell cell1(1, "ALL", "22", to_morton_code(512411, 512411));
+    cell1.segment_i = make_shared<Segment>(1, "ALL", "22", 51241100, 51241199);
     raw.load(raw.get_samples(), *(cell1.segment_i));
     cell1.segment_i->save(redis_cache);
     cell1.compute();
     cell1.save(redis_cache);
     cell1.extract(51241100, 51241199, result1);
 
-    Cell cell2("22", to_morton_code(512411, 512411));
-    cell2.segment_i = make_shared<Segment>("22", 51241100, 51241199);
+    Cell cell2(1, "ALL", "22", to_morton_code(512411, 512411));
+    cell2.segment_i = make_shared<Segment>(1, "ALL", "22", 51241100, 51241199);
     cell2.segment_i->load(redis_cache);
     cell2.load(redis_cache);
     cell2.extract(51241100, 51241199, result2);
@@ -348,7 +362,7 @@ TEST_F(LDServerTest, cache_enabled) {
     freeReplyObject(reply);
 
     result.clear_last();
-    server.enable_cache("127.0.0.1", 6379);
+    server.enable_cache(1, "127.0.0.1", 6379);
     ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241199, result));
     reply = (redisReply*)redisCommand(redis_cache, "DBSIZE");
     ASSERT_NE(reply, nullptr);

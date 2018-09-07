@@ -27,12 +27,13 @@ private:
     unordered_map<string, shared_ptr<Raw>> raw;
 
     bool cache_enabled;
+    uint32_t cache_key;
     string cache_hostname;
     int cache_port;
     redisContext* cache_context;
 
     static void parse_variant(const string& variant, string& chromosome, uint64_t& position, string& ref_allele, string& alt_allele);
-    shared_ptr<Segment> load_segment(const shared_ptr<Raw>& raw, const vector<string>& samples, bool only_variants, const std::string& chromosome, uint64_t i, std::map<std::uint64_t, shared_ptr<Segment>>& segments) const;
+    shared_ptr<Segment> load_segment(const shared_ptr<Raw>& raw, const string& samples_name, const vector<string>& samples, bool only_variants, const std::string& chromosome, uint64_t i, std::map<std::uint64_t, shared_ptr<Segment>>& segments) const;
 
 public:
     static const string ALL_SAMPLES_KEY;
@@ -42,7 +43,7 @@ public:
 
     void set_file(const string& file);
     void set_samples(const string& name, const vector<string>& samples);
-    void enable_cache(const string& hostname, int port);
+    void enable_cache(uint32_t cache_key, const string& hostname, int port);
     void disable_cache();
 
     bool compute_region_ld(const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, struct LDQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY) const;

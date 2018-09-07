@@ -1,9 +1,11 @@
 #include "Segment.h"
 
-Segment::Segment(const string& chromosome, uint64_t start_bp, uint64_t stop_bp) :
+Segment::Segment(uint32_t unique_key, const string& samples_name, const string& chromosome, uint64_t start_bp, uint64_t stop_bp) :
         key(nullptr), key_size(0u), cached(false), chromosome(chromosome), start_bp(start_bp), stop_bp(stop_bp) {
     strstreambuf buffer;
     basic_ostream<char> os(&buffer);
+    os.write(reinterpret_cast<const char*>(&unique_key), sizeof(unique_key));
+    os.write(samples_name.c_str(), samples_name.size());
     os.write(chromosome.c_str(), chromosome.size());
     os.write(reinterpret_cast<const char*>(&start_bp), sizeof(start_bp));
     os.write(reinterpret_cast<const char*>(&stop_bp), sizeof(stop_bp));

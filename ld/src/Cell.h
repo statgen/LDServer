@@ -35,7 +35,7 @@ public:
     shared_ptr<Segment> segment_i;
     shared_ptr<Segment> segment_j;
 
-    Cell(const string& chromosome, uint64_t morton_code);
+    Cell(uint32_t unique_key, const string& samples_name, const string& chromosome, uint64_t morton_code);
     virtual ~Cell();
 
     const char* get_key() const;

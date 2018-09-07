@@ -1,9 +1,11 @@
 #include "Cell.h"
 
-Cell::Cell(const string &chromosome, uint64_t morton_code) :
+Cell::Cell(uint32_t unique_key, const string& samples_name, const string &chromosome, uint64_t morton_code) :
         key(nullptr), key_size(0u), cached(false), segment_i(nullptr), segment_j(nullptr), chromosome(chromosome), morton_code(morton_code) {
     strstreambuf buffer;
     basic_ostream<char> os(&buffer);
+    os.write(reinterpret_cast<const char*>(&unique_key), sizeof(unique_key));
+    os.write(samples_name.c_str(), samples_name.size());
     os.write(chromosome.c_str(), chromosome.size());
     os.write(reinterpret_cast<const char*>(&morton_code), sizeof(morton_code));
     key_size = buffer.pcount();

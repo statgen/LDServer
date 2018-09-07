@@ -30,7 +30,7 @@ public:
     vector<arma::uword> sp_mat_rowind;
     vector<arma::uword> sp_mat_colind;
 
-    Segment(const string& chromosome, uint64_t start_bp, uint64_t stop_bp);
+    Segment(uint32_t unique_key, const string& samples_name, const string& chromosome, uint64_t start_bp, uint64_t stop_bp);
     Segment(Segment&& segment);
     virtual ~Segment();
 
