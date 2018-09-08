@@ -38,3 +38,9 @@ flask load-references
 export FLASK_APP=rest
 flask run
 ```
+
+## Run Developers Playground
+```
+export FLASK_APP=playground
+flask run [ --port ... ] 
+```
