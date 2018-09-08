@@ -53,16 +53,32 @@ LD Server Playground
                                 <div class="input-group-prepend">
                                     <label class="input-group-text" for="select-chromosome">Chromosome</label>
                                 </div>
-                                <select class="custom-select" id="select-chromosome" onchange="" disabled>
+                                <select class="custom-select" id="select-chromosome" onchange="setHttpRequest()" disabled>
                                 </select>
                             </div>
                         </div>
                         <div class="form-group">
                             <div class="input-group">
                                 <div class="input-group-prepend">
-                                    <label class="input-group-text" for="select-start">Start position</label>
+                                    <label class="input-group-text" for="input-start">Start position (bp)</label>
                                 </div>
-                                <input type="text" class="form-control" id="select-start" onchange="" disabled>
+                                <input type="text" class="form-control" id="input-start" oninput="setHttpRequest()" disabled>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <label class="input-group-text" for="input-stop">Stop position (bp)</label>
+                                </div>
+                                <input type="text" class="form-control" id="input-stop" oninput="setHttpRequest()" disabled>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <label class="input-group-text" for="input-limit">Limit</label>
+                                </div>
+                                <input type="text" class="form-control" id="input-limit" oninput="setHttpRequest()" disabled>
                             </div>
                         </div>
                     </form>
@@ -117,82 +133,81 @@ LD Server Playground
         if (population.length > 0) {
             httpRequest += '/' + population[0].text
         }
-
+        var chromosome = $("#select-chromosome option:selected");
+        if (chromosome.length > 0) {
+            httpRequest += '/ld/region?chrom=' + chromosome[0].text + '&start=' + $("#input-start")[0].value + '&stop=' + $("#input-stop")[0].value;
+        }
+        var limit = $("#input-limit")[0].value;
+        if (limit.length > 0) {
+            httpRequest += '&limit=' + limit;
+        }
         $("#input-http-request")[0].value = httpRequest;
     }
 
-    function changeQueryType() {
-        var restAPI = 'http://127.0.0.1:5001'
-        var queryType = $("#select-query-type option:selected")[0].text;
+    function populateForm(reference, population, region) {
+        var restAPI = 'http://127.0.0.1:5001';
         $("#select-reference").children().remove();
         $("#select-reference").prop("disabled", true);
         $("#select-population").children().remove();
         $("#select-population").prop("disabled", true);
-        switch(queryType) {
-            case "General meta-information":
-                break;
-            case "Reference meta-information":
-                $.ajax({
-                    url: restAPI + '/',
-                    type: "GET",
-                    crossDomain: true,
-                    dataType: "json",
-                    async: false,
-                    success: function(result) {
-                        $.each(result["references"], function(i, reference) {
-                            $("#select-reference").append(
-                                $('<option>', { value: reference.name, text: reference.name })
-                            );
-                        });
-                        $("#select-reference").prop("disabled", false);
-                    }
-                });
-                break;
-            case "Population meta-information":
-                $.ajax({
-                    url: restAPI + '/',
-                    type: "GET",
-                    crossDomain: true,
-                    dataType: "json",
-                    async: false,
-                    success: function(result) {
-                        $.each(result["references"], function(i, reference) {
-                            $("#select-reference").append(
-                                $('<option>', { value: reference.name, text: reference.name })
-                            );
-                        });
-                        $.each(result["references"][0]['populations'], function(i, population) {
-                            $("#select-population").append(
-                                $('<option>', { value: population, text: population })
-                            );
-                        });
-                        $("#select-reference").prop("disabled", false);
-                        $("#select-population").prop("disabled", false);
-                    }
-                });
-                break;
-            case "Region LD":
-                $.ajax({
-                    url: restAPI + '/',
-                    type: "GET",
-                    crossDomain: true,
-                    dataType: "json",
-                    async: false,
-                    success: function (result) {
-                        $.each(result["references"], function (i, reference) {
-                            $("#select-reference").append(
-                                $('<option>', {value: reference.name, text: reference.name})
-                            );
-                        });
+        $("#select-chromosome").children().remove();
+        $("#select-chromosome").prop("disabled", true);
+        $("#input-start").prop("disabled", true);
+        $("#input-stop").prop("disabled", true);
+        $("#input-limit").prop("disabled", true);
+        if (reference) {
+            $.ajax({
+                url: restAPI + '/',
+                type: "GET",
+                crossDomain: true,
+                dataType: "json",
+                async: false,
+                success: function (result) {
+                    $.each(result["references"], function (i, reference) {
+                        $("#select-reference").append(
+                            $('<option>', {value: reference.name, text: reference.name})
+                        );
+                    });
+                    $("#select-reference").prop("disabled", false);
+                    if (population) {
                         $.each(result["references"][0]['populations'], function (i, population) {
                             $("#select-population").append(
                                 $('<option>', {value: population, text: population})
                             );
                         });
-                        $("#select-reference").prop("disabled", false);
                         $("#select-population").prop("disabled", false);
                     }
-                });
+                }
+            });
+        }
+        if (region) {
+            for (var i = 1; i <= 22; ++i) {
+                $("#select-chromosome").append(
+                    $('<option>', { value: i, text: i })
+                );
+            }
+            $("#select-chromosome").prop("disabled", false);
+            $("#input-start").prop("disabled", false);
+            $("#input-stop").prop("disabled", false);
+            $("#input-limit").prop("disabled", false);
+        }
+    }
+
+    function changeQueryType() {
+        // var restAPI = 'http://127.0.0.1:5001'
+        var queryType = $("#select-query-type option:selected")[0].text;
+        switch(queryType) {
+            case "General meta-information":
+                populateForm(false, false, false);
+                break;
+            case "Reference meta-information":
+                populateForm(true, false, false);
+                break;
+            case "Population meta-information":
+                populateForm(true, true, false);
+                break;
+            case "Region LD":
+                populateForm(true, true, true);
                 break;
             case "Variant LD":
                 break;
