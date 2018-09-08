@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+
+{% block title %}
+LD Server Playground
+{% endblock %}
+
+{% block content %}
+<nav class="navbar sticky-top navbar-dark bg-primary mb-2">
+    <span class="navbar-brand mb-0 h1">LD Server Playground</span>
+</nav>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-4">
+            <div class="row">
+                <div class="col">
+                    <form>
+                        <div class="form-group">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <label class="input-group-text" for="select-query-type">Query</label>
+                                </div>
+                                <select class="custom-select" id="select-query-type" onchange="changeQueryType()">
+                                    <option selected>General meta-information</option>
+                                    <option value="1">Reference meta-information</option>
+                                    <option value="2">Population meta-information</option>
+                                    <option value="3">Region LD</option>
+                                    <!--<option value="4">Variant LD query</option>-->
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <label class="input-group-text" for="select-reference">Reference</label>
+                                </div>
+                                <select class="custom-select" id="select-reference" onchange="setHttpRequest()" disabled>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <label class="input-group-text" for="select-population">Population</label>
+                                </div>
+                                <select class="custom-select" id="select-population" onchange="setHttpRequest()" disabled>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <label class="input-group-text" for="select-chromosome">Chromosome</label>
+                                </div>
+                                <select class="custom-select" id="select-chromosome" onchange="" disabled>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <label class="input-group-text" for="select-start">Start position</label>
+                                </div>
+                                <input type="text" class="form-control" id="select-start" onchange="" disabled>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <button type="button" class="btn btn-primary" onclick="run()">Run</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-8">
+            <div class="row">
+                <div class="col">
+                    <form>
+                        <div class="form-group">
+                            <label for="input-http-request">HTTP Request</label>
+                            <div class="input-group">
+                                <textarea class="form-control" row="2" id="input-http-request" readonly></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="json-response">JSON Response</label>
+                            <div class="input-group">
+                                <!--<pre class="pre-scrollable" id="json-response">-->
+                                    <!--<code></code>-->
+                                <!--</pre>-->
+                                <textarea class="form-control" rows="5" id="json-response" readonly></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+
+    function setHttpRequest() {
+        var restAPI = 'http://127.0.0.1:5001'
+        var httpRequest = restAPI
+        var reference = $("#select-reference option:selected");
+        if (reference.length > 0) {
+            httpRequest += '/' + reference[0].text
+        }
+        var population = $("#select-population option:selected");
+        if (population.length > 0) {
+            httpRequest += '/' + population[0].text
+        }
+
+        $("#input-http-request")[0].value = httpRequest;
+    }
+
+    function changeQueryType() {
+        var restAPI = 'http://127.0.0.1:5001'
+        var queryType = $("#select-query-type option:selected")[0].text;
+        $("#select-reference").children().remove();
+        $("#select-reference").prop("disabled", true);
+        $("#select-population").children().remove();
+        $("#select-population").prop("disabled", true);
+        switch(queryType) {
+            case "General meta-information":
+                break;
+            case "Reference meta-information":
+                $.ajax({
+                    url: restAPI + '/',
+                    type: "GET",
+                    crossDomain: true,
+                    dataType: "json",
+                    async: false,
+                    success: function(result) {
+                        $.each(result["references"], function(i, reference) {
+                            $("#select-reference").append(
+                                $('<option>', { value: reference.name, text: reference.name })
+                            );
+                        });
+                        $("#select-reference").prop("disabled", false);
+                    }
+                });
+                break;
+            case "Population meta-information":
+                $.ajax({
+                    url: restAPI + '/',
+                    type: "GET",
+                    crossDomain: true,
+                    dataType: "json",
+                    async: false,
+                    success: function(result) {
+                        $.each(result["references"], function(i, reference) {
+                            $("#select-reference").append(
+                                $('<option>', { value: reference.name, text: reference.name })
+                            );
+                        });
+                        $.each(result["references"][0]['populations'], function(i, population) {
+                            $("#select-population").append(
+                                $('<option>', { value: population, text: population })
+                            );
+                        });
+                        $("#select-reference").prop("disabled", false);
+                        $("#select-population").prop("disabled", false);
+                    }
+                });
+                break;
+            case "Region LD":
+                $.ajax({
+                    url: restAPI + '/',
+                    type: "GET",
+                    crossDomain: true,
+                    dataType: "json",
+                    async: false,
+                    success: function (result) {
+                        $.each(result["references"], function (i, reference) {
+                            $("#select-reference").append(
+                                $('<option>', {value: reference.name, text: reference.name})
+                            );
+                        });
+                        $.each(result["references"][0]['populations'], function (i, population) {
+                            $("#select-population").append(
+                                $('<option>', {value: population, text: population})
+                            );
+                        });
+                        $("#select-reference").prop("disabled", false);
+                        $("#select-population").prop("disabled", false);
+                    }
+                });
+                break;
+            case "Variant LD":
+                break;
+        }
+        setHttpRequest();
+    }
+
+    function changeReference() {
+        var reference = $("#select-reference option:selected")[0].text;
+        requestInput.value = restAPI + '/' + reference + '/';
+    }
+
+    function run() {
+        var request = $("#input-http-request")[0].value;
+
+        $.ajax({
+            url: request,
+            type: "GET",
+            crossDomain: true,
+            dataType: "json",
+            success: function(result) {
+                $("#json-response")[0].value = JSON.stringify(result, null, 3);
+                // $("#json-response code")[0].innerText = JSON.stringify(result, null, 3);
+            }
+        });
+    }
+
+    $(function() {
+        setHttpRequest();
+    });
+</script>
+{% endblock %}

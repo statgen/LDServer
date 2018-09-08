@@ -1,12 +1,15 @@
 from flask import current_app, Blueprint, request, jsonify, make_response, abort
+from flask_cors import CORS
 from webargs.flaskparser import parser
 from webargs import fields
 from model import Reference, File, Sample
 from ld.pywrapper import LDServer, LDQueryResult, StringVec
 
-API_VERSION = 1.0
+API_VERSION = "1.0"
 
 bp = Blueprint('api', __name__)
+
+CORS(bp)
 
 @bp.route('/')
 def get_all_datasets():
