@@ -5,3 +5,5 @@ gevent
 gunicorn
 pytest
 click
+requests
+argparse
