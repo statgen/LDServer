@@ -73,7 +73,7 @@ def get_region_ld(reference_name, population_name):
     files = File.query.with_parent(reference).all()
     if not files:
         abort(404)
-    ldserver = LDServer()
+    ldserver = LDServer(current_app.config['SEGMENT_SIZE_BP'])
     for file in files:
         ldserver.set_file(str(file.path))
     response = {}
@@ -129,7 +129,7 @@ def get_variant_ld(reference_name, population_name):
     files = File.query.with_parent(reference).all()
     if not files:
         abort(404)
-    ldserver = LDServer()
+    ldserver = LDServer(current_app.config['SEGMENT_SIZE_BP'])
     for file in files:
         ldserver.set_file(str(file.path))
     response = {}

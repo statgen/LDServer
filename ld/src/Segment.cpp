@@ -47,7 +47,10 @@ void Segment::load(redisContext *redis_cache) {
     redisReply *reply = nullptr;
     reply = (redisReply *) redisCommand(redis_cache, "GET %b", key, key_size);
     if (reply == nullptr) {
-        return; // todo: throw exception, also check reply->type == REDIS_REPLY_NIL
+        throw runtime_error("Error while reading a segment from Redis cache");
+    }
+    if (reply->type == REDIS_REPLY_ERROR) {
+        throw runtime_error("Error while reading a segment from Redis cache: " + string(reply->str));
     }
     if (reply->len > 0) {
         strstreambuf buffer(reply->str, reply->len);
@@ -57,11 +60,13 @@ void Segment::load(redisContext *redis_cache) {
             load(iarchive);
         }
         cached = true;
+    } else {
+        cached = false;
     }
     freeReplyObject(reply);
 }
 
-void Segment::save(redisContext *redis_cache) const {
+void Segment::save(redisContext *redis_cache) {
     redisReply *reply = nullptr;
     strstreambuf buffer;
     basic_ostream<char> os(&buffer);
@@ -71,9 +76,12 @@ void Segment::save(redisContext *redis_cache) const {
     }
     reply = (redisReply *) redisCommand(redis_cache, "SET %b %b", key, key_size, buffer.str(), buffer.pcount());
     if (reply == nullptr) {
-        return; // todo: throw exception
+        throw runtime_error("Error while writing a segment to Redis cache");
     }
-    // todo: check reply->type and reply->str
+    if (reply->type == REDIS_REPLY_ERROR) {
+        throw runtime_error("Error while writing a segment to Redis cache: " + string(reply->str));
+    }
+    cached = true;
     freeReplyObject(reply);
 }
 

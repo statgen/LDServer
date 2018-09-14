@@ -497,3 +497,28 @@ TEST_F(LDServerTest, cache_enabled) {
     freeReplyObject(reply);
 
 }
+
+TEST_F(LDServerTest, large_region_with_paging_and_caching) {
+    map<string, double> goldstandard;
+    this->load_region_goldstandard("region_ld_22_50544251_50549251.hap.ld", goldstandard);
+
+    LDServer server(1000);
+    server.enable_cache(1, "127.0.0.1", 6379);
+    LDQueryResult result(1000);
+    int result_total_size = 0;
+
+    server.set_file("chr22.test.sav");
+    while (server.compute_region_ld("22", 50544251, 50549251, result, "ALL")) {
+        ASSERT_LE(result.limit, 1000);
+        ASSERT_LE(result.data.size(), 1000);
+        for (auto &&entry : result.data) {
+            string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+            ASSERT_NE(entry.variant1, "");
+            ASSERT_NE(entry.variant2, "");
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.000001);
+        }
+        result_total_size += result.data.size();
+    }
+    ASSERT_EQ(result_total_size, goldstandard.size());
+}

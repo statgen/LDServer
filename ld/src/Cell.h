@@ -1,6 +1,7 @@
 #ifndef LDSERVER_CELL_H
 #define LDSERVER_CELL_H
 
+#include <stdexcept>
 #include <iostream>
 #include <memory>
 #include <map>
@@ -24,7 +25,8 @@ private:
     char* key;
     uint64_t key_size;
     bool cached;
-    arma::fmat R;
+
+    unique_ptr<float[]> raw_fmat;
 
 public:
     string chromosome;
@@ -42,7 +44,7 @@ public:
     uint64_t get_key_size() const;
 
     void load(redisContext* redis_cache);
-    void save(redisContext* redis_cache) const;
+    void save(redisContext* redis_cache);
 
     bool is_cached() const;
 

@@ -1,7 +1,7 @@
 #include "Cell.h"
 
 Cell::Cell(uint32_t unique_key, const string& samples_name, const string &chromosome, uint64_t morton_code) :
-        key(nullptr), key_size(0u), cached(false), segment_i(nullptr), segment_j(nullptr), chromosome(chromosome), morton_code(morton_code) {
+        key(nullptr), key_size(0u), cached(false), raw_fmat(nullptr), segment_i(nullptr), segment_j(nullptr), chromosome(chromosome), morton_code(morton_code) {
     strstreambuf buffer;
     basic_ostream<char> os(&buffer);
     os.write(reinterpret_cast<const char*>(&unique_key), sizeof(unique_key));
@@ -16,7 +16,7 @@ Cell::Cell(uint32_t unique_key, const string& samples_name, const string &chromo
 
 Cell::~Cell() {
     if (key != nullptr) {
-        free(key);
+        delete[] key;
         key = nullptr;
     }
 }
@@ -33,27 +33,41 @@ void Cell::load(redisContext* redis_cache) {
     redisReply *reply = nullptr;
     reply = (redisReply *) redisCommand(redis_cache, "GET %b", key, key_size);
     if (reply == nullptr) {
-        return; // todo: throw exception, also check reply->type == REDIS_REPLY_NIL
+        throw runtime_error("Error while reading a cell from Redis cache");
+    }
+    if (reply->type == REDIS_REPLY_ERROR) {
+        throw runtime_error("Error while reading a cell from Redis cache: " + string(reply->str));
     }
     if (reply->len > 0) {
-        strstreambuf buffer(reply->str, reply->len);
-        basic_istream<char> is(&buffer);
-        R.load(is, arma::arma_binary);
+        float *old_raw_mat = raw_fmat.release();
+        if (old_raw_mat != nullptr) {
+            delete[] old_raw_mat;
+        }
+        raw_fmat = unique_ptr<float[]>(new float[reply->len / sizeof(float)]);
+        memcpy(reinterpret_cast<void *>(raw_fmat.get()), reply->str, reply->len);
         cached = true;
+    } else {
+        cached = false;
     }
     freeReplyObject(reply);
 }
 
-void Cell::save(redisContext* redis_cache) const {
+void Cell::save(redisContext* redis_cache) {
     redisReply* reply = nullptr;
-    strstreambuf buffer;
-    basic_ostream<char> os(&buffer);
-    R.save(os, arma::arma_binary);
-    reply = (redisReply*)redisCommand(redis_cache, "SET %b %b", key, key_size, buffer.str(), buffer.pcount());
-    if (reply == nullptr) {
-        return; // todo: throw exception
+    auto n = segment_i->positions.size() * sizeof(float);
+    if (i != j) {
+        n *= segment_j->positions.size();
+    } else {
+        n *= segment_i->positions.size();
     }
-    // todo: check reply->type and reply->str
+    reply = (redisReply*)redisCommand(redis_cache, "SET %b %b", key, key_size, raw_fmat.get(), n);
+    if (reply == nullptr) {
+        throw runtime_error("Error while writing a cell to Redis cache");
+    }
+    if (reply->type == REDIS_REPLY_ERROR) {
+        throw runtime_error("Error while writing a cell to Redis cache: " + string(reply->str));
+    }
+    cached = true;
     freeReplyObject(reply);
 }
 
@@ -75,7 +89,13 @@ void Cell::compute() {
         arma::fmat C1(J * S_i); // allele1 counts per variant
         arma::fmat C2(segment_i->n_haplotypes - C1); // allele2 counts per variant
         arma::fmat M1(C1.t() * C1); // denominator
-        this->R = ((segment_i->n_haplotypes * S_i.t() * S_i - M1) / sqrt(M1 % (C2.t() * C2)));
+        arma::fmat R((segment_i->n_haplotypes * S_i.t() * S_i - M1) / sqrt(M1 % (C2.t() * C2)));
+        float* old_raw_mat = raw_fmat.release();
+        if (old_raw_mat != nullptr) {
+            delete[] old_raw_mat;
+        }
+        raw_fmat = unique_ptr<float[]>(new float[R.n_elem]);
+        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R.memptr(), R.n_elem * sizeof(float));
     } else {
         auto n_variants_j = segment_j->names.size();
         if (n_variants_j <= 0) {
@@ -96,7 +116,13 @@ void Cell::compute() {
         arma::fmat S_j_C1(J * S_j); // allele 1 counts for segment_j variants
         arma::fmat S_j_C2(segment_j->n_haplotypes - S_j_C1); // allele 2 counts for region variants
         arma::fmat M1(S_i_C1.t() * S_j_C1);
-        this->R = ((segment_i->n_haplotypes * S_i.t() * S_j - M1) / sqrt(M1 % (S_i_C2.t() * S_j_C2)));
+        arma::fmat R((segment_i->n_haplotypes * S_i.t() * S_j - M1) / sqrt(M1 % (S_i_C2.t() * S_j_C2)));
+        float* old_raw_mat = raw_fmat.release();
+        if (old_raw_mat != nullptr) {
+            delete[] old_raw_mat;
+        }
+        raw_fmat = unique_ptr<float[]>(new float[R.n_elem]);
+        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R.memptr(), R.n_elem * sizeof(float));
     }
 }
 
@@ -120,6 +146,7 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
         int i = result.last_i >= 0 ? result.last_i : 0;
         int j = result.last_j >= 0 ? result.last_j : i + 1;
         auto result_i = result.data.size();
+        arma::fmat R(raw_fmat.get(), segment_i->positions.size(), segment_i->positions.size(), false, true);
         while (i < segment_i_n_variants - 1u) {
             while (j < segment_i_n_variants) {
                 result.data.emplace_back(
@@ -180,6 +207,7 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
         int i = result.last_i >= 0 ? result.last_i : 0;
         int j = result.last_j >= 0 ? result.last_j : 0;
         auto result_i = result.data.size();
+        arma::fmat R(raw_fmat.get(), segment_i->positions.size(), segment_j->positions.size(), false, true);
         while (i < segment_i_n_variants) {
             while (j < segment_j_n_variants) {
                 result.data.emplace_back(
@@ -249,6 +277,9 @@ void Cell::extract(const std::string& index_variant, std::uint64_t index_bp, std
         auto result_i = result.data.size();
         int i = segment_i_index;
         int j = result.last_j >= 0 ? result.last_j : 0;
+
+        arma::fmat R(raw_fmat.get(), segment_i->positions.size(), segment_i->positions.size(), false, true);
+
         while (j < segment_i_n_variants) {
             result.data.emplace_back(
                     segment_i->names[i],
@@ -316,6 +347,9 @@ void Cell::extract(const std::string& index_variant, std::uint64_t index_bp, std
         auto result_i = result.data.size();
         int i = segment_i_index;
         int j = result.last_j >= 0 ? result.last_j : 0;
+
+        arma::fmat R(raw_fmat.get(), this->segment_i->positions.size(), this->segment_j->positions.size(), false, true);
+
         while (j < segment_j_n_variants) {
             result.data.emplace_back(
                     segment_i->names[i],

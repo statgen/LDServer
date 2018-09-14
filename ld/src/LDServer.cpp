@@ -84,7 +84,6 @@ shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, const str
             segment_it->second->load(cache_context);
         }
     }
-
     if (segment_it->second->is_cached()) {
         if ((!only_variants) && (!segment_it->second->genotypes_loaded)) {
             raw->load_genotypes_only(samples, *(segment_it->second));
@@ -99,7 +98,7 @@ shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, const str
             segment_it->second->genotypes_loaded = true;
             segment_it->second->variants_loaded = true;
         }
-        if (cache_enabled) {
+        if (!segment_it->second->is_cached() && cache_enabled) {
             segment_it->second->save(cache_context);
         }
     }
@@ -200,7 +199,6 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
     uint64_t segment_i = region_start_bp / segment_size;
     uint64_t segment_j = region_stop_bp / segment_size;
     uint64_t z_min = 0,z_max = 0;
-//    cout << "segment_index=" << segment_index << " segment_i=" << segment_i << " segment_j=" << segment_j << endl;
     if (segment_index <= segment_i) { // only upper triangle of the matrix must be used
         z_min = to_morton_code(segment_i, segment_index);
         z_max = to_morton_code(segment_j, segment_index);
@@ -211,12 +209,8 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
         z_min = to_morton_code(segment_index, segment_i);
         z_max = to_morton_code(segment_index, segment_j);
     }
-//    cout << "z_min=" << z_min << " z_max=" << z_max << endl;
-//    cout << "result.last_cell=" << result.last_cell << endl;
-//    cout << "Initial Z=" << (result.last_cell > z_min ? result.last_cell : z_min) << endl;
     uint64_t z = get_next_z(segment_index, segment_i, segment_j, z_min, z_max, result.last_cell > z_min ? result.last_cell : z_min);
     while (z <= z_max) {
-//        cout << "Iteration Z=" << z << endl;
         Cell cell(cache_key, samples_name, region_chromosome, z);
         if (cache_enabled) {
             cell.load(cache_context);
@@ -243,6 +237,5 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
         }
     }
     result.page += 1;
-//    cout << "Page " << result.page << ": " << result.last_cell << " " << result.last_j << endl;
     return true;
 }

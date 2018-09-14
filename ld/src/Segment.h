@@ -1,6 +1,7 @@
 #ifndef LDSERVER_SEGMENT_H
 #define LDSERVER_SEGMENT_H
 
+#include <stdexcept>
 #include <iostream>
 #include <vector>
 #include <string>
@@ -41,7 +42,7 @@ public:
     uint64_t get_key_size() const;
 
     void load(redisContext* redis_cache);
-    void save(redisContext* redis_cache) const;
+    void save(redisContext* redis_cache);
 
     bool is_cached() const;
 

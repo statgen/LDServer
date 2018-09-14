@@ -41,7 +41,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("get_last", &LDQueryResult::get_last)
             ;
 
-    boost::python::class_<LDServer, boost::noncopyable>("LDServer")
+    boost::python::class_<LDServer, boost::noncopyable>("LDServer", boost::python::init<boost::uint32_t>())
             .def("set_file", set_file)
             .def("set_samples", &LDServer::set_samples)
             .def("enable_cache", &LDServer::enable_cache)
