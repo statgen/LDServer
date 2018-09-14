@@ -26,6 +26,8 @@ private:
     unordered_map<string, vector<string>> samples;
     unordered_map<string, shared_ptr<Raw>> raw;
 
+    uint32_t segment_size;
+
     bool cache_enabled;
     uint32_t cache_key;
     string cache_hostname;
@@ -38,7 +40,7 @@ private:
 public:
     static const string ALL_SAMPLES_KEY;
 
-    LDServer();
+    LDServer(uint32_t segment_size = 1000);
     virtual ~LDServer();
 
     void set_file(const string& file);

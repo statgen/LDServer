@@ -28,7 +28,11 @@ install(FILES
         ../../data/chrX.test.sav
         ../../data/chrX.test.sav.s1r
         ../../data/region_ld_22_51241101_51241385.hap.ld
+        ../../data/region_ld_22_50544251_50549251.hap.ld
         ../../data/region_ld_22_51241101_51241385.AFR.hap.ld
         ../../data/variant_ld_22_51241101_vs_51241101_51241385.hap.ld
+        ../../data/variant_ld_22_51241386_vs_51241101_51241385.hap.ld
+        ../../data/variant_ld_22_51241309_vs_51241101_51244237.hap.ld
+        ../../data/variant_ld_22_50546666_vs_50544251_50549251.hap.ld
         ../../data/region_ld_X_60100_60150.hap.ld
         DESTINATION test)

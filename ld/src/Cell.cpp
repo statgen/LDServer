@@ -63,18 +63,29 @@ bool Cell::is_cached() const {
 
 void Cell::compute() {
     auto n_variants_i = segment_i->names.size();
-    arma::sp_fmat S_i(arma::uvec(segment_i->sp_mat_rowind.data(), segment_i->sp_mat_rowind.size(), false, false),
-                      arma::uvec(segment_i->sp_mat_colind.data(), segment_i->sp_mat_colind.size(), false, false),
-                      arma::fvec(segment_i->sp_mat_rowind.size(), arma::fill::ones),
-                      segment_i->n_haplotypes, n_variants_i);
-    arma::frowvec J(segment_i->n_haplotypes, arma::fill::ones); // vector of 1's
+    if (n_variants_i <= 0) {
+        return;
+    }
     if (this->i == this->j) { // diagonal cell
+        arma::sp_fmat S_i(arma::uvec(segment_i->sp_mat_rowind.data(), segment_i->sp_mat_rowind.size(), false, false),
+                          arma::uvec(segment_i->sp_mat_colind.data(), segment_i->sp_mat_colind.size(), false, false),
+                          arma::fvec(segment_i->sp_mat_rowind.size(), arma::fill::ones),
+                          segment_i->n_haplotypes, n_variants_i);
+        arma::frowvec J(segment_i->n_haplotypes, arma::fill::ones); // vector of 1's
         arma::fmat C1(J * S_i); // allele1 counts per variant
         arma::fmat C2(segment_i->n_haplotypes - C1); // allele2 counts per variant
         arma::fmat M1(C1.t() * C1); // denominator
         this->R = ((segment_i->n_haplotypes * S_i.t() * S_i - M1) / sqrt(M1 % (C2.t() * C2)));
     } else {
         auto n_variants_j = segment_j->names.size();
+        if (n_variants_j <= 0) {
+            return;
+        }
+        arma::sp_fmat S_i(arma::uvec(segment_i->sp_mat_rowind.data(), segment_i->sp_mat_rowind.size(), false, false),
+                          arma::uvec(segment_i->sp_mat_colind.data(), segment_i->sp_mat_colind.size(), false, false),
+                          arma::fvec(segment_i->sp_mat_rowind.size(), arma::fill::ones),
+                          segment_i->n_haplotypes, n_variants_i);
+        arma::frowvec J(segment_i->n_haplotypes, arma::fill::ones); // vector of 1's
         arma::sp_fmat S_j(
                 arma::uvec(segment_j->sp_mat_rowind.data(), segment_j->sp_mat_rowind.size(), false, false),
                 arma::uvec(segment_j->sp_mat_colind.data(), segment_j->sp_mat_colind.size(), false, false),
@@ -91,6 +102,10 @@ void Cell::compute() {
 
 void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result) {
     if (this->i == this->j) { // diagonal cell
+        if (segment_i->positions.empty()) {
+            result.last_i = result.last_j = -1;
+            return;
+        }
         int segment_i_from = 0;
         int segment_i_to = segment_i->positions.size() - 1;
         if ((region_start_bp > segment_i->start_bp) && (region_start_bp <= segment_i->stop_bp)) {
@@ -102,43 +117,44 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
             segment_i_to = stop_it - segment_i->positions.begin() - 1;
         }
         auto segment_i_n_variants = segment_i_to - segment_i_from + 1;
-        auto result_i = result.data.size();
-        auto result_new_size = result_i + (segment_i_n_variants * (segment_i_n_variants - 1u)) / 2u;
-        if (result.last_i >= 0 && result.last_j >= 0) {
-            result_new_size -= (result.last_i * (2 * (segment_i_n_variants - 1) - (result.last_i - 1))) / 2u - (result.last_j - result.last_i);
-        }
-        if (result_new_size == 0) {
-            result.last_i = result.last_j = -1;
-            return;
-        } else if (result_new_size > result.limit) {
-            result_new_size = result.limit;
-        }
-        result.data.resize(result_new_size);
         int i = result.last_i >= 0 ? result.last_i : 0;
-        int j = result.last_j >= 0 ? result.last_j + 1 : i + 1;
+        int j = result.last_j >= 0 ? result.last_j : i + 1;
+        auto result_i = result.data.size();
         while (i < segment_i_n_variants - 1u) {
             while (j < segment_i_n_variants) {
-                result.data[result_i].variant1 = segment_i->names[segment_i_from + i];
-                result.data[result_i].chromosome1 = chromosome;
-                result.data[result_i].position1 = segment_i->positions[segment_i_from + i];
-                result.data[result_i].variant2 = segment_i->names[segment_i_from + j];
-                result.data[result_i].chromosome2 = chromosome;
-                result.data[result_i].position2 = segment_i->positions[segment_i_from + j];
-                result.data[result_i].r = R(segment_i_from + i, segment_i_from + j);
-                result.data[result_i].rsquare = pow(result.data[result_i].r, 2.0);
+                result.data.emplace_back(
+                        segment_i->names[segment_i_from + i],
+                        chromosome,
+                        segment_i->positions[segment_i_from + i],
+                        segment_i->names[segment_i_from + j],
+                        chromosome,
+                        segment_i->positions[segment_i_from + j],
+                        R(segment_i_from + i, segment_i_from + j),
+                        pow(R(segment_i_from + i, segment_i_from + j), 2.0)
+                );
                 ++result_i;
+                ++j;
                 if (result_i >= result.limit) {
-                    result.last_cell = morton_code;
-                    result.last_i = i;
-                    result.last_j = j;
+                    if (j < segment_i_n_variants) {
+                        result.last_i = i;
+                        result.last_j = j;
+                    } else if (++i < segment_i_n_variants - 1u) {
+                        result.last_i = i;
+                        result.last_j = i + 1;
+                    } else {
+                        result.last_i = result.last_j = -1;
+                    }
                     return;
                 }
-                ++j;
             }
             ++i;
             j = i + 1;
         }
     } else {
+        if ((segment_i->positions.empty()) || (segment_j->positions.empty())) {
+            result.last_i = result.last_j = -1;
+            return;
+        }
         int segment_i_from = 0;
         int segment_i_to = segment_i->names.size() - 1;
         int segment_j_from = 0;
@@ -161,38 +177,36 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
         }
         auto segment_i_n_variants = segment_i_to - segment_i_from + 1;
         auto segment_j_n_variants = segment_j_to - segment_j_from + 1;
-        auto result_i = result.data.size();
-        auto result_new_size = result_i + segment_i_n_variants * segment_j_n_variants;
-        if ((result.last_i >= 0) && (result.last_j >= 0)) {
-            result_new_size = result_new_size - result.last_i * segment_j_n_variants - (result.last_j + 1);
-        }
-        if (result_new_size == 0) {
-            result.last_i = result.last_j = -1;
-            return;
-        } else if (result_new_size > result.limit) {
-            result_new_size = result.limit;
-        }
-        result.data.resize(result_new_size);
         int i = result.last_i >= 0 ? result.last_i : 0;
-        int j = result.last_j >= 0 ? result.last_j + 1 : 0;
+        int j = result.last_j >= 0 ? result.last_j : 0;
+        auto result_i = result.data.size();
         while (i < segment_i_n_variants) {
             while (j < segment_j_n_variants) {
-                result.data[result_i].variant1 = segment_i->names[segment_i_from + i];
-                result.data[result_i].chromosome1 = chromosome;
-                result.data[result_i].position1 = segment_i->positions[segment_i_from + i];
-                result.data[result_i].variant2 = segment_j->names[segment_j_from + j];
-                result.data[result_i].chromosome2 = chromosome;
-                result.data[result_i].position2 = segment_j->positions[segment_j_from + j];
-                result.data[result_i].r = R(segment_i_from + i, segment_j_from + j);
-                result.data[result_i].rsquare = pow(result.data[result_i].r, 2.0);
+                result.data.emplace_back(
+                        segment_i->names[segment_i_from + i],
+                        chromosome,
+                        segment_i->positions[segment_i_from + i],
+                        segment_j->names[segment_j_from + j],
+                        chromosome,
+                        segment_j->positions[segment_j_from + j],
+                        R(segment_i_from + i, segment_j_from + j),
+                        pow(R(segment_i_from + i, segment_j_from + j), 2.0)
+                );
                 ++result_i;
+                ++j;
                 if (result_i >= result.limit) {
-                    result.last_cell = morton_code;
-                    result.last_i = i;
-                    result.last_j = j;
+                    if (j < segment_j_n_variants) {
+                        result.last_i = i;
+                        result.last_j = j;
+                    } else if (++i < segment_i_n_variants) {
+                        result.last_i = i;
+                        result.last_j = 0;
+                    } else {
+                        result.last_i = result.last_j = -1;
+                    }
                     return;
                 }
-                ++j;
+
             }
             ++i;
             j = 0;
@@ -203,6 +217,10 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
 
 void Cell::extract(const std::string& index_variant, std::uint64_t index_bp, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result) {
     if (this->i == this->j) { // diagonal cell
+        if (segment_i->positions.empty()) {
+            result.last_j = -1;
+            return;
+        }
         int segment_i_from = 0;
         int segment_i_to = segment_i->names.size() - 1;
         if ((region_start_bp > segment_i->start_bp) && (region_start_bp <= segment_i->stop_bp)) {
@@ -229,37 +247,36 @@ void Cell::extract(const std::string& index_variant, std::uint64_t index_bp, std
         }
         auto segment_i_n_variants = segment_i_to - segment_i_from + 1;
         auto result_i = result.data.size();
-        auto result_new_size = result_i + segment_i_n_variants;
-        if (result.last_j >= 0) {
-            result_new_size = result_new_size - (result.last_j + 1);
-        }
-        if (result_new_size == 0) {
-            result.last_i = result.last_j = -1;
-            return;
-        } else if (result_new_size > result.limit) {
-            result_new_size = result.limit;
-        }
-        result.data.resize(result_new_size);
         int i = segment_i_index;
         int j = result.last_j >= 0 ? result.last_j : 0;
         while (j < segment_i_n_variants) {
-            result.data[result_i].variant1 = segment_i->names[i];
-            result.data[result_i].chromosome1 = chromosome;
-            result.data[result_i].position1 = segment_i->positions[i];
-            result.data[result_i].variant2 = segment_i->names[segment_i_from + j];
-            result.data[result_i].chromosome2 = chromosome;
-            result.data[result_i].position2 = segment_i->positions[segment_i_from + j];
-            result.data[result_i].r = R(i, segment_i_from + j);
-            result.data[result_i].rsquare = pow(result.data[result_i].r, 2.0);
+            result.data.emplace_back(
+                    segment_i->names[i],
+                    chromosome,
+                    segment_i->positions[i],
+                    segment_i->names[segment_i_from + j],
+                    chromosome,
+                    segment_i->positions[segment_i_from + j],
+                    R(i, segment_i_from + j),
+                    pow(R(i, segment_i_from + j), 2.0)
+            );
             ++result_i;
+            ++j;
             if (result_i >= result.limit) {
-                result.last_cell = morton_code;
-                result.last_j = j;
+                if (j < segment_i_n_variants) {
+                    result.last_j = j;
+                } else {
+                    result.last_j = -1;
+                }
                 return;
             }
-            ++j;
         }
     } else {
+        if ((segment_i->positions.empty()) || (segment_j->positions.empty())) {
+            result.last_j = -1;
+            return;
+        }
+
         shared_ptr<Segment> segment_i;
         shared_ptr<Segment> segment_j;
 
@@ -297,42 +314,32 @@ void Cell::extract(const std::string& index_variant, std::uint64_t index_bp, std
         }
         auto segment_j_n_variants = segment_j_to - segment_j_from + 1;
         auto result_i = result.data.size();
-        auto result_new_size = result_i + segment_j_n_variants;
-        if (result.last_j >= 0) {
-            result_new_size = result_new_size - (result.last_j + 1);
-        }
-        if (result_new_size == 0) {
-            result.last_i = result.last_j = -1;
-            return;
-        } else if (result_new_size > result.limit) {
-            result_new_size = result.limit;
-        }
-        result.data.resize(result_new_size);
         int i = segment_i_index;
         int j = result.last_j >= 0 ? result.last_j : 0;
         while (j < segment_j_n_variants) {
-            result.data[result_i].variant1 = segment_i->names[i];
-            result.data[result_i].chromosome1 = chromosome;
-            result.data[result_i].position1 = segment_i->positions[i];
-            result.data[result_i].variant2 = segment_j->names[segment_j_from + j];
-            result.data[result_i].chromosome2 = chromosome;
-            result.data[result_i].position2 = segment_j->positions[segment_j_from + j];
-            if (reversed) {
-                result.data[result_i].r = R(segment_j_from + j, i);
-            } else {
-                result.data[result_i].r = R(i, segment_j_from + j);
-            }
-            result.data[result_i].rsquare = pow(result.data[result_i].r, 2.0);
+            result.data.emplace_back(
+                    segment_i->names[i],
+                    chromosome,
+                    segment_i->positions[i],
+                    segment_j->names[segment_j_from + j],
+                    chromosome,
+                    segment_j->positions[segment_j_from + j],
+                    reversed ? R(segment_j_from + j, i) : R(i, segment_j_from + j),
+                    pow(reversed ? R(segment_j_from + j, i) : R(i, segment_j_from + j), 2.0)
+            );
             ++result_i;
+            ++j;
             if (result_i >= result.limit) {
-                result.last_cell = morton_code;
-                result.last_j = j;
+                if (j < segment_j_n_variants) {
+                    result.last_j = j;
+                } else {
+                    result.last_j = -1;
+                }
                 return;
             }
-            ++j;
         }
     }
-    result.last_i = result.last_j = -1;
+    result.last_j = -1;
 }
 
 

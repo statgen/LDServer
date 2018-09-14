@@ -1,7 +1,3 @@
-//
-// Created by dtaliun on 6/20/18.
-//
-
 #include "Morton.h"
 
 uint64_t split_bits(uint64_t value) {
@@ -47,18 +43,14 @@ uint64_t compute_bigmin(uint64_t xd, uint64_t z_min, uint64_t z_max) {
         uint64_t z_min_bit = z_min & mask;
         uint64_t z_max_bit = z_max & mask;
         uint64_t xd_bit = xd & mask;
-
         uint32_t dim = bit_position % 2u;
         uint64_t bit_mask = 0x1 << (bit_position / 2u);
-
-        if (xd_bit == 0u && z_min_bit == 0u && z_max_bit == 0u) {
-            // do not do anything
-        } else if (xd_bit == 0u && z_min_bit == 0u && z_max_bit > 0u) {
+        if (xd_bit == 0u && z_min_bit == 0u && z_max_bit > 0u) {
             bigmin = load_bits(bit_mask, bit_position, z_min, dim);
             z_max = load_bits(bit_mask - 1u, bit_position, z_max, dim);
         } else if (xd_bit == 0u && z_min_bit > 0u && z_max_bit == 0u) {
             // not possible because min <= max
-            std::cout << "BAD!" << std::endl;
+            throw logic_error("Error while computing BIGMIN");
         } else if (xd_bit == 0u && z_min_bit > 0u && z_max_bit > 0u) {
             bigmin = z_min;
             return bigmin;
@@ -68,13 +60,12 @@ uint64_t compute_bigmin(uint64_t xd, uint64_t z_min, uint64_t z_max) {
             z_min = load_bits(bit_mask, bit_position, z_min, dim);
         } else if (xd_bit > 0u && z_min_bit > 0u && z_max_bit == 0u) {
             // not possible because min <= max
-            std::cout << "BAD!" << std::endl;
-        } else if (xd_bit > 0u && z_min_bit > 0u && z_max_bit > 0u) {
-            // do not do anything
+            throw logic_error("Error while computing BIGMIN");
         }
-        bit_position -= 1u;
+        --bit_position;
         mask >>= 1;
     } while (mask != 0u);
+    return bigmin;
 }
 
 uint64_t compute_litmax(uint64_t xd, uint64_t z_min, uint64_t z_max) {
@@ -85,17 +76,13 @@ uint64_t compute_litmax(uint64_t xd, uint64_t z_min, uint64_t z_max) {
         uint64_t z_min_bit = z_min & mask;
         uint64_t z_max_bit = z_max & mask;
         uint64_t xd_bit = xd & mask;
-
         uint32_t dim = bit_position % 2u;
         uint64_t bit_mask = 0x1 << (bit_position / 2u);
-
-        if (xd_bit == 0u && z_min_bit == 0u && z_max_bit == 0u) {
-            // do not do anything
-        } else if (xd_bit == 0u && z_min_bit == 0u && z_max_bit > 0u) {
+        if (xd_bit == 0u && z_min_bit == 0u && z_max_bit > 0u) {
             z_max = load_bits(bit_mask - 1u, bit_position, z_max, dim);
         } else if (xd_bit == 0u && z_min_bit > 0u && z_max_bit == 0u) {
             // not possible because min <= max
-            std::cout << "BAD!" << std::endl;
+            throw logic_error("Error while computing LITMAX");
         } else if (xd_bit == 0u && z_min_bit > 0u && z_max_bit > 0u) {
             return litmax;
         } else if (xd_bit > 0u && z_min_bit == 0u && z_max_bit == 0u) {
@@ -106,35 +93,29 @@ uint64_t compute_litmax(uint64_t xd, uint64_t z_min, uint64_t z_max) {
             z_min = load_bits(bit_mask, bit_position, z_min, dim);
         } else if (xd_bit > 0u && z_min_bit > 0u && z_max_bit == 0u) {
             // not possible because min <= max
-            std::cout << "BAD!" << std::endl;
-        } else if (xd_bit > 0u && z_min_bit > 0u && z_max_bit > 0u) {
-            // do not do anything
+            throw logic_error("Error while computing LITMAX");
         }
-        bit_position -= 1u;
+        --bit_position;
         mask >>= 1;
     } while (mask != 0u);
+    return litmax;
 }
 
-uint64_t compute_litmax_bigmin(uint64_t xd, uint64_t z_min, uint64_t z_max, uint64_t& litmax, uint64_t& bigmin) {
+void compute_litmax_bigmin(uint64_t xd, uint64_t z_min, uint64_t z_max, uint64_t& litmax, uint64_t& bigmin) {
     uint64_t mask = 0x8000000000000000;
     uint32_t bit_position = 63u;
     do {
         uint64_t z_min_bit = z_min & mask;
         uint64_t z_max_bit = z_max & mask;
         uint64_t xd_bit = xd & mask;
-
         uint32_t dim = bit_position % 2u;
         uint64_t bit_mask = 0x1 << (bit_position / 2u);
-
-        if (xd_bit == 0u && z_min_bit == 0u && z_max_bit == 0u) {
-            // do not do anything
-        } else if (xd_bit == 0u && z_min_bit == 0u && z_max_bit > 0u) {
+        if (xd_bit == 0u && z_min_bit == 0u && z_max_bit > 0u) {
             bigmin = load_bits(bit_mask, bit_position, z_min, dim);
             z_max = load_bits(bit_mask - 1u, bit_position, z_max, dim);
         } else if (xd_bit == 0u && z_min_bit > 0u && z_max_bit == 0u) {
             // not possible because min <= max
-            std::cout << "BAD!" << std::endl;
-            // todo:: exception
+            throw logic_error("Error while computing LITMAX and BIGMIN");
         } else if (xd_bit == 0u && z_min_bit > 0u && z_max_bit > 0u) {
             bigmin = z_min;
             break;
@@ -146,69 +127,56 @@ uint64_t compute_litmax_bigmin(uint64_t xd, uint64_t z_min, uint64_t z_max, uint
             z_min = load_bits(bit_mask, bit_position, z_min, dim);
         } else if (xd_bit > 0u && z_min_bit > 0u && z_max_bit == 0u) {
             // not possible because min <= max
-            std::cout << "BAD!" << std::endl;
-            // todo:: exception
-        } else if (xd_bit > 0u && z_min_bit > 0u && z_max_bit > 0u) {
-            // do not do anything
+            throw logic_error("Error while computing LITMAX and BIGMIN");
         }
-        bit_position -= 1u;
+        --bit_position;
         mask >>= 1;
     } while (mask != 0u);
 }
 
-void get_cells(uint64_t start_bp, uint64_t end_bp, std::set<uint64_t>& range) {
-    uint64_t i = start_bp / 100u;
-    uint64_t j = end_bp / 100u;
-    uint64_t z_min = to_morton_code(i, i);
-    uint64_t z_max = to_morton_code(j, j);
-    uint64_t xd, r1, r2, bigmin, litmax;
-
-    std::queue<std::tuple<uint64_t, uint64_t>> z_ranges;
-
-    z_ranges.push(std::make_tuple(z_min, z_max));
-    while (!z_ranges.empty()) {
-        z_min = std::get<0>(z_ranges.front());
-        z_max = std::get<1>(z_ranges.front());
-        z_ranges.pop();
-        xd = z_min + (z_max - z_min) / 2;
-        from_morton_code(xd, r1, r2);
-        if (r1 >= i && r1 <= j && r2 >= i && r2 <= j) {
-            if (r1 <= r2) { // only upper triangle of the matrix is needed
-                range.insert(xd);
+uint64_t get_next_z(uint64_t range_start, uint64_t range_end, uint64_t z_min, uint64_t z_max, uint64_t z_init) {
+    uint64_t xd_start = 0u, xd_end = 0u;
+    uint64_t xd = z_init;
+    while (xd <= z_max) {
+        from_morton_code(xd, xd_start, xd_end);
+        if (xd_start >= range_start && xd_start <= range_end && xd_end >= range_start && xd_end <= range_end) {
+            if (xd_start <= xd_end) { // only upper triangle of the matrix is needed
+                return xd;
             }
-            if (xd > z_min) {
-                z_ranges.push(std::make_pair(z_min, xd - 1));
-            }
-            if (xd < z_max) {
-                z_ranges.push(std::make_pair(xd + 1, z_max));
-            }
+            ++xd;
         } else {
-            compute_litmax_bigmin(xd, z_min, z_max, litmax, bigmin);
-            z_ranges.push(std::make_pair(z_min, litmax));
-            z_ranges.push(std::make_pair(bigmin, z_max));
+            xd = compute_bigmin(xd, z_min, z_max);
         }
     }
+    return xd;
 }
 
-void get_cells(uint64_t index_bp, uint64_t region_start_bp, uint64_t region_stop_bp, std::set<uint64_t>& cells) {
-    uint64_t index_i = index_bp / 100u, region_i = region_start_bp / 100u, region_j = region_stop_bp / 100u;
-    uint64_t z_min = 0, z_max = 0;
-    if (index_i <= region_i) { // only upper triangle of the matrix must be used
-        z_min = to_morton_code(region_i, index_i);
-        z_max = to_morton_code(region_j, index_i);
-    } else if ((index_i > region_i) && (index_i <region_j)) {
-        z_min = to_morton_code(index_i, region_i);
-        z_max = to_morton_code(region_j, index_i);
-    } else {
-        z_min = to_morton_code(index_i, region_i);
-        z_max = to_morton_code(index_i, region_j);
-    }
-    do {
-        cells.insert(z_min);
-        if (region_i < index_i) {
-            z_min = to_morton_code(index_i, ++region_i);
-        } else {
-            z_min = to_morton_code(++region_i, index_i);
+uint64_t get_next_z(uint64_t index, uint64_t range_start, uint64_t range_end, uint64_t z_min, uint64_t z_max, uint64_t z_init) {
+    uint64_t xd_start = 0u, xd_end = 0u;
+    uint64_t xd = z_init;
+    while (xd <= z_max) {
+        from_morton_code(xd, xd_start, xd_end);
+        if (index <= range_start) {
+            if ((xd_start >= range_start) && (xd_start <= range_end) && (index == xd_end)) {
+                return xd;
+            }
+        } else if (index >= range_end) {
+            if ((xd_end >= range_start) && (xd_end <= range_end) && (index == xd_start)) {
+                return  xd;
+            }
+        } else  {
+            if ((xd_end >= range_start) && (xd_end <= index) && (xd_start >= index) && (xd_start <= range_end)) {
+                if (xd_end == index) {
+                    return xd;
+                }
+                if (xd_start == index) {
+                    return xd;
+                }
+                ++xd;
+                continue;
+            }
         }
-    } while (z_min <= z_max);
+        xd = compute_bigmin(xd, z_min, z_max);
+    }
+    return xd;
 }

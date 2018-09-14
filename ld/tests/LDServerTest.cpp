@@ -77,11 +77,43 @@ protected:
 boost::process::child LDServerTest::redis_server = boost::process::child();
 redisContext* LDServerTest::redis_cache = nullptr;
 
+TEST_F(LDServerTest, Morton_code) {
+    ASSERT_EQ(0, to_morton_code(0, 0));
+    ASSERT_EQ(42, to_morton_code(0, 7));
+    ASSERT_EQ(21, to_morton_code(7, 0));
+    ASSERT_EQ(63, to_morton_code(7, 7));
+
+    uint64_t x = 0, y = 0;
+    from_morton_code(63, x, y);
+    ASSERT_EQ(7, x);
+    ASSERT_EQ(7, y);
+
+    from_morton_code(21, x, y);
+    ASSERT_EQ(7, x);
+    ASSERT_EQ(0, y);
+
+    from_morton_code(42, x, y);
+    ASSERT_EQ(0, x);
+    ASSERT_EQ(7, y);
+
+    from_morton_code(0, x, y);
+    ASSERT_EQ(0, x);
+    ASSERT_EQ(0, y);
+
+    ASSERT_THROW(compute_bigmin(58, 102, 27), logic_error);
+    ASSERT_EQ(compute_bigmin(58, 27, 102), 74);
+    ASSERT_EQ(compute_bigmin(19, 12, 45), 36);
+
+    ASSERT_THROW(compute_litmax(58, 102, 27), logic_error);
+    ASSERT_EQ(compute_litmax(58, 27, 102), 55);
+    ASSERT_EQ(compute_litmax(19, 12, 45), 15);
+}
+
 TEST_F(LDServerTest, SAV_one_page) {
     map<string, double> goldstandard;
     this->load_region_goldstandard("region_ld_22_51241101_51241385.hap.ld", goldstandard);
 
-    LDServer server;
+    LDServer server(100);
     LDQueryResult result(1000);
 
     server.set_file("chr22.test.sav");
@@ -103,7 +135,7 @@ TEST_F(LDServerTest, BCF_one_page) {
     map<string, double> goldstandard;
     this->load_region_goldstandard("region_ld_22_51241101_51241385.hap.ld", goldstandard);
 
-    LDServer server;
+    LDServer server(100);
     LDQueryResult result(1000);
 
     server.set_file("chr22.test.bcf");
@@ -126,7 +158,7 @@ TEST_F(LDServerTest, VCF_one_page) {
     map<string, double> goldstandard;
     this->load_region_goldstandard("region_ld_22_51241101_51241385.hap.ld", goldstandard);
 
-    LDServer server;
+    LDServer server(100);
     LDQueryResult result(1000);
 
     server.set_file("chr22.test.vcf.gz");
@@ -150,7 +182,7 @@ TEST_F(LDServerTest, SAV_chrX_one_page) {
     this->load_region_goldstandard("region_ld_X_60100_60150.hap.ld", goldstandard);
     this->load_samples("EUR.samples.txt", samples);
 
-    LDServer server;
+    LDServer server(100);
     LDQueryResult result(1000);
 
     server.set_file("chrX.test.sav");
@@ -168,12 +200,11 @@ TEST_F(LDServerTest, SAV_chrX_one_page) {
     }
 }
 
-
 TEST_F(LDServerTest, region_with_paging) {
     map<string, double> goldstandard;
     this->load_region_goldstandard("region_ld_22_51241101_51241385.hap.ld", goldstandard);
 
-    LDServer server;
+    LDServer server(100);
     LDQueryResult result(4);
     int result_total_size = 0;
 
@@ -193,12 +224,11 @@ TEST_F(LDServerTest, region_with_paging) {
     ASSERT_EQ(result_total_size, goldstandard.size());
 }
 
-
-TEST_F(LDServerTest, variant_with_paging) {
+TEST_F(LDServerTest, variant_with_paging_1) {
     map<string, double> goldstandard;
     this->load_variant_goldstandard("variant_ld_22_51241101_vs_51241101_51241385.hap.ld", goldstandard);
 
-    LDServer server;
+    LDServer server(100);
     LDQueryResult result(2);
     int result_total_size = 0;
 
@@ -218,13 +248,61 @@ TEST_F(LDServerTest, variant_with_paging) {
     ASSERT_EQ(result_total_size, goldstandard.size());
 }
 
+TEST_F(LDServerTest, variant_with_paging_2) {
+    map<string, double> goldstandard;
+    this->load_variant_goldstandard("variant_ld_22_51241386_vs_51241101_51241385.hap.ld", goldstandard);
+
+    LDServer server(100);
+    LDQueryResult result(2);
+    int result_total_size = 0;
+
+    server.set_file("chr22.test.sav");
+    while (server.compute_variant_ld("22:51241386_C/G", "22", 51241101, 51241385, result, LDServer::ALL_SAMPLES_KEY)) {
+        ASSERT_LE(result.limit, 2);
+        ASSERT_LE(result.data.size(), 2);
+        for (auto&& entry : result.data) {
+            string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+            ASSERT_NE(entry.variant1, "");
+            ASSERT_NE(entry.variant2, "");
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.0000001);
+        }
+        result_total_size += result.data.size();
+    }
+    ASSERT_EQ(result_total_size, goldstandard.size());
+}
+
+TEST_F(LDServerTest, variant_with_paging_3) {
+    map<string, double> goldstandard;
+    this->load_variant_goldstandard("variant_ld_22_51241309_vs_51241101_51244237.hap.ld", goldstandard);
+
+    LDServer server(100);
+    LDQueryResult result(2);
+    int result_total_size = 0;
+
+    server.set_file("chr22.test.sav");
+    while (server.compute_variant_ld("22:51241309_C/T", "22", 51241101, 51244237, result, LDServer::ALL_SAMPLES_KEY)) {
+        ASSERT_LE(result.limit, 2);
+        ASSERT_LE(result.data.size(), 2);
+        for (auto&& entry : result.data) {
+            string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+            ASSERT_NE(entry.variant1, "");
+            ASSERT_NE(entry.variant2, "");
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.0000001);
+        }
+        result_total_size += result.data.size();
+    }
+    ASSERT_EQ(result_total_size, goldstandard.size());
+}
+
 TEST_F(LDServerTest, AFR_region_with_paging) {
     map<string, double> goldstandard;
     vector<string> samples;
     this->load_region_goldstandard("region_ld_22_51241101_51241385.AFR.hap.ld", goldstandard);
     this->load_samples("AFR.samples.txt", samples);
 
-    LDServer server;
+    LDServer server(100);
     LDQueryResult result(2);
     int result_total_size = 0;
 
@@ -242,6 +320,55 @@ TEST_F(LDServerTest, AFR_region_with_paging) {
         }
         result_total_size += result.data.size();
     }
+    ASSERT_EQ(result_total_size, goldstandard.size());
+}
+
+TEST_F(LDServerTest, large_region_with_paging) {
+    map<string, double> goldstandard;
+    this->load_region_goldstandard("region_ld_22_50544251_50549251.hap.ld", goldstandard);
+
+    LDServer server(100);
+    LDQueryResult result(1000);
+    int result_total_size = 0;
+
+    server.set_file("chr22.test.sav");
+    while (server.compute_region_ld("22", 50544251, 50549251, result, "ALL")) {
+        ASSERT_LE(result.limit, 1000);
+        ASSERT_LE(result.data.size(), 1000);
+        for (auto &&entry : result.data) {
+            string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+            ASSERT_NE(entry.variant1, "");
+            ASSERT_NE(entry.variant2, "");
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.000001);
+        }
+        result_total_size += result.data.size();
+    }
+    ASSERT_EQ(result_total_size, goldstandard.size());
+}
+
+TEST_F(LDServerTest, large_variant_with_paging) {
+    map<string, double> goldstandard;
+    this->load_variant_goldstandard("variant_ld_22_50546666_vs_50544251_50549251.hap.ld", goldstandard);
+
+    LDServer server(100);
+    LDQueryResult result(1000);
+    int result_total_size = 0;
+
+    server.set_file("chr22.test.sav");
+    while (server.compute_variant_ld("22:50546666_C/T", "22", 50544251, 50549251, result, LDServer::ALL_SAMPLES_KEY)) {
+        ASSERT_LE(result.limit, 1000);
+        ASSERT_LE(result.data.size(), 1000);
+        for (auto&& entry : result.data) {
+            string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+            ASSERT_NE(entry.variant1, "");
+            ASSERT_NE(entry.variant2, "");
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.000001);
+        }
+        result_total_size += result.data.size();
+    }
+    ASSERT_EQ(result_total_size, goldstandard.size());
 }
 
 TEST_F(LDServerTest, hiredis) {

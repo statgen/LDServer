@@ -2,7 +2,7 @@
 
 const std::string LDServer::ALL_SAMPLES_KEY("ALL");
 
-LDServer::LDServer() : cache_enabled(false), cache_key(0u), cache_hostname(""), cache_port(0), cache_context(nullptr) {
+LDServer::LDServer(uint32_t segment_size) : segment_size(segment_size), cache_enabled(false), cache_key(0u), cache_hostname(""), cache_port(0), cache_context(nullptr) {
 
 }
 
@@ -79,20 +79,25 @@ void LDServer::parse_variant(const std::string& variant, std::string& chromosome
 shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, const string& samples_name, const vector<string>& samples, bool only_variants, const std::string& chromosome, uint64_t i, std::map<std::uint64_t, shared_ptr<Segment>>& segments) const {
     auto segment_it = segments.find(i);
     if (segment_it == segments.end()) {
-        segment_it = segments.emplace(make_pair(i, make_shared<Segment>(cache_key, samples_name, chromosome, i * 100u, i * 100u + 100u - 1u))).first;
+        segment_it = segments.emplace(make_pair(i, make_shared<Segment>(cache_key, samples_name, chromosome, i * segment_size, i * segment_size + segment_size - 1u))).first;
         if (cache_enabled) {
             segment_it->second->load(cache_context);
         }
     }
+
     if (segment_it->second->is_cached()) {
-        if (!only_variants) {
+        if ((!only_variants) && (!segment_it->second->genotypes_loaded)) {
             raw->load_genotypes_only(samples, *(segment_it->second));
+            segment_it->second->genotypes_loaded = true;
         }
     } else {
-        if (only_variants) {
+        if ((only_variants) && (!segment_it->second->variants_loaded)) {
             raw->load_variants_only(samples, *(segment_it->second));
-        } else {
+            segment_it->second->variants_loaded = true;
+        } else if ((!segment_it->second->variants_loaded) || (!segment_it->second->variants_loaded)) {
             raw->load(samples, *(segment_it->second));
+            segment_it->second->genotypes_loaded = true;
+            segment_it->second->variants_loaded = true;
         }
         if (cache_enabled) {
             segment_it->second->save(cache_context);
@@ -120,12 +125,15 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
     }
 
     std::map<std::uint64_t, shared_ptr<Segment>> segments;
-    std::set<uint64_t> cells;
 
-    get_cells(region_start_bp, region_stop_bp, cells);
-    auto cells_it = cells.lower_bound(result.last_cell);
-    while ((cells_it != cells.end()) && (result.data.size() < result.limit)) {
-        Cell cell(cache_key, samples_name, region_chromosome, *cells_it);
+    uint64_t segment_i = region_start_bp / segment_size;
+    uint64_t segment_j = region_stop_bp / segment_size;
+    uint64_t z_min = to_morton_code(segment_i, segment_i);
+    uint64_t z_max = to_morton_code(segment_j, segment_j);
+
+    uint64_t z = get_next_z(segment_i, segment_j, z_min, z_max, result.last_cell > z_min ? result.last_cell : z_min);
+    while (z <= z_max) {
+        Cell cell(cache_key, samples_name, region_chromosome, z);
         if (cache_enabled) {
             cell.load(cache_context);
         }
@@ -140,7 +148,19 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
             }
         }
         cell.extract(region_start_bp, region_stop_bp, result);
-        ++cells_it;
+        if ((result.last_i >= 0) && (result.last_j >= 0)) {
+            result.last_cell = z;
+            break;
+        }
+        z = get_next_z(segment_i, segment_j, z_min, z_max, ++z);
+        if (result.data.size() >= result.limit) {
+            if (z <= z_max) {
+                result.last_cell = z;
+                result.last_i = 0;
+                result.last_j = 0;
+            }
+            break;
+        }
     }
     result.page += 1;
     return true;
@@ -175,13 +195,29 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
     }
 
     std::map<std::uint64_t, shared_ptr<Segment>> segments;
-    std::set<uint64_t> cells;
 
-    get_cells(index_bp, region_start_bp, region_stop_bp, cells);
-
-    auto cells_it = cells.lower_bound(result.last_cell);
-    while ((cells_it != cells.end()) && (result.data.size() < result.limit)) {
-        Cell cell(cache_key, samples_name, region_chromosome, *cells_it);
+    uint64_t segment_index = index_bp / segment_size;
+    uint64_t segment_i = region_start_bp / segment_size;
+    uint64_t segment_j = region_stop_bp / segment_size;
+    uint64_t z_min = 0,z_max = 0;
+//    cout << "segment_index=" << segment_index << " segment_i=" << segment_i << " segment_j=" << segment_j << endl;
+    if (segment_index <= segment_i) { // only upper triangle of the matrix must be used
+        z_min = to_morton_code(segment_i, segment_index);
+        z_max = to_morton_code(segment_j, segment_index);
+    } else if ((segment_index > segment_i) && (segment_index < segment_j)) {
+        z_min = to_morton_code(segment_index, segment_i);
+        z_max = to_morton_code(segment_j, segment_index);
+    } else {
+        z_min = to_morton_code(segment_index, segment_i);
+        z_max = to_morton_code(segment_index, segment_j);
+    }
+//    cout << "z_min=" << z_min << " z_max=" << z_max << endl;
+//    cout << "result.last_cell=" << result.last_cell << endl;
+//    cout << "Initial Z=" << (result.last_cell > z_min ? result.last_cell : z_min) << endl;
+    uint64_t z = get_next_z(segment_index, segment_i, segment_j, z_min, z_max, result.last_cell > z_min ? result.last_cell : z_min);
+    while (z <= z_max) {
+//        cout << "Iteration Z=" << z << endl;
+        Cell cell(cache_key, samples_name, region_chromosome, z);
         if (cache_enabled) {
             cell.load(cache_context);
         }
@@ -193,8 +229,20 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
             cell.compute();
         }
         cell.extract(index_variant, index_bp, region_start_bp, region_stop_bp, result);
-        ++cells_it;
+        if (result.last_j >= 0) {
+            result.last_cell = z;
+            break;
+        }
+        z = get_next_z(segment_index, segment_i, segment_j, z_min, z_max, ++z);
+        if (result.data.size() >= result.limit) {
+            if (z <= z_max) {
+                result.last_cell = z;
+                result.last_j = 0;
+            }
+            break;
+        }
     }
     result.page += 1;
+//    cout << "Page " << result.page << ": " << result.last_cell << " " << result.last_j << endl;
     return true;
 }
