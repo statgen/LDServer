@@ -7,6 +7,7 @@
 #include <regex>
 #include <codecvt>
 #include <locale>
+#include <cmath>
 #include <cereal/external/rapidjson/document.h>
 #include <cereal/external/rapidjson/writer.h>
 #include <cereal/external/rapidjson/stringbuffer.h>
@@ -122,7 +123,11 @@ struct LDQueryResult {
             variant2.PushBack(rapidjson::StringRef(p.variant2.c_str()), allocator);
             chromosome2.PushBack(rapidjson::StringRef(p.chromosome2.c_str()), allocator);
             position2.PushBack(p.position2, allocator);
-            rsquare.PushBack(p.rsquare, allocator);
+            if (std::isnan(p.rsquare)) { // nan is not allowed by JSON, so we replace it with null
+                rsquare.PushBack(rapidjson::Value(), allocator);
+            } else {
+                rsquare.PushBack(p.rsquare, allocator);
+            }
         }
 
         data.AddMember("variant1", variant1, allocator);
@@ -142,11 +147,11 @@ struct LDQueryResult {
             next.SetString(link.c_str(), allocator); // by providing allocator we make a copy
             document.AddMember("next", next, allocator);
         }
-
         rapidjson::StringBuffer strbuf;
         rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
-        document.Accept(writer);
-
+        if (!document.Accept(writer)) {
+            throw runtime_error("Error while saving to JSON");
+        }
         return strbuf.GetString();
     }
 };
