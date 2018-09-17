@@ -140,18 +140,20 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
         int segment_i_from = 0;
         int segment_i_to = segment_i->positions.size() - 1;
         if ((region_start_bp > segment_i->start_bp) && (region_start_bp <= segment_i->stop_bp)) {
-            auto start_it = std::lower_bound(segment_i->positions.begin(), segment_i->positions.end(), region_start_bp);
-            segment_i_from = start_it - segment_i->positions.begin();
+            segment_i_from = std::lower_bound(segment_i->positions.begin(), segment_i->positions.end(), region_start_bp) - segment_i->positions.begin();
         }
         if ((region_stop_bp > segment_i->start_bp) && (region_stop_bp <= segment_i->stop_bp)) {
-            auto stop_it = std::upper_bound(segment_i->positions.begin(), segment_i->positions.end(), region_stop_bp);
-            segment_i_to = stop_it - segment_i->positions.begin() - 1;
+            segment_i_to = std::upper_bound(segment_i->positions.begin(), segment_i->positions.end(), region_stop_bp) - segment_i->positions.begin() - 1;
         }
-        auto segment_i_n_variants = segment_i_to - segment_i_from + 1;
+        if (segment_i_to < 0) {
+            result.last_i = result.last_j = -1;
+            return;
+        }
         int i = result.last_i >= 0 ? result.last_i : 0;
         int j = result.last_j >= 0 ? result.last_j : i + 1;
-        auto result_i = result.data.size();
         arma::fmat R(raw_fmat.get(), segment_i->positions.size(), segment_i->positions.size(), false, true);
+        auto segment_i_n_variants = segment_i_to - segment_i_from + 1;
+        auto result_i = result.data.size();
         while (i < segment_i_n_variants - 1u) {
             while (j < segment_i_n_variants) {
                 result.data.emplace_back(
@@ -189,30 +191,34 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
         }
         int segment_i_from = 0;
         int segment_i_to = segment_i->names.size() - 1;
-        int segment_j_from = 0;
-        int segment_j_to = segment_j->names.size() - 1;
         if ((region_start_bp > segment_i->start_bp) && (region_start_bp <= segment_i->stop_bp)) {
-            auto start_it = std::lower_bound(segment_i->positions.begin(), segment_i->positions.end(), region_start_bp);
-            segment_i_from = start_it - segment_i->positions.begin();
+            segment_i_from = std::lower_bound(segment_i->positions.begin(), segment_i->positions.end(), region_start_bp) - segment_i->positions.begin();
         }
         if ((region_stop_bp > segment_i->start_bp) && (region_stop_bp <= segment_i->stop_bp)) {
-            auto stop_it = std::upper_bound(segment_i->positions.begin(), segment_i->positions.end(), region_stop_bp);
-            segment_i_to = stop_it - segment_i->positions.begin() - 1u;
+            segment_i_to = std::upper_bound(segment_i->positions.begin(), segment_i->positions.end(), region_stop_bp) - segment_i->positions.begin() - 1u;
         }
+        if (segment_i_to < 0) {
+            result.last_i = result.last_j = -1;
+            return;
+        }
+        int segment_j_from = 0;
+        int segment_j_to = segment_j->names.size() - 1;
         if ((region_start_bp > segment_j->start_bp) && (region_start_bp <= segment_j->stop_bp)) {
-            auto start_it = std::lower_bound(segment_j->positions.begin(), segment_j->positions.end(), region_start_bp);
-            segment_j_from = start_it - segment_j->positions.begin();
+            segment_j_from = std::lower_bound(segment_j->positions.begin(), segment_j->positions.end(), region_start_bp) - segment_j->positions.begin();
         }
         if ((region_stop_bp > segment_j->start_bp) && (region_stop_bp <= segment_j->stop_bp)) {
-            auto stop_it = std::upper_bound(segment_j->positions.begin(), segment_j->positions.end(), region_stop_bp);
-            segment_j_to = stop_it - segment_j->positions.begin() - 1u;
+            segment_j_to = std::upper_bound(segment_j->positions.begin(), segment_j->positions.end(), region_stop_bp) - segment_j->positions.begin() - 1u;
         }
-        auto segment_i_n_variants = segment_i_to - segment_i_from + 1;
-        auto segment_j_n_variants = segment_j_to - segment_j_from + 1;
+        if (segment_j_to < 0) {
+            result.last_i = result.last_j = -1;
+            return;
+        }
         int i = result.last_i >= 0 ? result.last_i : 0;
         int j = result.last_j >= 0 ? result.last_j : 0;
-        auto result_i = result.data.size();
         arma::fmat R(raw_fmat.get(), segment_i->positions.size(), segment_j->positions.size(), false, true);
+        auto segment_i_n_variants = segment_i_to - segment_i_from + 1;
+        auto segment_j_n_variants = segment_j_to - segment_j_from + 1;
+        auto result_i = result.data.size();
         while (i < segment_i_n_variants) {
             while (j < segment_j_n_variants) {
                 result.data.emplace_back(
