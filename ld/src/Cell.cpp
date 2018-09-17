@@ -142,6 +142,10 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
         if ((region_start_bp > segment_i->start_bp) && (region_start_bp <= segment_i->stop_bp)) {
             segment_i_from = std::lower_bound(segment_i->positions.begin(), segment_i->positions.end(), region_start_bp) - segment_i->positions.begin();
         }
+        if (segment_i_from >= segment_i->positions.size()) {
+            result.last_i = result.last_j = -1;
+            return;
+        }
         if ((region_stop_bp > segment_i->start_bp) && (region_stop_bp <= segment_i->stop_bp)) {
             segment_i_to = std::upper_bound(segment_i->positions.begin(), segment_i->positions.end(), region_stop_bp) - segment_i->positions.begin() - 1;
         }
@@ -194,6 +198,10 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
         if ((region_start_bp > segment_i->start_bp) && (region_start_bp <= segment_i->stop_bp)) {
             segment_i_from = std::lower_bound(segment_i->positions.begin(), segment_i->positions.end(), region_start_bp) - segment_i->positions.begin();
         }
+        if (segment_i_from >= segment_i->positions.size()) {
+            result.last_i = result.last_j = -1;
+            return;
+        }
         if ((region_stop_bp > segment_i->start_bp) && (region_stop_bp <= segment_i->stop_bp)) {
             segment_i_to = std::upper_bound(segment_i->positions.begin(), segment_i->positions.end(), region_stop_bp) - segment_i->positions.begin() - 1u;
         }
@@ -205,6 +213,10 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
         int segment_j_to = segment_j->names.size() - 1;
         if ((region_start_bp > segment_j->start_bp) && (region_start_bp <= segment_j->stop_bp)) {
             segment_j_from = std::lower_bound(segment_j->positions.begin(), segment_j->positions.end(), region_start_bp) - segment_j->positions.begin();
+        }
+        if (segment_j_from >= segment_j->positions.size()) {
+            result.last_i = result.last_j = -1;
+            return;
         }
         if ((region_stop_bp > segment_j->start_bp) && (region_stop_bp <= segment_j->stop_bp)) {
             segment_j_to = std::upper_bound(segment_j->positions.begin(), segment_j->positions.end(), region_stop_bp) - segment_j->positions.begin() - 1u;
