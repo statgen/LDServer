@@ -39,6 +39,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("has_next", &LDQueryResult::has_next)
             .def("is_last", &LDQueryResult::is_last)
             .def("get_last", &LDQueryResult::get_last)
+            .def("get_json", &LDQueryResult::get_json)
             ;
 
     boost::python::class_<LDServer, boost::noncopyable>("LDServer", boost::python::init<boost::uint32_t>())

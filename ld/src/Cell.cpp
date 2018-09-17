@@ -76,6 +76,7 @@ bool Cell::is_cached() const {
 }
 
 void Cell::compute() {
+//    auto start = std::chrono::system_clock::now();
     auto n_variants_i = segment_i->names.size();
     if (n_variants_i <= 0) {
         return;
@@ -124,9 +125,13 @@ void Cell::compute() {
         raw_fmat = unique_ptr<float[]>(new float[R.n_elem]);
         memcpy(reinterpret_cast<void*>(raw_fmat.get()), R.memptr(), R.n_elem * sizeof(float));
     }
+//    auto end = std::chrono::system_clock::now();
+//    std::chrono::duration<double> elapsed = end - start;
+//    std::cout << "Cell region compute elapsed time: " << elapsed.count() << " s\n";
 }
 
 void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result) {
+//    auto start = std::chrono::system_clock::now();
     if (this->i == this->j) { // diagonal cell
         if (segment_i->positions.empty()) {
             result.last_i = result.last_j = -1;
@@ -241,6 +246,9 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
         }
     }
     result.last_i = result.last_j = -1;
+//    auto end = std::chrono::system_clock::now();
+//    std::chrono::duration<double> elapsed = end - start;
+//    std::cout << "Cell region extract elapsed time: " << elapsed.count() << " s\n";
 }
 
 void Cell::extract(const std::string& index_variant, std::uint64_t index_bp, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result) {

@@ -4,6 +4,7 @@ from webargs.flaskparser import parser
 from webargs import fields
 from model import Reference, File, Sample
 from ld.pywrapper import LDServer, LDQueryResult, StringVec
+import time
 
 API_VERSION = "1.0"
 
@@ -73,10 +74,15 @@ def get_region_ld(reference_name, population_name):
     files = File.query.with_parent(reference).all()
     if not files:
         abort(404)
+    start = time.time()
     ldserver = LDServer(current_app.config['SEGMENT_SIZE_BP'])
+    end = time.time()
+    print "Created LD server in {} seconds.".format("%0.4f" % (end - start))
+    start = time.time()
     for file in files:
         ldserver.set_file(str(file.path))
-    response = {}
+    end = time.time()
+    print "Files initialized in {} seconds.".format("%0.4f" % (end - start))
     if 'last' in args:
         result = LDQueryResult(args['limit'], str(args['last']))
     else:
@@ -87,26 +93,18 @@ def get_region_ld(reference_name, population_name):
         ldserver.set_samples(str(population_name), s)
     if current_app.config['CACHE_ENABLED']:
         ldserver.enable_cache(file.reference_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
+    start = time.time()
     ldserver.compute_region_ld(str(args['chrom']), args['start'], args['stop'], result, str(population_name))
-    response['data'] = {
-        'chromosome1': [str(args['chrom'])] * len(result.data),
-        'variant1': [None] * len(result.data),
-        'position1': [None] * len(result.data),
-        'chromosome2': [str(args['chrom'])] * len(result.data),
-        'variant2': [None] * len(result.data),
-        'position2': [None] * len(result.data),
-        'r': [None] * len(result.data),
-        'rsquare': [None] * len(result.data)
-    }
-    for i, pair in enumerate(result.data):
-        response['data']['variant1'][i] = pair.variant1
-        response['data']['position1'][i] = pair.position1
-        response['data']['variant2'][i] = pair.variant2
-        response['data']['position2'][i] = pair.position2
-        response['data']['r'][i] = pair.r
-        response['data']['rsquare'][i] = pair.rsquare
-    response['next'] = build_link_next(args, result)
-    return make_response(jsonify(response), 200)
+    print "Computed results in {} seconds.".format("%0.4f" % (time.time() - start))
+    start = time.time()
+    base_url = request.base_url + '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))
+    j = result.get_json(str(base_url))
+    print "Jsonified result in {} seconds.".format("%0.4f" % (time.time() - start))
+    start = time.time()
+    r = make_response(j, 200)
+    r.mimetype = 'application/json'
+    print "Response created in {} seconds.".format("%0.4f" % (time.time() - start))
+    return r
 
 
 @bp.route('/<reference_name>/<population_name>/ld/variant', methods = ['GET'])
@@ -132,7 +130,6 @@ def get_variant_ld(reference_name, population_name):
     ldserver = LDServer(current_app.config['SEGMENT_SIZE_BP'])
     for file in files:
         ldserver.set_file(str(file.path))
-    response = {}
     if 'last' in args:
         result = LDQueryResult(args['limit'], str(args['last']))
     else:
@@ -143,27 +140,18 @@ def get_variant_ld(reference_name, population_name):
         ldserver.set_samples(str(population_name), s)
     if current_app.config['CACHE_ENABLED']:
         ldserver.enable_cache(file.reference_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
+    start = time.time()
     ldserver.compute_variant_ld(str(args['variant']), str(args['chrom']), args['start'], args['stop'], result, str(population_name))
-    response['data'] = {
-        'chromosome1': [str(args['chrom'])] * len(result.data),
-        'variant1': [None] * len(result.data),
-        'position1': [None] * len(result.data),
-        'chromosome2': [str(args['chrom'])] * len(result.data),
-        'variant2': [None] * len(result.data),
-        'position2': [None] * len(result.data),
-        'r': [None] * len(result.data),
-        'rsquare': [None] * len(result.data)
-    }
-    for i, pair in enumerate(result.data):
-        response['data']['variant1'][i] = pair.variant1
-        response['data']['position1'][i] = pair.position1
-        response['data']['variant2'][i] = pair.variant2
-        response['data']['position2'][i] = pair.position2
-        response['data']['r'][i] = pair.r
-        response['data']['rsquare'][i] = pair.rsquare
-    response['next'] = build_link_next(args, result)
-    return make_response(jsonify(response), 200)
-
+    print "Computed results in {} seconds.".format("%0.4f" % (time.time() - start))
+    start = time.time()
+    base_url = request.base_url + '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))
+    j = result.get_json(str(base_url))
+    print "Jsonified result in {} seconds.".format("%0.4f" % (time.time() - start))
+    start = time.time()
+    r = make_response(j, 200)
+    r.mimetype = 'application/json'
+    print "Response created in {} seconds.".format("%0.4f" % (time.time() - start))
+    return r
 
 # TODO: LD between arbitrary variants
 # @bp.route('/<reference>/<population>/ld/cartesian', methods = ['GET'])

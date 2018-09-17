@@ -13,6 +13,7 @@
 #include <armadillo>
 #include <cmath>
 #include <regex>
+#include <chrono>
 #include "Raw.h"
 #include "Morton.h"
 #include "Segment.h"

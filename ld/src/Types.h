@@ -5,6 +5,11 @@
 #include <vector>
 #include <algorithm>
 #include <regex>
+#include <codecvt>
+#include <locale>
+#include <cereal/external/rapidjson/document.h>
+#include <cereal/external/rapidjson/writer.h>
+#include <cereal/external/rapidjson/stringbuffer.h>
 
 using namespace std;
 
@@ -60,8 +65,11 @@ struct LDQueryResult {
     int last_j;
     int page;
     vector<VariantsPairLD> data;
-    LDQueryResult(uint32_t page_limit): limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0) {}
+    LDQueryResult(uint32_t page_limit): limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0) {
+        data.reserve(page_limit);
+    }
     LDQueryResult(uint32_t page_limit, const string& last) : limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0) {
+        data.reserve(page_limit);
         vector<std::string> tokens;
         copy(sregex_token_iterator(last.begin(), last.end(), regex(":"), -1), sregex_token_iterator(), back_inserter(tokens));
         if (tokens.size() > 3) {
@@ -90,6 +98,56 @@ struct LDQueryResult {
         last_cell = 0u;
         last_i = last_j = -1;
         page = 0;
+    }
+
+    string get_json(const string& url) {
+        rapidjson::Document document;
+        document.SetObject();
+        rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
+
+        rapidjson::Value data(rapidjson::kObjectType);
+
+        rapidjson::Value variant1(rapidjson::kArrayType);
+        rapidjson::Value chromosome1(rapidjson::kArrayType);
+        rapidjson::Value position1(rapidjson::kArrayType);
+        rapidjson::Value variant2(rapidjson::kArrayType);
+        rapidjson::Value chromosome2(rapidjson::kArrayType);
+        rapidjson::Value position2(rapidjson::kArrayType);
+        rapidjson::Value rsquare(rapidjson::kArrayType);
+
+        for (auto&& p: this->data) {
+            variant1.PushBack(rapidjson::StringRef(p.variant1.c_str()), allocator);
+            chromosome1.PushBack(rapidjson::StringRef(p.chromosome1.c_str()), allocator);
+            position1.PushBack(p.position1, allocator);
+            variant2.PushBack(rapidjson::StringRef(p.variant2.c_str()), allocator);
+            chromosome2.PushBack(rapidjson::StringRef(p.chromosome2.c_str()), allocator);
+            position2.PushBack(p.position2, allocator);
+            rsquare.PushBack(p.rsquare, allocator);
+        }
+
+        data.AddMember("variant1", variant1, allocator);
+        data.AddMember("chromosome1", chromosome1, allocator);
+        data.AddMember("position1", position1, allocator);
+        data.AddMember("variant2", variant2, allocator);
+        data.AddMember("chromosome2", chromosome2, allocator);
+        data.AddMember("position2", position2, allocator);
+        data.AddMember("rsquare", rsquare, allocator);
+
+        document.AddMember("data", data, allocator);
+        if (is_last()) {
+            document.AddMember("next", rapidjson::Value(), allocator);
+        } else {
+            rapidjson::Value next;
+            string link = url + "&last=" + get_last();
+            next.SetString(link.c_str(), allocator); // by providing allocator we make a copy
+            document.AddMember("next", next, allocator);
+        }
+
+        rapidjson::StringBuffer strbuf;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
+        document.Accept(writer);
+
+        return strbuf.GetString();
     }
 };
 

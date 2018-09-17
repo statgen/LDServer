@@ -106,6 +106,7 @@ shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, const str
 }
 
 bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, LDQueryResult& result, const std::string& samples_name) const {
+//    auto start = std::chrono::system_clock::now();
     if (result.is_last()) {
         return false;
     }
@@ -162,6 +163,9 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
         }
     }
     result.page += 1;
+//    auto end = std::chrono::system_clock::now();
+//    std::chrono::duration<double> elapsed = end - start;
+//    std::cout << "Page elapsed time: " << elapsed.count() << " s\n";
     return true;
 }
 
