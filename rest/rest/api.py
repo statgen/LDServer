@@ -65,6 +65,8 @@ def get_region_ld(reference_name, population_name):
         'last': fields.Str(required = False, validate = lambda x: len(x) > 0)
     }
     args = parser.parse(arguments, validate = validate_query)
+    if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
+        args['limit'] = current_app.config['API_MAX_PAGE_SIZE']
     reference = Reference.query.filter_by(name = reference_name).first()
     if reference is None:
         abort(404)
@@ -74,15 +76,15 @@ def get_region_ld(reference_name, population_name):
     files = File.query.with_parent(reference).all()
     if not files:
         abort(404)
-    start = time.time()
+    #start = time.time()
     ldserver = LDServer(current_app.config['SEGMENT_SIZE_BP'])
-    end = time.time()
-    print "Created LD server in {} seconds.".format("%0.4f" % (end - start))
-    start = time.time()
+    #end = time.time()
+    #print "Created LD server in {} seconds.".format("%0.4f" % (end - start))
+    #start = time.time()
     for file in files:
         ldserver.set_file(str(file.path))
-    end = time.time()
-    print "Files initialized in {} seconds.".format("%0.4f" % (end - start))
+    #end = time.time()
+    #print "Files initialized in {} seconds.".format("%0.4f" % (end - start))
     if 'last' in args:
         result = LDQueryResult(args['limit'], str(args['last']))
     else:
@@ -93,17 +95,17 @@ def get_region_ld(reference_name, population_name):
         ldserver.set_samples(str(population_name), s)
     if current_app.config['CACHE_ENABLED']:
         ldserver.enable_cache(file.reference_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
-    start = time.time()
+    #start = time.time()
     ldserver.compute_region_ld(str(args['chrom']), args['start'], args['stop'], result, str(population_name))
-    print "Computed results in {} seconds.".format("%0.4f" % (time.time() - start))
-    start = time.time()
+    #print "Computed results in {} seconds.".format("%0.4f" % (time.time() - start))
+    #start = time.time()
     base_url = request.base_url + '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))
     j = result.get_json(str(base_url))
-    print "Jsonified result in {} seconds.".format("%0.4f" % (time.time() - start))
-    start = time.time()
+    #print "Jsonified result in {} seconds.".format("%0.4f" % (time.time() - start))
+    #start = time.time()
     r = make_response(j, 200)
     r.mimetype = 'application/json'
-    print "Response created in {} seconds.".format("%0.4f" % (time.time() - start))
+    #print "Response created in {} seconds.".format("%0.4f" % (time.time() - start))
     return r
 
 
@@ -118,6 +120,9 @@ def get_variant_ld(reference_name, population_name):
         'last': fields.Str(required = False, validate = lambda x: len(x) > 0)
     }
     args = parser.parse(arguments, validate = validate_query)
+    print args
+    if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
+        args['limit'] = current_app.config['API_MAX_PAGE_SIZE']
     reference = Reference.query.filter_by(name = reference_name).first()
     if reference is None:
         abort(404)
