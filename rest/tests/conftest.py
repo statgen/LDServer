@@ -15,11 +15,14 @@ def app():
         'CACHE_REDIS_PORT': 6379
     })
 
+    app.config['REFERENCES_JSON'] = os.path.join(os.path.dirname(__file__), 'datasets.json')
+
     from rest.model import load_references
     with app.app_context():
-        load_references(os.path.join(os.path.dirname(__file__), 'datasets.json'))
+        load_references(app.config['REFERENCES_JSON'])
 
     yield app
+
 
 @pytest.fixture
 def client(app):
