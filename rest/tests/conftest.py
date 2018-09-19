@@ -6,7 +6,6 @@ import pytest
 def app():
     app = create_app({
         'TESTING': True,
-        'REFERENCES_JSON': os.path.join(os.path.dirname(__file__), 'datasets.json'),
         'SQLALCHEMY_DATABASE_URI': 'sqlite:///' + os.path.join(os.path.dirname(__file__), 'sql.db'),
         'SQLALCHEMY_TRACK_MODIFICATIONS': False,
         'API_MAX_PAGE_SIZE': 1000,
@@ -18,7 +17,7 @@ def app():
 
     from rest.model import load_references
     with app.app_context():
-        load_references()
+        load_references(os.path.join(os.path.dirname(__file__), 'datasets.json'))
 
     yield app
 
