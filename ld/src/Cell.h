@@ -23,8 +23,7 @@ using namespace std;
 
 class Cell {
 private:
-    char* key;
-    uint64_t key_size;
+    string key;
     bool cached;
 
     unique_ptr<float[]> raw_fmat;

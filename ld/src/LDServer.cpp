@@ -225,6 +225,9 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
         }
         if (!cell.is_cached()) {
             cell.compute();
+            if (cache_enabled) {
+                cell.save(cache_context);
+            }
         }
         cell.extract(index_variant, index_bp, region_start_bp, region_stop_bp, result);
         if (result.last_j >= 0) {

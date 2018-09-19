@@ -296,6 +296,45 @@ TEST_F(LDServerTest, variant_with_paging_3) {
     ASSERT_EQ(result_total_size, goldstandard.size());
 }
 
+TEST_F(LDServerTest, variant_with_paging_no_variant_1) {
+    LDServer server(100);
+    LDQueryResult result(2);
+    int result_total_size = 0;
+    server.set_file("chr22.test.sav");
+    while (server.compute_variant_ld("22:51241101_A/C", "22", 51241101, 51241385, result, LDServer::ALL_SAMPLES_KEY)) {
+        ASSERT_LE(result.limit, 2);
+        ASSERT_LE(result.data.size(), 2);
+        result_total_size += result.data.size();
+    }
+    ASSERT_EQ(result_total_size, 0);
+}
+
+TEST_F(LDServerTest, variant_with_paging_no_variant_2) {
+    LDServer server(100);
+    LDQueryResult result(2);
+    int result_total_size = 0;
+    server.set_file("chr22.test.sav");
+    while (server.compute_variant_ld("22:51241386_C/T", "22", 51241101, 51241385, result, LDServer::ALL_SAMPLES_KEY)) {
+        ASSERT_LE(result.limit, 2);
+        ASSERT_LE(result.data.size(), 2);
+        result_total_size += result.data.size();
+    }
+    ASSERT_EQ(result_total_size, 0);
+}
+
+TEST_F(LDServerTest, variant_with_paging_no_variant_3) {
+    LDServer server(100);
+    LDQueryResult result(2);
+    int result_total_size = 0;
+    server.set_file("chr22.test.sav");
+    while (server.compute_variant_ld("22:51241309_C/A", "22", 51241101, 51244237, result, LDServer::ALL_SAMPLES_KEY)) {
+        ASSERT_LE(result.limit, 2);
+        ASSERT_LE(result.data.size(), 2);
+    }
+    ASSERT_EQ(result_total_size, 0);
+}
+
+
 TEST_F(LDServerTest, AFR_region_with_paging) {
     map<string, double> goldstandard;
     vector<string> samples;
@@ -567,4 +606,28 @@ TEST_F(LDServerTest, SAV_one_page_no_segment_intersect_2) {
     }
 }
 
+TEST_F(LDServerTest, known_memory_leak_test) {
 
+    LDServer server(1000);
+    server.enable_cache(1, "127.0.0.1", 6379);
+    LDQueryResult result(100000);
+    int result_total_size = 0;
+
+    server.set_file("../../data/ALL.chr22.sav");
+    while (server.compute_variant_ld("22:45186606_C/T", "22", 45186270, 45286270, result, LDServer::ALL_SAMPLES_KEY)) {
+//    while (server.compute_variant_ld("22:34925425_A/T", "22", 34840176, 34940176, result, LDServer::ALL_SAMPLES_KEY)) {
+//        ASSERT_LE(result.limit, 1000);
+//        ASSERT_LE(result.data.size(), 1000);
+//        for (auto&& entry : result.data) {
+//            string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+//            cout << key << " " << entry.rsquare << endl;
+//            ASSERT_NE(entry.variant1, "");
+//            ASSERT_NE(entry.variant2, "");
+//            ASSERT_EQ(goldstandard.count(key), 1);
+//            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.000001);
+//        }
+//        result_total_size += result.data.size();
+    }
+//    ASSERT_EQ(result_total_size, goldstandard.size());
+//    cout << "here" << endl;
+}

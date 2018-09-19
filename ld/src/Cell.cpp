@@ -1,37 +1,32 @@
 #include "Cell.h"
 
 Cell::Cell(uint32_t unique_key, const string& samples_name, const string &chromosome, uint64_t morton_code) :
-        key(nullptr), key_size(0u), cached(false), raw_fmat(nullptr), segment_i(nullptr), segment_j(nullptr), chromosome(chromosome), morton_code(morton_code) {
-    strstreambuf buffer;
-    basic_ostream<char> os(&buffer);
+        key(""), cached(false), raw_fmat(nullptr), segment_i(nullptr), segment_j(nullptr), chromosome(chromosome), morton_code(morton_code) {
+    stringstream os(ios::binary | ios::out);
     os.write(reinterpret_cast<const char*>(&unique_key), sizeof(unique_key));
     os.write(samples_name.c_str(), samples_name.size());
     os.write(chromosome.c_str(), chromosome.size());
     os.write(reinterpret_cast<const char*>(&morton_code), sizeof(morton_code));
-    key_size = buffer.pcount();
-    key = new char[key_size];
-    memcpy(key, buffer.str(), key_size);
+    os.flush();
+    key = os.str();
     from_morton_code(morton_code, this->i, this->j);
 }
 
 Cell::~Cell() {
-    if (key != nullptr) {
-        delete[] key;
-        key = nullptr;
-    }
+
 }
 
 const char* Cell::get_key() const {
-    return key;
+    return key.c_str();
 }
 
 uint64_t Cell::get_key_size() const {
-    return key_size;
+    return key.length();
 }
 
 void Cell::load(redisContext* redis_cache) {
     redisReply *reply = nullptr;
-    reply = (redisReply *) redisCommand(redis_cache, "GET %b", key, key_size);
+    reply = (redisReply *) redisCommand(redis_cache, "GET %b", key.c_str(), key.length());
     if (reply == nullptr) {
         throw runtime_error("Error while reading a cell from Redis cache");
     }
@@ -60,7 +55,7 @@ void Cell::save(redisContext* redis_cache) {
     } else {
         n *= segment_i->positions.size();
     }
-    reply = (redisReply*)redisCommand(redis_cache, "SET %b %b", key, key_size, raw_fmat.get(), n);
+    reply = (redisReply*)redisCommand(redis_cache, "SET %b %b", key.c_str(), key.length(), raw_fmat.get(), n);
     if (reply == nullptr) {
         throw runtime_error("Error while writing a cell to Redis cache");
     }
@@ -278,34 +273,44 @@ void Cell::extract(const std::string& index_variant, std::uint64_t index_bp, std
         int segment_i_from = 0;
         int segment_i_to = segment_i->names.size() - 1;
         if ((region_start_bp > segment_i->start_bp) && (region_start_bp <= segment_i->stop_bp)) {
-            auto start_it = std::lower_bound(segment_i->positions.begin(), segment_i->positions.end(), region_start_bp);
-            segment_i_from = start_it - segment_i->positions.begin();
+            segment_i_from = std::lower_bound(segment_i->positions.begin(), segment_i->positions.end(), region_start_bp) - segment_i->positions.begin();
+        }
+        if (segment_i_from >= segment_i->positions.size()) {
+            result.last_j = -1;
+            return;
         }
         if ((region_stop_bp > segment_i->start_bp) && (region_stop_bp <= segment_i->stop_bp)) {
-            auto stop_it = std::upper_bound(segment_i->positions.begin(), segment_i->positions.end(), region_stop_bp);
-            segment_i_to = stop_it - segment_i->positions.begin() - 1u;
+            segment_i_to = std::upper_bound(segment_i->positions.begin(), segment_i->positions.end(), region_stop_bp) - segment_i->positions.begin() - 1u;
+        }
+        if (segment_i_to < 0) {
+            result.last_j = -1;
+            return;
         }
         auto index_it = std::lower_bound(segment_i->positions.begin(), segment_i->positions.end(), index_bp);
         if (index_it == segment_i->positions.end()) {
-            // TODO: throw exception - can't find index
+            result.last_j = -1;
+            return;
         }
-        int segment_i_index = index_it - segment_i->positions.begin();
+        int segment_i_index = std::lower_bound(segment_i->positions.begin(), segment_i->positions.end(), index_bp) - segment_i->positions.begin();
         while (segment_i_index < segment_i->positions.size()) {
-            if (segment_i->positions[segment_i_index] == index_bp) { // TODO: must check index name as well
-                break;
+            if (segment_i->positions[segment_i_index] == index_bp) {
+                if (segment_i->names[segment_i_index].compare(index_variant) == 0) {
+                    break;
+                }
+                ++segment_i_index;
+            } else {
+                segment_i_index = segment_i->positions.size();
             }
-            ++segment_i_index;
         }
         if (segment_i_index >= segment_i->positions.size()) {
-            // TODO: throw exception - can't find index
+            result.last_j = -1;
+            return;
         }
-        auto segment_i_n_variants = segment_i_to - segment_i_from + 1;
-        auto result_i = result.data.size();
+        arma::fmat R(raw_fmat.get(), segment_i->positions.size(), segment_i->positions.size(), false, true);
         int i = segment_i_index;
         int j = result.last_j >= 0 ? result.last_j : 0;
-
-        arma::fmat R(raw_fmat.get(), segment_i->positions.size(), segment_i->positions.size(), false, true);
-
+        auto segment_i_n_variants = segment_i_to - segment_i_from + 1;
+        auto result_i = result.data.size();
         while (j < segment_i_n_variants) {
             result.data.emplace_back(
                     segment_i->names[i],
@@ -347,35 +352,45 @@ void Cell::extract(const std::string& index_variant, std::uint64_t index_bp, std
             segment_j = this->segment_i;
             reversed = true;
         } else {
-            // TODO: throw exception
+            result.last_j = -1;
+            return;
         }
         int segment_j_from = 0;
         int segment_j_to = segment_j->names.size() - 1;
-        auto start_it = std::lower_bound(segment_j->positions.begin(), segment_j->positions.end(), region_start_bp);
-        segment_j_from = start_it - segment_j->positions.begin();
-        auto stop_it = std::upper_bound(segment_j->positions.begin(), segment_j->positions.end(), region_stop_bp);
-        segment_j_to = stop_it - segment_j->positions.begin() - 1u;
-        auto index_it = std::lower_bound(segment_i->positions.begin(), segment_i->positions.end(), index_bp);
-        if (index_it == segment_i->positions.end()) {
-            // TODO: throw exception - can't find index
+        if ((region_start_bp > segment_j->start_bp) && (region_start_bp <= segment_j->stop_bp)) {
+            segment_j_from = std::lower_bound(segment_j->positions.begin(), segment_j->positions.end(), region_start_bp) - segment_j->positions.begin();
         }
-        int segment_i_index = index_it - segment_i->positions.begin();
+        if (segment_j_from >= segment_j->positions.size()) {
+            result.last_j = -1;
+            return;
+        }
+        if ((region_stop_bp > segment_j->start_bp) && (region_stop_bp <= segment_j->stop_bp)) {
+            segment_j_to = std::upper_bound(segment_j->positions.begin(), segment_j->positions.end(), region_stop_bp) - segment_j->positions.begin() - 1u;
+        }
+        if (segment_j_to < 0) {
+            result.last_j = -1;
+            return;
+        }
+        int segment_i_index = std::lower_bound(segment_i->positions.begin(), segment_i->positions.end(), index_bp) - segment_i->positions.begin();
         while (segment_i_index < segment_i->positions.size()) {
-            if (segment_i->positions[segment_i_index] == index_bp) { // TODO: must check index name as well
-                break;
+            if (segment_i->positions[segment_i_index] == index_bp) {
+                if (segment_i->names[segment_i_index].compare(index_variant) == 0) {
+                    break;
+                }
+                ++segment_i_index;
+            } else {
+                segment_i_index = segment_i->positions.size();
             }
-            ++segment_i_index;
         }
         if (segment_i_index >= segment_i->positions.size()) {
-            // TODO: throw exception - can't find index
+            result.last_j = -1;
+            return;
         }
-        auto segment_j_n_variants = segment_j_to - segment_j_from + 1;
-        auto result_i = result.data.size();
+        arma::fmat R(raw_fmat.get(), this->segment_i->positions.size(), this->segment_j->positions.size(), false, true);
         int i = segment_i_index;
         int j = result.last_j >= 0 ? result.last_j : 0;
-
-        arma::fmat R(raw_fmat.get(), this->segment_i->positions.size(), this->segment_j->positions.size(), false, true);
-
+        auto segment_j_n_variants = segment_j_to - segment_j_from + 1;
+        auto result_i = result.data.size();
         while (j < segment_j_n_variants) {
             result.data.emplace_back(
                     segment_i->names[i],

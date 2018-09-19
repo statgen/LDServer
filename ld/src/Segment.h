@@ -16,8 +16,7 @@ using namespace std;
 
 class Segment {
 private:
-    char* key;
-    uint64_t key_size;
+    string key;
     bool cached;
 
 public:
