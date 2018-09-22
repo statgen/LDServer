@@ -76,7 +76,8 @@ void LDServer::parse_variant(const std::string& variant, std::string& chromosome
     alt_allele = variant_name_tokens[3];
 }
 
-shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, const string& samples_name, const vector<string>& samples, bool only_variants, const std::string& chromosome, uint64_t i, std::map<std::uint64_t, shared_ptr<Segment>>& segments) const {
+shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, const string& samples_name, bool only_variants, const std::string& chromosome, uint64_t i, std::map<std::uint64_t, shared_ptr<Segment>>& segments) const {
+//    auto start = std::chrono::system_clock::now();
     auto segment_it = segments.find(i);
     if (segment_it == segments.end()) {
         segment_it = segments.emplace(make_pair(i, make_shared<Segment>(cache_key, samples_name, chromosome, i * segment_size, i * segment_size + segment_size - 1u))).first;
@@ -85,23 +86,30 @@ shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, const str
         }
     }
     if (segment_it->second->is_cached()) {
-        if ((!only_variants) && (!segment_it->second->genotypes_loaded)) {
-            raw->load_genotypes_only(samples, *(segment_it->second));
-            segment_it->second->genotypes_loaded = true;
+        if ((!only_variants) && (!segment_it->second->has_genotypes())) {
+            raw->load_genotypes(*(segment_it->second));
         }
     } else {
-        if ((only_variants) && (!segment_it->second->variants_loaded)) {
-            raw->load_variants_only(samples, *(segment_it->second));
-            segment_it->second->variants_loaded = true;
-        } else if ((!segment_it->second->variants_loaded) || (!segment_it->second->variants_loaded)) {
-            raw->load(samples, *(segment_it->second));
-            segment_it->second->genotypes_loaded = true;
-            segment_it->second->variants_loaded = true;
+        if (only_variants) {
+            if (!segment_it->second->has_names()) {
+                raw->load_names(*(segment_it->second));
+            }
+        } else {
+            if (!segment_it->second->has_names() && !segment_it->second->has_genotypes()) {
+                raw->load(*(segment_it->second));
+            } else if (!segment_it->second->has_names()) {
+                raw->load_names(*(segment_it->second));
+            } else if (!segment_it->second->has_genotypes()){
+                raw->load_genotypes(*(segment_it->second));
+            }
         }
-        if (!segment_it->second->is_cached() && cache_enabled) {
+        if (cache_enabled) {
             segment_it->second->save(cache_context);
         }
     }
+//    auto end = std::chrono::system_clock::now();
+//    std::chrono::duration<double> elapsed = end - start;
+//    std::cout << "Segment load elapsed time: " << elapsed.count() << " s\n";
     return segment_it->second;
 }
 
@@ -124,6 +132,8 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
         return false;
     }
 
+    raw_it->second->open(region_chromosome, samples_it->second);
+
     std::map<std::uint64_t, shared_ptr<Segment>> segments;
 
     uint64_t segment_i = region_start_bp / segment_size;
@@ -137,9 +147,9 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
         if (cache_enabled) {
             cell.load(cache_context);
         }
-        cell.segment_i = load_segment(raw_it->second, samples_name, samples_it->second, cell.is_cached(), region_chromosome, cell.i, segments);
+        cell.segment_i = load_segment(raw_it->second, samples_name, cell.is_cached(), region_chromosome, cell.i, segments);
         if (cell.i != cell.j) {
-            cell.segment_j = load_segment(raw_it->second, samples_name, samples_it->second, cell.is_cached(), region_chromosome, cell.j, segments);
+            cell.segment_j = load_segment(raw_it->second, samples_name, cell.is_cached(), region_chromosome, cell.j, segments);
         }
         if (!cell.is_cached()) {
             cell.compute();
@@ -197,6 +207,8 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
         return false;
     }
 
+    raw_it->second->open(index_chromosome, samples_it->second);
+
     std::map<std::uint64_t, shared_ptr<Segment>> segments;
 
     uint64_t segment_index = index_bp / segment_size;
@@ -219,9 +231,9 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
         if (cache_enabled) {
             cell.load(cache_context);
         }
-        cell.segment_i = load_segment(raw_it->second, samples_name, samples_it->second, cell.is_cached(), region_chromosome, cell.i, segments);
+        cell.segment_i = load_segment(raw_it->second, samples_name, cell.is_cached(), region_chromosome, cell.i, segments);
         if (cell.i != cell.j) {
-            cell.segment_j = load_segment(raw_it->second, samples_name, samples_it->second, cell.is_cached(), region_chromosome, cell.j, segments);
+            cell.segment_j = load_segment(raw_it->second, samples_name, cell.is_cached(), region_chromosome, cell.j, segments);
         }
         if (!cell.is_cached()) {
             cell.compute();

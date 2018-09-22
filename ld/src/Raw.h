@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <limits>
 #include <savvy/reader.hpp>
 #include <savvy/armadillo_vector.hpp>
 #include "Segment.h"
@@ -19,35 +20,50 @@ public:
     Raw(const string& file);
     virtual ~Raw();
 
+    virtual void open(const string& chromosome, const vector<string>& samples) = 0;
     virtual vector<string> get_samples() const = 0;
     virtual vector<string> get_chromosomes() const = 0;
-    virtual void load(const vector<string>& samples, Segment& segment) const = 0;
-    virtual void load_variants_only(const vector<string>& samples, Segment& segment) const = 0;
-    virtual void load_genotypes_only(const vector<string>& samples, Segment& segment) const = 0;
+    virtual void load(Segment& segment) = 0;
+    virtual void load_names(Segment &segment) = 0;
+    virtual void load_genotypes(Segment &segment) = 0;
 };
 
 class RawVCF : public Raw {
+private:
+    unique_ptr<savvy::vcf::indexed_reader<1>> f;
+    bool has_cached;
+    savvy::site_info anno;
+    savvy::armadillo::sparse_vector<float> alleles;
+
 public:
     using Raw::Raw;
     virtual ~RawVCF();
 
-    virtual vector<string> get_samples() const;
-    virtual vector<string> get_chromosomes() const;
-    virtual void load(const vector<string>& samples, Segment& segment) const;
-    virtual void load_variants_only(const vector<string>& samples, Segment& segment) const;
-    virtual void load_genotypes_only(const vector<string>& samples, Segment& segment) const;
+    void open(const string& chromosome, const vector<string>& samples) override;
+    vector<string> get_samples() const override;
+    vector<string> get_chromosomes() const override;
+    void load(Segment& segment) override;
+    void load_names(Segment &segment) override;
+    void load_genotypes(Segment &segment) override;
 };
 
 class RawSAV : public Raw {
+private:
+    unique_ptr<savvy::indexed_reader> f;
+    bool has_cached;
+    savvy::site_info anno;
+    savvy::armadillo::sparse_vector<float> alleles;
+
 public:
     using Raw::Raw;
     virtual ~RawSAV();
 
-    virtual vector<string> get_samples() const;
-    virtual vector<string> get_chromosomes() const;
-    virtual void load(const vector<string>& samples, Segment& segment) const;
-    virtual void load_variants_only(const vector<string>& samples, Segment& segment) const;
-    virtual void load_genotypes_only(const vector<string>& samples, Segment& segment) const;
+    void open(const string& chromosome, const vector<string>& samples) override;
+    vector<string> get_samples() const override;
+    vector<string> get_chromosomes() const override;
+    void load(Segment& segment) override;
+    void load_names(Segment &segment) override;
+    void load_genotypes(Segment &segment) override;
 };
 
 class RawFactory {

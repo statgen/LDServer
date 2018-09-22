@@ -450,17 +450,26 @@ TEST_F(LDServerTest, segment_key) {
 
 TEST_F(LDServerTest, segment_cache) {
     RawSAV raw("chr22.test.sav");
+    raw.open("22", raw.get_samples());
     Segment segment1(1, "ALL", "22", 51241101, 51241385);
-    raw.load(raw.get_samples(), segment1);
+    ASSERT_FALSE(segment1.has_names());
+    ASSERT_FALSE(segment1.has_genotypes());
+    raw.load(segment1);
+    ASSERT_TRUE(segment1.has_names());
+    ASSERT_TRUE(segment1.has_genotypes());
+
     segment1.save(redis_cache);
 
     Segment segment2(1, "ALL", "22", 51241101, 51241385);
+    ASSERT_FALSE(segment2.has_names());
+    ASSERT_FALSE(segment2.has_genotypes());
     ASSERT_EQ(segment2.names.size(), 0);
     ASSERT_EQ(segment2.positions.size(), 0);
     segment2.load(redis_cache);
-
-    ASSERT_THAT(segment1.names, ::testing::ContainerEq(segment2.names));
-    ASSERT_THAT(segment1.positions, ::testing::ContainerEq(segment2.positions));
+    ASSERT_TRUE(segment2.has_names());
+    ASSERT_FALSE(segment2.has_genotypes());
+    ASSERT_THAT(segment2.names, ::testing::ContainerEq(segment2.names));
+    ASSERT_THAT(segment2.positions, ::testing::ContainerEq(segment2.positions));
 }
 
 TEST_F(LDServerTest, cell_key) {
@@ -490,9 +499,10 @@ TEST_F(LDServerTest, cell_cache) {
     LDQueryResult result2(1000);
 
     RawSAV raw("chr22.test.sav");
+    raw.open("22", raw.get_samples());
     Cell cell1(1, "ALL", "22", to_morton_code(512411, 512411));
     cell1.segment_i = make_shared<Segment>(1, "ALL", "22", 51241100, 51241199);
-    raw.load(raw.get_samples(), *(cell1.segment_i));
+    raw.load(*(cell1.segment_i));
     cell1.segment_i->save(redis_cache);
     cell1.compute();
     cell1.save(redis_cache);
@@ -614,20 +624,42 @@ TEST_F(LDServerTest, known_memory_leak_test) {
     int result_total_size = 0;
 
     server.set_file("../../data/ALL.chr22.sav");
-    while (server.compute_variant_ld("22:45186606_C/T", "22", 45186270, 45286270, result, LDServer::ALL_SAMPLES_KEY)) {
-//    while (server.compute_variant_ld("22:34925425_A/T", "22", 34840176, 34940176, result, LDServer::ALL_SAMPLES_KEY)) {
-//        ASSERT_LE(result.limit, 1000);
-//        ASSERT_LE(result.data.size(), 1000);
-//        for (auto&& entry : result.data) {
-//            string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-//            cout << key << " " << entry.rsquare << endl;
-//            ASSERT_NE(entry.variant1, "");
-//            ASSERT_NE(entry.variant2, "");
-//            ASSERT_EQ(goldstandard.count(key), 1);
-//            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.000001);
-//        }
-//        result_total_size += result.data.size();
+    while (server.compute_variant_ld("22:45186606_C/T", "22", 45186270, 45286270, result, LDServer::ALL_SAMPLES_KEY));
+}
+
+TEST_F(LDServerTest, DISABLED_read_spead) {
+    vector<string> names;
+    vector<uint64_t> positions;
+
+    vector<arma::uword> sp_mat_rowind;
+    vector<arma::uword> sp_mat_colind;
+
+    uint64_t n_haplotypes;
+
+    auto start = std::chrono::system_clock::now();
+    savvy::indexed_reader f("../../data/ALL.chr22.sav", {"22", 25637000, 26137999}, savvy::fmt::gt);
+    std::chrono::duration<double> elapsed =  std::chrono::system_clock::now() - start;
+    std::cout << "reader setup: " << elapsed.count() << " s\n";
+
+
+    std::stringstream ss;
+    savvy::site_info anno;
+    savvy::armadillo::sparse_vector<float> alleles;
+    while (f.read(anno, alleles)) {
+        n_haplotypes = alleles.n_rows;
+        if (alleles.n_nonzero > 0) {
+            ss.str("");
+            ss << anno.chromosome() << ":" << anno.position() << "_" << anno.ref() << "/" << anno.alt();
+            names.emplace_back(ss.str());
+            positions.push_back(anno.position());
+            sp_mat_colind.push_back(sp_mat_rowind.size());
+            for (auto it = alleles.begin(); it != alleles.end(); ++it) {
+                sp_mat_rowind.push_back(it.row());
+            }
+        }
     }
-//    ASSERT_EQ(result_total_size, goldstandard.size());
-//    cout << "here" << endl;
+    sp_mat_colind.push_back(sp_mat_rowind.size());
+
+    cout << names.size() << endl;
+    cout << positions.size() << endl;
 }

@@ -122,7 +122,7 @@ void Cell::compute() {
     }
 //    auto end = std::chrono::system_clock::now();
 //    std::chrono::duration<double> elapsed = end - start;
-//    std::cout << "Cell region compute elapsed time: " << elapsed.count() << " s\n";
+//    std::cout << "Cell compute elapsed time: " << elapsed.count() << " s\n";
 }
 
 void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result) {
@@ -265,6 +265,7 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
 }
 
 void Cell::extract(const std::string& index_variant, std::uint64_t index_bp, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result) {
+//    auto start = std::chrono::system_clock::now();
     if (this->i == this->j) { // diagonal cell
         if (segment_i->positions.empty()) {
             result.last_j = -1;
@@ -415,6 +416,9 @@ void Cell::extract(const std::string& index_variant, std::uint64_t index_bp, std
         }
     }
     result.last_j = -1;
+//    auto end = std::chrono::system_clock::now();
+//    std::chrono::duration<double> elapsed = end - start;
+//    std::cout << "Cell variant extract elapsed time: " << elapsed.count() << " s\n";
 }
 
 

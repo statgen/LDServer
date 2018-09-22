@@ -9,6 +9,14 @@ Raw::~Raw() {
 }
 
 RawVCF::~RawVCF() {
+
+}
+
+void RawVCF::open(const string& chromosome, const vector<string>& samples) {
+    f.release();
+    f = unique_ptr<savvy::vcf::indexed_reader<1>>(new savvy::vcf::indexed_reader<1>(file, {chromosome}, savvy::fmt::gt));
+    f->subset_samples({samples.begin(), samples.end()});
+    has_cached = false;
 }
 
 vector<string> RawVCF::get_samples() const {
@@ -19,71 +27,67 @@ vector<string> RawVCF::get_chromosomes() const {
     return savvy::vcf::indexed_reader<1>(file, {""}, savvy::fmt::gt).chromosomes();
 }
 
-void RawVCF::load(const vector<string>& samples, Segment& segment) const {
-    savvy::vcf::indexed_reader<1> f(file, {segment.chromosome, segment.start_bp, segment.stop_bp}, savvy::fmt::gt);
-    f.subset_samples({samples.begin(), samples.end()});
-    segment.sp_mat_rowind.clear();
-    segment.sp_mat_colind.clear();
-    segment.names.clear();
-    segment.positions.clear();
-    std::stringstream ss;
-    savvy::site_info anno;
-    savvy::armadillo::sparse_vector<float> alleles;
-    while (f.read(anno, alleles)) {
-        segment.n_haplotypes = alleles.n_rows;
-        if (alleles.n_nonzero > 0) {
-            ss.str("");
-            ss << anno.chromosome() << ":" << anno.position() << "_" << anno.ref() << "/" << anno.alt();
-            segment.names.emplace_back(ss.str());
-            segment.positions.push_back(anno.position());
-            segment.sp_mat_colind.push_back(segment.sp_mat_rowind.size());
-            for (auto it = alleles.begin(); it != alleles.end(); ++it) {
-                segment.sp_mat_rowind.push_back(it.row());
-            }
-        }
+void RawVCF::load(Segment& segment) {
+    segment.clear();
+    if (has_cached && (segment.start_bp <= anno.position()) && (anno.position() <= segment.stop_bp)) {
+        segment.add(anno, alleles);
+    } else{
+        f->reset_region({segment.chromosome, segment.start_bp, numeric_limits<int>::max() - 1});
     }
-    segment.sp_mat_colind.push_back(segment.sp_mat_rowind.size());
+    has_cached = false;
+    while (f->read(anno, alleles).good()) {
+        if (anno.position() > segment.stop_bp) {
+            has_cached = true;
+            break;
+        }
+        segment.add(anno, alleles);
+    }
+    segment.freeze();
 }
 
-void RawVCF::load_variants_only(const vector<string>& samples, Segment& segment) const {
-    savvy::vcf::indexed_reader<1> f(file, {segment.chromosome, segment.start_bp, segment.stop_bp}, savvy::fmt::gt);
-    f.subset_samples({samples.begin(), samples.end()});
-    segment.names.clear();
-    segment.positions.clear();
-    std::stringstream ss;
-    savvy::site_info anno;
-    savvy::armadillo::sparse_vector<float> alleles;
-    while (f.read(anno, alleles)) {
-        segment.n_haplotypes = alleles.n_rows;
-        if (alleles.n_nonzero > 0) {
-            ss.str("");
-            ss << anno.chromosome() << ":" << anno.position() << "_" << anno.ref() << "/" << anno.alt();
-            segment.names.emplace_back(ss.str());
-            segment.positions.push_back(anno.position());
-        }
+void RawVCF::load_names(Segment &segment) {
+    segment.clear_names();
+    if (has_cached && (segment.start_bp <= anno.position()) && (anno.position() <= segment.stop_bp)) {
+        segment.add_name(anno, alleles);
+    } else{
+        f->reset_region({segment.chromosome, segment.start_bp, numeric_limits<int>::max() - 1});
     }
+    has_cached = false;
+    while (f->read(anno, alleles)) {
+        if (anno.position() > segment.stop_bp) {
+            has_cached = true;
+            break;
+        }
+        segment.add_name(anno, alleles);
+    }
+    segment.freeze_names();
 }
 
-void RawVCF::load_genotypes_only(const vector<string>& samples, Segment& segment) const {
-    savvy::vcf::indexed_reader<1> f(file, {segment.chromosome, segment.start_bp, segment.stop_bp}, savvy::fmt::gt);
-    f.subset_samples({samples.begin(), samples.end()});
-    segment.sp_mat_rowind.clear();
-    segment.sp_mat_colind.clear();
-    savvy::site_info anno;
-    savvy::armadillo::sparse_vector<float> alleles;
-    while (f.read(anno, alleles)) {
-        segment.n_haplotypes = alleles.n_rows;
-        if (alleles.n_nonzero > 0) {
-            segment.sp_mat_colind.push_back(segment.sp_mat_rowind.size());
-            for (auto it = alleles.begin(); it != alleles.end(); ++it) {
-                segment.sp_mat_rowind.push_back(it.row());
-            }
-        }
+void RawVCF::load_genotypes(Segment &segment) {
+    segment.clear_genotypes();
+    if (has_cached && (segment.start_bp <= anno.position()) && (anno.position() <= segment.stop_bp)) {
+        segment.add_genotypes(alleles);
+    } else{
+        f->reset_region({segment.chromosome, segment.start_bp, numeric_limits<int>::max() - 1});
     }
-    segment.sp_mat_colind.push_back(segment.sp_mat_rowind.size());
+    while (f->read(anno, alleles)) {
+        if (anno.position() > segment.stop_bp) {
+            has_cached = true;
+            break;
+        }
+        segment.add_genotypes(alleles);
+    }
+    segment.freeze_genotypes();
 }
 
 RawSAV::~RawSAV() {
+}
+
+void RawSAV::open(const string& chromosome, const vector<string>& samples) {
+    f.release();
+    f = unique_ptr<savvy::indexed_reader>(new savvy::indexed_reader(file, {chromosome}, savvy::fmt::gt));
+    f->subset_samples({samples.begin(), samples.end()});
+    has_cached = false;
 }
 
 vector<string> RawSAV::get_samples() const {
@@ -94,68 +98,57 @@ vector<string> RawSAV::get_chromosomes() const {
     return savvy::indexed_reader(file, {""}, savvy::fmt::gt).chromosomes();
 }
 
-void RawSAV::load(const vector<string>& samples, Segment& segment) const {
-    savvy::indexed_reader f(file, {segment.chromosome, segment.start_bp, segment.stop_bp}, savvy::fmt::gt);
-    f.subset_samples({samples.begin(), samples.end()});
-    segment.sp_mat_rowind.clear();
-    segment.sp_mat_colind.clear();
-    segment.names.clear();
-    segment.positions.clear();
-    std::stringstream ss;
-    savvy::site_info anno;
-    savvy::armadillo::sparse_vector<float> alleles;
-    while (f.read(anno, alleles)) {
-        segment.n_haplotypes = alleles.n_rows;
-        if (alleles.n_nonzero > 0) {
-            ss.str("");
-            ss << anno.chromosome() << ":" << anno.position() << "_" << anno.ref() << "/" << anno.alt();
-            segment.names.emplace_back(ss.str());
-            segment.positions.push_back(anno.position());
-            segment.sp_mat_colind.push_back(segment.sp_mat_rowind.size());
-            for (auto it = alleles.begin(); it != alleles.end(); ++it) {
-                segment.sp_mat_rowind.push_back(it.row());
-            }
-        }
+void RawSAV::load(Segment& segment) {
+    segment.clear();
+    if (has_cached && (segment.start_bp <= anno.position()) && (anno.position() <= segment.stop_bp)) {
+        segment.add(anno, alleles);
+    } else {
+        f->reset_region({segment.chromosome, segment.start_bp});
     }
-    segment.sp_mat_colind.push_back(segment.sp_mat_rowind.size());
+    has_cached = false;
+    while (f->read(anno, alleles).good()) {
+        if (anno.position() > segment.stop_bp) {
+            has_cached = true;
+            break;
+        }
+        segment.add(anno, alleles);
+    }
+    segment.freeze();
 }
 
-void RawSAV::load_variants_only(const vector<string>& samples, Segment& segment) const {
-    savvy::indexed_reader f(file, {segment.chromosome, segment.start_bp, segment.stop_bp}, savvy::fmt::gt);
-    f.subset_samples({samples.begin(), samples.end()});
-    segment.names.clear();
-    segment.positions.clear();
-    std::stringstream ss;
-    savvy::site_info anno;
-    savvy::armadillo::sparse_vector<float> alleles;
-    while (f.read(anno, alleles)) {
-        segment.n_haplotypes = alleles.n_rows;
-        if (alleles.n_nonzero > 0) {
-            ss.str("");
-            ss << anno.chromosome() << ":" << anno.position() << "_" << anno.ref() << "/" << anno.alt();
-            segment.names.emplace_back(ss.str());
-            segment.positions.push_back(anno.position());
-        }
+void RawSAV::load_names(Segment &segment) {
+    segment.clear_names();
+    if (has_cached && (segment.start_bp <= anno.position()) && (anno.position() <= segment.stop_bp)) {
+        segment.add_name(anno, alleles);
+    } else{
+        f->reset_region({segment.chromosome, segment.start_bp});
     }
+    has_cached = false;
+    while (f->read(anno, alleles)) {
+        if (anno.position() > segment.stop_bp) {
+            has_cached = true;
+            break;
+        }
+        segment.add_name(anno, alleles);
+    }
+    segment.freeze_names();
 }
 
-void RawSAV::load_genotypes_only(const vector<string>& samples, Segment& segment) const {
-    savvy::indexed_reader f(file, {segment.chromosome, segment.start_bp, segment.stop_bp}, savvy::fmt::gt);
-    f.subset_samples({samples.begin(), samples.end()});
-    segment.sp_mat_rowind.clear();
-    segment.sp_mat_colind.clear();
-    savvy::site_info anno;
-    savvy::armadillo::sparse_vector<float> alleles;
-    while (f.read(anno, alleles)) {
-        segment.n_haplotypes = alleles.n_rows;
-        if (alleles.n_nonzero > 0) {
-            segment.sp_mat_colind.push_back(segment.sp_mat_rowind.size());
-            for (auto it = alleles.begin(); it != alleles.end(); ++it) {
-                segment.sp_mat_rowind.push_back(it.row());
-            }
-        }
+void RawSAV::load_genotypes(Segment &segment) {
+    segment.clear_genotypes();
+    if (has_cached && (segment.start_bp <= anno.position()) && (anno.position() <= segment.stop_bp)) {
+        segment.add_genotypes(alleles);
+    } else{
+        f->reset_region({segment.chromosome, segment.start_bp});
     }
-    segment.sp_mat_colind.push_back(segment.sp_mat_rowind.size());
+    while (f->read(anno, alleles)) {
+        if (anno.position() > segment.stop_bp) {
+            has_cached = true;
+            break;
+        }
+        segment.add_genotypes(alleles);
+    }
+    segment.freeze_genotypes();
 }
 
 shared_ptr<Raw> RawFactory::create(const string &file) {
