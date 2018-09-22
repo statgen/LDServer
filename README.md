@@ -32,6 +32,7 @@ LD Server For Web
 ### Add new reference
 - Execute `flask add-reference` command:
    ```
+   cd rest
    export FLASK_APP=rest
    flask add-reference <name> <description> <genome build> <samples file> <genotype files>
    ```
@@ -43,6 +44,7 @@ LD Server For Web
 ### Add new (sub-)population to the reference
 - To define populations in the reference, execute `flask add-reference` command:
    ```
+   cd rest
    export FLASK_APP=rest
    flask add-reference <reference name> <population name> <samples file>
    ```
@@ -75,13 +77,21 @@ LD Server For Web
   ```
    
 ## Run REST API
-```
-export FLASK_APP=rest
-flask run
-```
+1. Start Redis cache (provide configuration parameters depending on your needs):
+   ```
+   cd cget/bin/
+   ./redis-server
+   ```
+2. Start LD server API:
+   ```
+   cd rest
+   export FLASK_APP=rest
+   flask run
+   ```
 
 ## Run Developers Playground
-```
-export FLASK_APP=playground
-flask run [ --port ... ] 
-```
+   ```
+   cd rest
+   export FLASK_APP=playground
+   flask run [ --port ... ] 
+   ```
