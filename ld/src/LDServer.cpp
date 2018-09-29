@@ -40,9 +40,9 @@ void LDServer::set_samples(const std::string &name, const std::vector<std::strin
     }
 }
 
-void LDServer::enable_cache(uint32_t unique_key, const string& hostname, int port) {
+void LDServer::enable_cache(uint32_t cache_key, const string& hostname, int port) {
     if (cache_context == nullptr) {
-        cache_key = unique_key;
+        this->cache_key = cache_key;
         cache_hostname = hostname;
         cache_port = port;
         struct timeval timeout = {1, 500000}; // 1.5 seconds
@@ -64,6 +64,28 @@ void LDServer::disable_cache() {
     }
 }
 
+string LDServer::make_cell_cache_key(uint32_t cache_key, const string& samples_name, correlation correlation_type, const string& chromosome, uint64_t morton_code) {
+    stringstream os(ios::binary | ios::out);
+    os.write(reinterpret_cast<const char*>(&cache_key), sizeof(cache_key));
+    os.write(samples_name.c_str(), samples_name.size());
+    os.write(chromosome.c_str(), chromosome.size());
+    os.write(reinterpret_cast<const char*>(&morton_code), sizeof(morton_code));
+    os.flush();
+    return os.str();
+}
+
+string LDServer::make_segment_cache_key(uint32_t cache_key, const string& samples_name, const string& chromosome, uint64_t start_bp, uint64_t stop_bp) {
+    stringstream os(ios::binary | ios::out);
+    os.write(reinterpret_cast<const char*>(&cache_key), sizeof(cache_key));
+    os.write(samples_name.c_str(), samples_name.size());
+    os.write(chromosome.c_str(), chromosome.size());
+    os.write(reinterpret_cast<const char*>(&start_bp), sizeof(start_bp));
+    os.write(reinterpret_cast<const char*>(&stop_bp), sizeof(stop_bp));
+    os.flush();
+    return os.str();
+}
+
+
 void LDServer::parse_variant(const std::string& variant, std::string& chromosome, uint64_t& position, std::string& ref_allele, std::string& alt_allele) {
     std::vector<std::string> variant_name_tokens;
     std::copy(std::sregex_token_iterator(variant.begin(), variant.end(), std::regex("[:_/]"), -1), std::sregex_token_iterator(), std::back_inserter(variant_name_tokens));
@@ -78,11 +100,14 @@ void LDServer::parse_variant(const std::string& variant, std::string& chromosome
 
 shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, const string& samples_name, bool only_variants, const std::string& chromosome, uint64_t i, std::map<std::uint64_t, shared_ptr<Segment>>& segments) const {
 //    auto start = std::chrono::system_clock::now();
+    uint64_t start_bp = i * segment_size;
+    uint64_t stop_bp = i * segment_size + segment_size - 1u;
+    string key = make_segment_cache_key(cache_key, samples_name, chromosome, start_bp, stop_bp);
     auto segment_it = segments.find(i);
     if (segment_it == segments.end()) {
-        segment_it = segments.emplace(make_pair(i, make_shared<Segment>(cache_key, samples_name, chromosome, i * segment_size, i * segment_size + segment_size - 1u))).first;
+        segment_it = segments.emplace(make_pair(i, make_shared<Segment>(chromosome, start_bp, stop_bp))).first;
         if (cache_enabled) {
-            segment_it->second->load(cache_context);
+            segment_it->second->load(cache_context, key);
         }
     }
     if (segment_it->second->is_cached()) {
@@ -104,7 +129,7 @@ shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, const str
             }
         }
         if (cache_enabled) {
-            segment_it->second->save(cache_context);
+            segment_it->second->save(cache_context, key);
         }
     }
 //    auto end = std::chrono::system_clock::now();
@@ -113,7 +138,7 @@ shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, const str
     return segment_it->second;
 }
 
-bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, LDQueryResult& result, const std::string& samples_name) const {
+bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, correlation correlation_type, LDQueryResult& result, const std::string& samples_name) const {
 //    auto start = std::chrono::system_clock::now();
     if (result.is_last()) {
         return false;
@@ -142,22 +167,29 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
     uint64_t z_max = to_morton_code(segment_j, segment_j);
 
     uint64_t z = get_next_z(segment_i, segment_j, z_min, z_max, result.last_cell > z_min ? result.last_cell : z_min);
+    uint64_t i = 0u, j = 0u;
+
+    CellFactory factory;
+
     while (z <= z_max) {
-        Cell cell(cache_key, samples_name, region_chromosome, z);
+        string key = make_cell_cache_key(cache_key, samples_name, correlation_type, region_chromosome, z);
+        from_morton_code(z, i, j);
+        shared_ptr<Cell> cell = factory.create(correlation_type, i, j);
+//        Cell cell(i, j);
         if (cache_enabled) {
-            cell.load(cache_context);
+            cell->load(cache_context, key);
         }
-        cell.segment_i = load_segment(raw_it->second, samples_name, cell.is_cached(), region_chromosome, cell.i, segments);
-        if (cell.i != cell.j) {
-            cell.segment_j = load_segment(raw_it->second, samples_name, cell.is_cached(), region_chromosome, cell.j, segments);
+        cell->segment_i = load_segment(raw_it->second, samples_name, cell->is_cached(), region_chromosome, cell->get_i(), segments);
+        if (!cell->is_diagonal()) {
+            cell->segment_j = load_segment(raw_it->second, samples_name, cell->is_cached(), region_chromosome, cell->get_j(), segments);
         }
-        if (!cell.is_cached()) {
-            cell.compute();
+        if (!cell->is_cached()) {
+            cell->compute();
             if (cache_enabled) {
-                cell.save(cache_context);
+                cell->save(cache_context, key);
             }
         }
-        cell.extract(region_start_bp, region_stop_bp, result);
+        cell->extract(region_start_bp, region_stop_bp, result);
         if ((result.last_i >= 0) && (result.last_j >= 0)) {
             result.last_cell = z;
             break;
@@ -179,7 +211,7 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
     return true;
 }
 
-bool LDServer::compute_variant_ld(const std::string& index_variant, const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result, const std::string& samples_name) const {
+bool LDServer::compute_variant_ld(const std::string& index_variant, const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, correlation correlation_type, struct LDQueryResult& result, const std::string& samples_name) const {
     if (result.is_last()) {
         return false;
     }
@@ -226,22 +258,27 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
         z_max = to_morton_code(segment_index, segment_j);
     }
     uint64_t z = get_next_z(segment_index, segment_i, segment_j, z_min, z_max, result.last_cell > z_min ? result.last_cell : z_min);
+    uint64_t i = 0u, j = 0u;
+    CellFactory factory;
     while (z <= z_max) {
-        Cell cell(cache_key, samples_name, region_chromosome, z);
+        string key = make_cell_cache_key(cache_key, samples_name, correlation_type, region_chromosome, z);
+        from_morton_code(z, i, j);
+        shared_ptr<Cell> cell = factory.create(correlation_type, i, j);
+//        Cell cell(i, j);
         if (cache_enabled) {
-            cell.load(cache_context);
+            cell->load(cache_context, key);
         }
-        cell.segment_i = load_segment(raw_it->second, samples_name, cell.is_cached(), region_chromosome, cell.i, segments);
-        if (cell.i != cell.j) {
-            cell.segment_j = load_segment(raw_it->second, samples_name, cell.is_cached(), region_chromosome, cell.j, segments);
+        cell->segment_i = load_segment(raw_it->second, samples_name, cell->is_cached(), region_chromosome, cell->get_i(), segments);
+        if (!cell->is_diagonal()) {
+            cell->segment_j = load_segment(raw_it->second, samples_name, cell->is_cached(), region_chromosome, cell->get_j(), segments);
         }
-        if (!cell.is_cached()) {
-            cell.compute();
+        if (!cell->is_cached()) {
+            cell->compute();
             if (cache_enabled) {
-                cell.save(cache_context);
+                cell->save(cache_context, key);
             }
         }
-        cell.extract(index_variant, index_bp, region_start_bp, region_stop_bp, result);
+        cell->extract(index_variant, index_bp, region_start_bp, region_stop_bp, result);
         if (result.last_j >= 0) {
             result.last_cell = z;
             break;

@@ -1,20 +1,14 @@
 #include "Segment.h"
 
-Segment::Segment(uint32_t unique_key, const string& samples_name, const string& chromosome, uint64_t start_bp, uint64_t stop_bp) :
-        key(""), cached(false), genotypes_loaded(false), names_loaded(false), chromosome(chromosome), start_bp(start_bp), stop_bp(stop_bp) {
-    stringstream os(ios::binary | ios::out);
-    os.write(reinterpret_cast<const char*>(&unique_key), sizeof(unique_key));
-    os.write(samples_name.c_str(), samples_name.size());
-    os.write(chromosome.c_str(), chromosome.size());
-    os.write(reinterpret_cast<const char*>(&start_bp), sizeof(start_bp));
-    os.write(reinterpret_cast<const char*>(&stop_bp), sizeof(stop_bp));
-    os.flush();
-    key = os.str();
+Segment::Segment(const string& chromosome, uint64_t start_bp, uint64_t stop_bp) :
+        cached(false), names_loaded(false), genotypes_loaded(false), chromosome(chromosome), start_bp(start_bp), stop_bp(stop_bp), n_haplotypes(0u) {
+
 }
 
 Segment::Segment(Segment&& segment) {
-    this->key = move(segment.key);
     this->cached = segment.cached;
+    this->names_loaded = segment.names_loaded;
+    this->genotypes_loaded = segment.genotypes_loaded;
     this->chromosome = move(segment.chromosome);
     this->start_bp = segment.start_bp;
     this->stop_bp = segment.stop_bp;
@@ -22,20 +16,42 @@ Segment::Segment(Segment&& segment) {
     this->positions = move(segment.positions);
     this->sp_mat_rowind = move(segment.sp_mat_rowind);
     this->sp_mat_colind = move(segment.sp_mat_colind);
-    this->genotypes_loaded = segment.genotypes_loaded;
-    this->names_loaded = segment.names_loaded;
 }
 
 Segment::~Segment() {
 
 }
 
-const char* Segment::get_key() const {
-    return key.c_str();
+bool Segment::is_empty() const {
+    return positions.empty();
 }
 
-uint64_t Segment::get_key_size() const {
-    return key.length();
+const string& Segment::get_chromosome() const {
+    return chromosome;
+}
+
+uint64_t Segment::get_start_bp() const {
+    return start_bp;
+}
+
+uint64_t Segment::get_stop_bp() const {
+    return stop_bp;
+}
+
+uint64_t Segment::get_n_haplotypes() const {
+    return n_haplotypes;
+}
+
+uint32_t Segment::get_n_variants() const {
+    return names.size();
+}
+
+const string& Segment::get_name(int i) const {
+    return names[i];
+}
+
+uint64_t Segment::get_position(int i) const {
+    return positions[i];
 }
 
 void Segment::clear() {
@@ -111,7 +127,51 @@ bool Segment::has_genotypes() const {
     return genotypes_loaded;
 }
 
-void Segment::load(redisContext *redis_cache) {
+arma::sp_fmat Segment::get_genotypes() {
+    return arma::sp_fmat(arma::uvec(sp_mat_rowind.data(), sp_mat_rowind.size(), false, false),
+                          arma::uvec(sp_mat_colind.data(), sp_mat_colind.size(), false, false),
+                          arma::fvec(sp_mat_rowind.size(), arma::fill::ones),
+                          n_haplotypes, names.size()); // hope that copy elision will take care about not using copy/move constructors
+}
+
+void Segment::create_pair(Segment& segment1, Segment& segment2, int i, int j, double value, vector<VariantsPair>& pairs) {
+    pairs.emplace_back(segment1.names[i], segment1.chromosome, segment1.positions[i], segment2.names[j], segment2.chromosome, segment2.positions[j], value);
+}
+
+bool Segment::overlaps_region(uint64_t region_start_bp, uint64_t region_stop_bp, int &segment_start_index, int &segment_stop_index) const {
+    segment_start_index = 0;
+    segment_stop_index = positions.size() - 1;
+    if ((region_start_bp > start_bp) && (region_start_bp <= stop_bp)) {
+        segment_start_index = std::lower_bound(positions.begin(), positions.end(), region_start_bp) - positions.begin();
+    }
+    if (segment_start_index >= positions.size()) {
+        return false;
+    }
+    if ((region_stop_bp > start_bp) && (region_stop_bp <= stop_bp)) {
+        segment_stop_index = std::upper_bound(positions.begin(), positions.end(), region_stop_bp) - positions.begin() - 1;
+    }
+    if (segment_stop_index < 0) {
+        return false;
+    }
+    return true;
+}
+
+bool Segment::overlaps_variant(const string& name, uint64_t bp, int& index) const {
+    index = std::lower_bound(positions.begin(), positions.end(), bp) - positions.begin();
+    while (index < positions.size()) {
+        if (positions[index] == bp) {
+            if (names[index].compare(name) == 0) {
+                return true;
+            }
+            ++index;
+        } else {
+            return false;
+        }
+    }
+    return false;
+}
+
+void Segment::load(redisContext *redis_cache, const string& key) {
     redisReply *reply = nullptr;
     reply = (redisReply *) redisCommand(redis_cache, "GET %b", key.c_str(), key.length());
     if (reply == nullptr) {
@@ -138,7 +198,7 @@ void Segment::load(redisContext *redis_cache) {
     freeReplyObject(reply);
 }
 
-void Segment::save(redisContext *redis_cache) {
+void Segment::save(redisContext *redis_cache, const string& key) {
     redisReply *reply = nullptr;
     stringstream os(ios::binary | ios::out);
     {

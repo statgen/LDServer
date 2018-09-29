@@ -13,18 +13,16 @@
 #include <cereal/types/vector.hpp>
 #include <savvy/reader.hpp>
 #include <savvy/armadillo_vector.hpp>
+#include "Types.h"
 
 using namespace std;
 
 class Segment {
 private:
-    string key;
     bool cached;
     bool names_loaded;
     bool genotypes_loaded;
 
-
-public:
     string chromosome;
     uint64_t start_bp;
     uint64_t stop_bp;
@@ -34,13 +32,10 @@ public:
 
     vector<arma::uword> sp_mat_rowind;
     vector<arma::uword> sp_mat_colind;
-
-    Segment(uint32_t unique_key, const string& samples_name, const string& chromosome, uint64_t start_bp, uint64_t stop_bp);
+public:
+    Segment(const string& chromosome, uint64_t start_bp, uint64_t stop_bp);
     Segment(Segment&& segment);
     virtual ~Segment();
-
-    const char* get_key() const;
-    uint64_t get_key_size() const;
 
     void clear();
     void clear_names();
@@ -52,12 +47,29 @@ public:
     void freeze_names();
     void freeze_genotypes();
 
-    void load(redisContext* redis_cache);
-    void save(redisContext* redis_cache);
+    void load(redisContext* redis_cache, const string& key);
+    void save(redisContext* redis_cache, const string& key);
 
+    bool is_empty() const;
     bool is_cached() const;
     bool has_names() const;
     bool has_genotypes() const;
+
+    const char* get_key() const;
+    uint64_t get_key_size() const;
+    const string& get_chromosome() const;
+    uint64_t get_start_bp() const;
+    uint64_t get_stop_bp() const;
+    uint64_t get_n_haplotypes() const;
+    uint32_t get_n_variants() const;
+    const string& get_name(int i) const;
+    uint64_t get_position(int i) const;
+    arma::sp_fmat get_genotypes();
+
+    static void create_pair(Segment& segment1, Segment& segment2, int index_i, int index_j, double value, vector<VariantsPair>& pairs);
+
+    bool overlaps_region(uint64_t region_start_bp, uint64_t region_stop_bp, int& from_index, int& to_index) const;
+    bool overlaps_variant(const string& name, uint64_t bp, int& index) const;
 
     template <class Archive>
     void load( Archive & ar )

@@ -7,25 +7,29 @@
 #include "LDServer.h"
 
 void (LDServer::*set_file)(const std::string& file) = &LDServer::set_file;
-//void (LDServer::*set_samples)(const std::string& name, const std::vector<std::string>& samples) = &LDServer::set_samples;
-bool (LDServer::*compute_region_ld)(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result, const std::string& subset_name) const = &LDServer::compute_region_ld;
-bool (LDServer::*compute_variant_ld)(const std::string& index_variant, const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result, const std::string& subset_name) const = &LDServer::compute_variant_ld;
+bool (LDServer::*compute_region_ld)(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, correlation correlation_type, struct LDQueryResult& result, const std::string& subset_name) const = &LDServer::compute_region_ld;
+bool (LDServer::*compute_variant_ld)(const std::string& index_variant, const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, correlation correlation_type, struct LDQueryResult& result, const std::string& subset_name) const = &LDServer::compute_variant_ld;
 
 BOOST_PYTHON_MODULE(pywrapper) {
 
-    boost::python::class_<VariantsPairLD>("VariantsPairLD", boost::python::init<const char*, const char*, unsigned long int, const char*, const char*, unsigned long int , double, double>())
-            .def_readonly("variant1", &VariantsPairLD::variant1)
-            .def_readonly("chromosome1", &VariantsPairLD::chromosome1)
-            .def_readonly("position1", &VariantsPairLD::position1)
-            .def_readonly("variant2", &VariantsPairLD::variant2)
-            .def_readonly("chromosome2", &VariantsPairLD::chromosome2)
-            .def_readonly("position2", &VariantsPairLD::position2)
-            .def_readonly("r", &VariantsPairLD::r)
-            .def_readonly("rsquare", &VariantsPairLD::rsquare)
+    boost::python::enum_<correlation>("correlation")
+            .value("ld_r", LD_R)
+            .value("ld_rsquare", LD_RSQUARE)
+            .value("cov", COV)
             ;
 
-    boost::python::class_<std::vector<VariantsPairLD> >("VariantsPairLDVec")
-            .def(boost::python::vector_indexing_suite<std::vector<VariantsPairLD>>())
+    boost::python::class_<VariantsPair>("VariantsPair", boost::python::init<const char*, const char*, unsigned long int, const char*, const char*, unsigned long int , double>())
+            .def_readonly("variant1", &VariantsPair::variant1)
+            .def_readonly("chromosome1", &VariantsPair::chromosome1)
+            .def_readonly("position1", &VariantsPair::position1)
+            .def_readonly("variant2", &VariantsPair::variant2)
+            .def_readonly("chromosome2", &VariantsPair::chromosome2)
+            .def_readonly("position2", &VariantsPair::position2)
+            .def_readonly("value", &VariantsPair::value)
+            ;
+
+    boost::python::class_<std::vector<VariantsPair> >("VariantsPairLDVec")
+            .def(boost::python::vector_indexing_suite<std::vector<VariantsPair>>())
             ;
 
     boost::python::class_<std::vector<std::string> >("StringVec")

@@ -14,6 +14,12 @@
 
 using namespace std;
 
+enum correlation : uint8_t {
+    LD_R,
+    LD_RSQUARE,
+    COV
+};
+
 struct VariantMeta {
     string variant;
     string chromosome;
@@ -42,20 +48,19 @@ struct VariantFrequency {
     }
 };
 
-struct VariantsPairLD {
+struct VariantsPair {
     string variant1;
     string variant2;
     string chromosome1;
     string chromosome2;
     uint64_t position1;
     uint64_t position2;
-    double r;
-    double rsquare;
-    VariantsPairLD() : variant1(""), variant2(""), chromosome1(""), chromosome2(""), position1(0ul), position2(0ul), r(0.0), rsquare(0.0) {}
-    VariantsPairLD(const string& variant1, const string& chromosome1, uint64_t position1, const string& variant2, const string& chromosome2, uint64_t position2, double r, double rsquare):
-            variant1(variant1), variant2(variant2), chromosome1(chromosome1), chromosome2(chromosome2), position1(position1), position2(position2), r(r), rsquare(rsquare) {}
-    bool operator==(VariantsPairLD const& result) const { // needed by boost.python
-        return (variant1.compare(result.variant1) == 0 && variant2.compare(result.variant2) == 0);
+    double value;
+    VariantsPair() : variant1(""), variant2(""), chromosome1(""), chromosome2(""), position1(0ul), position2(0ul), value(0.0) {}
+    VariantsPair(const string& variant1, const string& chromosome1, uint64_t position1, const string& variant2, const string& chromosome2, uint64_t position2, double value):
+            variant1(variant1), variant2(variant2), chromosome1(chromosome1), chromosome2(chromosome2), position1(position1), position2(position2), value(value) {}
+    bool operator==(VariantsPair const& pair) const { // needed by boost.python
+        return (variant1.compare(pair.variant1) == 0 && variant2.compare(pair.variant2) == 0);
     }
 };
 
@@ -65,7 +70,7 @@ struct LDQueryResult {
     int last_i;
     int last_j;
     int page;
-    vector<VariantsPairLD> data;
+    vector<VariantsPair> data;
     LDQueryResult(uint32_t page_limit): limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0) {
         data.reserve(page_limit);
     }
@@ -123,10 +128,10 @@ struct LDQueryResult {
             variant2.PushBack(rapidjson::StringRef(p.variant2.c_str()), allocator);
             chromosome2.PushBack(rapidjson::StringRef(p.chromosome2.c_str()), allocator);
             position2.PushBack(p.position2, allocator);
-            if (std::isnan(p.rsquare)) { // nan is not allowed by JSON, so we replace it with null
+            if (std::isnan(p.value)) { // nan is not allowed by JSON, so we replace it with null
                 rsquare.PushBack(rapidjson::Value(), allocator);
             } else {
-                rsquare.PushBack(p.rsquare, allocator);
+                rsquare.PushBack(p.value, allocator);
             }
         }
 

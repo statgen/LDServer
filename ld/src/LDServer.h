@@ -35,8 +35,13 @@ private:
     int cache_port;
     redisContext* cache_context;
 
+
+
     static void parse_variant(const string& variant, string& chromosome, uint64_t& position, string& ref_allele, string& alt_allele);
+
+
     shared_ptr<Segment> load_segment(const shared_ptr<Raw>& raw, const string& samples_name, bool only_variants, const std::string& chromosome, uint64_t i, std::map<std::uint64_t, shared_ptr<Segment>>& segments) const;
+
 
 public:
     static const string ALL_SAMPLES_KEY;
@@ -49,8 +54,11 @@ public:
     void enable_cache(uint32_t cache_key, const string& hostname, int port);
     void disable_cache();
 
-    bool compute_region_ld(const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, struct LDQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY) const;
-    bool compute_variant_ld(const string& index_variant, const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, struct LDQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY) const;
+    static string make_cell_cache_key(uint32_t cache_key, const string& samples_name, correlation correlation_type, const string& chromosome, uint64_t morton_code);
+    static string make_segment_cache_key(uint32_t cache_key, const string& samples_name, const string& chromosome, uint64_t start_bp, uint64_t stop_bp);
+
+    bool compute_region_ld(const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, correlation correlation_type, struct LDQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY) const;
+    bool compute_variant_ld(const string& index_variant, const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, correlation correlation_type, struct LDQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY) const;
 };
 
 #endif

@@ -29,14 +29,14 @@ vector<string> RawVCF::get_chromosomes() const {
 
 void RawVCF::load(Segment& segment) {
     segment.clear();
-    if (has_cached && (segment.start_bp <= anno.position()) && (anno.position() <= segment.stop_bp)) {
+    if (has_cached && (segment.get_start_bp() <= anno.position()) && (anno.position() <= segment.get_stop_bp())) {
         segment.add(anno, alleles);
     } else{
-        f->reset_region({segment.chromosome, segment.start_bp, numeric_limits<int>::max() - 1});
+        f->reset_region({segment.get_chromosome(), segment.get_start_bp(), numeric_limits<int>::max() - 1});
     }
     has_cached = false;
     while (f->read(anno, alleles).good()) {
-        if (anno.position() > segment.stop_bp) {
+        if (anno.position() > segment.get_stop_bp()) {
             has_cached = true;
             break;
         }
@@ -47,14 +47,14 @@ void RawVCF::load(Segment& segment) {
 
 void RawVCF::load_names(Segment &segment) {
     segment.clear_names();
-    if (has_cached && (segment.start_bp <= anno.position()) && (anno.position() <= segment.stop_bp)) {
+    if (has_cached && (segment.get_start_bp() <= anno.position()) && (anno.position() <= segment.get_stop_bp())) {
         segment.add_name(anno, alleles);
     } else{
-        f->reset_region({segment.chromosome, segment.start_bp, numeric_limits<int>::max() - 1});
+        f->reset_region({segment.get_chromosome(), segment.get_start_bp(), numeric_limits<int>::max() - 1});
     }
     has_cached = false;
     while (f->read(anno, alleles)) {
-        if (anno.position() > segment.stop_bp) {
+        if (anno.position() > segment.get_stop_bp()) {
             has_cached = true;
             break;
         }
@@ -65,13 +65,13 @@ void RawVCF::load_names(Segment &segment) {
 
 void RawVCF::load_genotypes(Segment &segment) {
     segment.clear_genotypes();
-    if (has_cached && (segment.start_bp <= anno.position()) && (anno.position() <= segment.stop_bp)) {
+    if (has_cached && (segment.get_start_bp() <= anno.position()) && (anno.position() <= segment.get_stop_bp())) {
         segment.add_genotypes(alleles);
     } else{
-        f->reset_region({segment.chromosome, segment.start_bp, numeric_limits<int>::max() - 1});
+        f->reset_region({segment.get_chromosome(), segment.get_start_bp(), numeric_limits<int>::max() - 1});
     }
     while (f->read(anno, alleles)) {
-        if (anno.position() > segment.stop_bp) {
+        if (anno.position() > segment.get_stop_bp()) {
             has_cached = true;
             break;
         }
@@ -100,14 +100,14 @@ vector<string> RawSAV::get_chromosomes() const {
 
 void RawSAV::load(Segment& segment) {
     segment.clear();
-    if (has_cached && (segment.start_bp <= anno.position()) && (anno.position() <= segment.stop_bp)) {
+    if (has_cached && (segment.get_start_bp() <= anno.position()) && (anno.position() <= segment.get_stop_bp())) {
         segment.add(anno, alleles);
     } else {
-        f->reset_region({segment.chromosome, segment.start_bp});
+        f->reset_region({segment.get_chromosome(), segment.get_start_bp()});
     }
     has_cached = false;
     while (f->read(anno, alleles).good()) {
-        if (anno.position() > segment.stop_bp) {
+        if (anno.position() > segment.get_stop_bp()) {
             has_cached = true;
             break;
         }
@@ -118,14 +118,14 @@ void RawSAV::load(Segment& segment) {
 
 void RawSAV::load_names(Segment &segment) {
     segment.clear_names();
-    if (has_cached && (segment.start_bp <= anno.position()) && (anno.position() <= segment.stop_bp)) {
+    if (has_cached && (segment.get_start_bp() <= anno.position()) && (anno.position() <= segment.get_stop_bp())) {
         segment.add_name(anno, alleles);
     } else{
-        f->reset_region({segment.chromosome, segment.start_bp});
+        f->reset_region({segment.get_chromosome(), segment.get_start_bp()});
     }
     has_cached = false;
     while (f->read(anno, alleles)) {
-        if (anno.position() > segment.stop_bp) {
+        if (anno.position() > segment.get_stop_bp()) {
             has_cached = true;
             break;
         }
@@ -136,13 +136,13 @@ void RawSAV::load_names(Segment &segment) {
 
 void RawSAV::load_genotypes(Segment &segment) {
     segment.clear_genotypes();
-    if (has_cached && (segment.start_bp <= anno.position()) && (anno.position() <= segment.stop_bp)) {
+    if (has_cached && (segment.get_start_bp() <= anno.position()) && (anno.position() <= segment.get_stop_bp())) {
         segment.add_genotypes(alleles);
     } else{
-        f->reset_region({segment.chromosome, segment.start_bp});
+        f->reset_region({segment.get_chromosome(), segment.get_start_bp()});
     }
     while (f->read(anno, alleles)) {
-        if (anno.position() > segment.stop_bp) {
+        if (anno.position() > segment.get_stop_bp()) {
             has_cached = true;
             break;
         }
@@ -158,9 +158,7 @@ shared_ptr<Raw> RawFactory::create(const string &file) {
         return shared_ptr<RawVCF>(new RawVCF(file));
     } else if ((file.length() >= 4) && (file.compare(file.length() - 4, 4, ".bcf") == 0)) {
         return shared_ptr<RawVCF>(new RawVCF(file));
-    } else {
-        //todo: throw exception "unrecognized file format"
     }
-    return nullptr;
+    throw runtime_error("Unknown genotype file type");
 }
 

@@ -117,7 +117,7 @@ TEST_F(LDServerTest, SAV_one_page) {
     LDQueryResult result(1000);
 
     server.set_file("chr22.test.sav");
-    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241385, result));
+    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241385, correlation::LD_RSQUARE, result));
 
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
@@ -127,7 +127,7 @@ TEST_F(LDServerTest, SAV_one_page) {
         ASSERT_NE(entry.variant1, "");
         ASSERT_NE(entry.variant2, "");
         ASSERT_EQ(goldstandard.count(key), 1);
-        ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
+        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
     }
 }
 
@@ -139,7 +139,7 @@ TEST_F(LDServerTest, BCF_one_page) {
     LDQueryResult result(1000);
 
     server.set_file("chr22.test.bcf");
-    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241385, result));
+    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241385, correlation::LD_RSQUARE, result));
 
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
@@ -149,7 +149,7 @@ TEST_F(LDServerTest, BCF_one_page) {
         ASSERT_NE(entry.variant1, "");
         ASSERT_NE(entry.variant2, "");
         ASSERT_EQ(goldstandard.count(key), 1);
-        ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
+        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
     }
 }
 
@@ -162,7 +162,7 @@ TEST_F(LDServerTest, VCF_one_page) {
     LDQueryResult result(1000);
 
     server.set_file("chr22.test.vcf.gz");
-    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241385, result));
+    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241385, correlation::LD_RSQUARE, result));
 
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
@@ -172,7 +172,7 @@ TEST_F(LDServerTest, VCF_one_page) {
         ASSERT_NE(entry.variant1, "");
         ASSERT_NE(entry.variant2, "");
         ASSERT_EQ(goldstandard.count(key), 1);
-        ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
+        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
     }
 }
 
@@ -186,7 +186,7 @@ TEST_F(LDServerTest, SAV_chrX_one_page) {
     LDQueryResult result(1000);
 
     server.set_file("chrX.test.sav");
-    ASSERT_TRUE(server.compute_region_ld("X", 60100, 60150, result));
+    ASSERT_TRUE(server.compute_region_ld("X", 60100, 60150, correlation::LD_RSQUARE, result));
 
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
@@ -196,7 +196,7 @@ TEST_F(LDServerTest, SAV_chrX_one_page) {
         ASSERT_NE(entry.variant1, "");
         ASSERT_NE(entry.variant2, "");
         ASSERT_EQ(goldstandard.count(key), 1);
-        ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.000000001);
+        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.000000001);
     }
 }
 
@@ -209,7 +209,7 @@ TEST_F(LDServerTest, region_with_paging) {
     int result_total_size = 0;
 
     server.set_file("chr22.test.sav");
-    while (server.compute_region_ld("22", 51241101, 51241385, result, LDServer::ALL_SAMPLES_KEY)) {
+    while (server.compute_region_ld("22", 51241101, 51241385, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 4);
         ASSERT_LE(result.data.size(), 4);
         for (auto &&entry : result.data) {
@@ -217,7 +217,7 @@ TEST_F(LDServerTest, region_with_paging) {
             ASSERT_NE(entry.variant1, "");
             ASSERT_NE(entry.variant2, "");
             ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
+            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
         }
         result_total_size += result.data.size();
     }
@@ -233,7 +233,7 @@ TEST_F(LDServerTest, variant_with_paging_1) {
     int result_total_size = 0;
 
     server.set_file("chr22.test.sav");
-    while (server.compute_variant_ld("22:51241101_A/T", "22", 51241101, 51241385, result, LDServer::ALL_SAMPLES_KEY)) {
+    while (server.compute_variant_ld("22:51241101_A/T", "22", 51241101, 51241385, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
         ASSERT_LE(result.data.size(), 2);
         for (auto&& entry : result.data) {
@@ -241,7 +241,7 @@ TEST_F(LDServerTest, variant_with_paging_1) {
             ASSERT_NE(entry.variant1, "");
             ASSERT_NE(entry.variant2, "");
             ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
+            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
         }
         result_total_size += result.data.size();
     }
@@ -257,7 +257,7 @@ TEST_F(LDServerTest, variant_with_paging_2) {
     int result_total_size = 0;
 
     server.set_file("chr22.test.sav");
-    while (server.compute_variant_ld("22:51241386_C/G", "22", 51241101, 51241385, result, LDServer::ALL_SAMPLES_KEY)) {
+    while (server.compute_variant_ld("22:51241386_C/G", "22", 51241101, 51241385, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
         ASSERT_LE(result.data.size(), 2);
         for (auto&& entry : result.data) {
@@ -265,7 +265,7 @@ TEST_F(LDServerTest, variant_with_paging_2) {
             ASSERT_NE(entry.variant1, "");
             ASSERT_NE(entry.variant2, "");
             ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.0000001);
+            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.0000001);
         }
         result_total_size += result.data.size();
     }
@@ -281,7 +281,7 @@ TEST_F(LDServerTest, variant_with_paging_3) {
     int result_total_size = 0;
 
     server.set_file("chr22.test.sav");
-    while (server.compute_variant_ld("22:51241309_C/T", "22", 51241101, 51244237, result, LDServer::ALL_SAMPLES_KEY)) {
+    while (server.compute_variant_ld("22:51241309_C/T", "22", 51241101, 51244237, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
         ASSERT_LE(result.data.size(), 2);
         for (auto&& entry : result.data) {
@@ -289,7 +289,7 @@ TEST_F(LDServerTest, variant_with_paging_3) {
             ASSERT_NE(entry.variant1, "");
             ASSERT_NE(entry.variant2, "");
             ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.0000001);
+            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.0000001);
         }
         result_total_size += result.data.size();
     }
@@ -301,7 +301,7 @@ TEST_F(LDServerTest, variant_with_paging_no_variant_1) {
     LDQueryResult result(2);
     int result_total_size = 0;
     server.set_file("chr22.test.sav");
-    while (server.compute_variant_ld("22:51241101_A/C", "22", 51241101, 51241385, result, LDServer::ALL_SAMPLES_KEY)) {
+    while (server.compute_variant_ld("22:51241101_A/C", "22", 51241101, 51241385, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
         ASSERT_LE(result.data.size(), 2);
         result_total_size += result.data.size();
@@ -314,7 +314,7 @@ TEST_F(LDServerTest, variant_with_paging_no_variant_2) {
     LDQueryResult result(2);
     int result_total_size = 0;
     server.set_file("chr22.test.sav");
-    while (server.compute_variant_ld("22:51241386_C/T", "22", 51241101, 51241385, result, LDServer::ALL_SAMPLES_KEY)) {
+    while (server.compute_variant_ld("22:51241386_C/T", "22", 51241101, 51241385, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
         ASSERT_LE(result.data.size(), 2);
         result_total_size += result.data.size();
@@ -327,7 +327,7 @@ TEST_F(LDServerTest, variant_with_paging_no_variant_3) {
     LDQueryResult result(2);
     int result_total_size = 0;
     server.set_file("chr22.test.sav");
-    while (server.compute_variant_ld("22:51241309_C/A", "22", 51241101, 51244237, result, LDServer::ALL_SAMPLES_KEY)) {
+    while (server.compute_variant_ld("22:51241309_C/A", "22", 51241101, 51244237, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
         ASSERT_LE(result.data.size(), 2);
     }
@@ -347,7 +347,7 @@ TEST_F(LDServerTest, AFR_region_with_paging) {
 
     server.set_file("chr22.test.sav");
     server.set_samples("AFR", samples);
-    while (server.compute_region_ld("22", 51241101, 51241385, result, "AFR")) {
+    while (server.compute_region_ld("22", 51241101, 51241385, correlation::LD_RSQUARE, result, "AFR")) {
         ASSERT_LE(result.limit, 4);
         ASSERT_LE(result.data.size(), 4);
         for (auto &&entry : result.data) {
@@ -355,7 +355,7 @@ TEST_F(LDServerTest, AFR_region_with_paging) {
             ASSERT_NE(entry.variant1, "");
             ASSERT_NE(entry.variant2, "");
             ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.0000000001);
+            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.0000000001);
         }
         result_total_size += result.data.size();
     }
@@ -371,7 +371,7 @@ TEST_F(LDServerTest, large_region_with_paging) {
     int result_total_size = 0;
 
     server.set_file("chr22.test.sav");
-    while (server.compute_region_ld("22", 50544251, 50549251, result, "ALL")) {
+    while (server.compute_region_ld("22", 50544251, 50549251, correlation::LD_RSQUARE, result, "ALL")) {
         ASSERT_LE(result.limit, 1000);
         ASSERT_LE(result.data.size(), 1000);
         for (auto &&entry : result.data) {
@@ -379,7 +379,7 @@ TEST_F(LDServerTest, large_region_with_paging) {
             ASSERT_NE(entry.variant1, "");
             ASSERT_NE(entry.variant2, "");
             ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.000001);
+            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.000001);
         }
         result_total_size += result.data.size();
     }
@@ -395,7 +395,7 @@ TEST_F(LDServerTest, large_variant_with_paging) {
     int result_total_size = 0;
 
     server.set_file("chr22.test.sav");
-    while (server.compute_variant_ld("22:50546666_C/T", "22", 50544251, 50549251, result, LDServer::ALL_SAMPLES_KEY)) {
+    while (server.compute_variant_ld("22:50546666_C/T", "22", 50544251, 50549251, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 1000);
         ASSERT_LE(result.data.size(), 1000);
         for (auto&& entry : result.data) {
@@ -403,7 +403,7 @@ TEST_F(LDServerTest, large_variant_with_paging) {
             ASSERT_NE(entry.variant1, "");
             ASSERT_NE(entry.variant2, "");
             ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.000001);
+            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.000001);
         }
         result_total_size += result.data.size();
     }
@@ -425,25 +425,25 @@ TEST_F(LDServerTest, segment_key) {
     uint32_t unique_key = 0u;
     uint64_t start_bp = 0u, stop_bp = 0u;
 
-    Segment segment1(1, "", "", 0, 1);
-    ASSERT_EQ(20, segment1.get_key_size());
-    memcpy(&unique_key, segment1.get_key(), 4);
-    memcpy(&start_bp, segment1.get_key() + 4, 8);
-    memcpy(&stop_bp, segment1.get_key() + 12, 8);
+    string key = LDServer::make_segment_cache_key(1, "", "", 0, 1);
+    ASSERT_EQ(20, key.size());
+    memcpy(&unique_key, key.c_str(), 4);
+    memcpy(&start_bp, key.c_str() + 4, 8);
+    memcpy(&stop_bp, key.c_str() + 12, 8);
     ASSERT_EQ(unique_key, 1);
     ASSERT_EQ(start_bp, 0);
     ASSERT_EQ(stop_bp, 1);
 
-    Segment segment2(2, "ALL", "chr22", 10, 20);
-    ASSERT_EQ(28, segment2.get_key_size());
-    memcpy(&unique_key, segment2.get_key(), 4);
+    key = LDServer::make_segment_cache_key(2, "ALL", "chr22", 10, 20);
+    ASSERT_EQ(28, key.size());
+    memcpy(&unique_key, key.c_str(), 4);
     ASSERT_EQ(unique_key, 2);
-    string samples_name(segment2.get_key() + 4, 3);
+    string samples_name(key.c_str() + 4, 3);
     ASSERT_EQ(samples_name, "ALL");
-    string chromosome(segment2.get_key() + 7, 5);
+    string chromosome(key.c_str() + 7, 5);
     ASSERT_EQ(chromosome, "chr22");
-    memcpy(&start_bp, segment2.get_key() + 12 , 8);
-    memcpy(&stop_bp, segment2.get_key() + 20, 8);
+    memcpy(&start_bp, key.c_str() + 12 , 8);
+    memcpy(&stop_bp, key.c_str() + 20, 8);
     ASSERT_EQ(start_bp, 10);
     ASSERT_EQ(stop_bp, 20);
 }
@@ -451,46 +451,52 @@ TEST_F(LDServerTest, segment_key) {
 TEST_F(LDServerTest, segment_cache) {
     RawSAV raw("chr22.test.sav");
     raw.open("22", raw.get_samples());
-    Segment segment1(1, "ALL", "22", 51241101, 51241385);
+    string key = LDServer::make_segment_cache_key(1, "ALL", "22", 51241101, 51241385);
+    Segment segment1("22", 51241101, 51241385);
     ASSERT_FALSE(segment1.has_names());
     ASSERT_FALSE(segment1.has_genotypes());
     raw.load(segment1);
     ASSERT_TRUE(segment1.has_names());
     ASSERT_TRUE(segment1.has_genotypes());
 
-    segment1.save(redis_cache);
+    segment1.save(redis_cache, key);
 
-    Segment segment2(1, "ALL", "22", 51241101, 51241385);
+    Segment segment2("22", 51241101, 51241385);
     ASSERT_FALSE(segment2.has_names());
     ASSERT_FALSE(segment2.has_genotypes());
-    ASSERT_EQ(segment2.names.size(), 0);
-    ASSERT_EQ(segment2.positions.size(), 0);
-    segment2.load(redis_cache);
+    ASSERT_EQ(segment2.get_n_variants(), 0);
+    ASSERT_EQ(segment2.get_n_haplotypes(), 0);
+    segment2.load(redis_cache, key);
     ASSERT_TRUE(segment2.has_names());
     ASSERT_FALSE(segment2.has_genotypes());
-    ASSERT_THAT(segment2.names, ::testing::ContainerEq(segment2.names));
-    ASSERT_THAT(segment2.positions, ::testing::ContainerEq(segment2.positions));
+    ASSERT_EQ(segment2.get_n_variants(), segment1.get_n_variants());
+    for (int i = 0; i < segment2.get_n_variants(); ++i) {
+        ASSERT_EQ(segment2.get_name(i), segment1.get_name(i));
+        ASSERT_EQ(segment2.get_position(i), segment1.get_position(i));
+    }
 }
 
 TEST_F(LDServerTest, cell_key) {
     uint32_t unique_key = 0;
     uint64_t morton_code = 0;
-    Cell cell1(1, "", "", 3);
-    ASSERT_EQ(12, cell1.get_key_size());
-    memcpy(&unique_key, cell1.get_key(), 4);
+
+    string key = LDServer::make_cell_cache_key(1, "", correlation::LD_RSQUARE, "", 3);
+
+    ASSERT_EQ(12, key.size());
+    memcpy(&unique_key, key.c_str(), 4);
     ASSERT_EQ(unique_key, 1);
-    memcpy(&morton_code, cell1.get_key() + 4, 8);
+    memcpy(&morton_code, key.c_str() + 4, 8);
     ASSERT_EQ(morton_code, 3);
 
-    Cell cell2(2, "ALL", "chr22", 300);
-    ASSERT_EQ(20, cell2.get_key_size());
-    memcpy(&unique_key, cell2.get_key(), 4);
+    key = LDServer::make_cell_cache_key(2, "ALL", correlation::LD_RSQUARE, "chr22", 300);
+    ASSERT_EQ(20, key.size());
+    memcpy(&unique_key, key.c_str(), 4);
     ASSERT_EQ(unique_key, 2);
-    string samples_name(cell2.get_key() + 4, 3);
+    string samples_name(key.c_str() + 4, 3);
     ASSERT_EQ(samples_name, "ALL");
-    string chromosome(cell2.get_key() + 7, 5);
+    string chromosome(key.c_str() + 7, 5);
     ASSERT_EQ(chromosome, "chr22");
-    memcpy(&morton_code, cell2.get_key() + 12 , 8);
+    memcpy(&morton_code, key.c_str() + 12 , 8);
     ASSERT_EQ(morton_code, 300);
 }
 
@@ -500,27 +506,36 @@ TEST_F(LDServerTest, cell_cache) {
 
     RawSAV raw("chr22.test.sav");
     raw.open("22", raw.get_samples());
-    Cell cell1(1, "ALL", "22", to_morton_code(512411, 512411));
-    cell1.segment_i = make_shared<Segment>(1, "ALL", "22", 51241100, 51241199);
-    raw.load(*(cell1.segment_i));
-    cell1.segment_i->save(redis_cache);
-    cell1.compute();
-    cell1.save(redis_cache);
-    cell1.extract(51241100, 51241199, result1);
+    string cell_key = LDServer::make_cell_cache_key(1, "ALL", correlation::LD_RSQUARE, "22", to_morton_code(512411, 512411));
+    string segment_key = LDServer::make_segment_cache_key(1, "ALL", "22", 51241100, 51241199);
 
-    Cell cell2(1, "ALL", "22", to_morton_code(512411, 512411));
-    cell2.segment_i = make_shared<Segment>(1, "ALL", "22", 51241100, 51241199);
-    cell2.segment_i->load(redis_cache);
-    cell2.load(redis_cache);
-    cell2.extract(51241100, 51241199, result2);
+    CellFactory factory;
 
-    ASSERT_THAT(cell1.segment_i->names, ::testing::ContainerEq(cell2.segment_i->names));
-    ASSERT_THAT(cell1.segment_i->positions, ::testing::ContainerEq(cell2.segment_i->positions));
+    shared_ptr<Cell> cell1 = factory.create(correlation::LD_RSQUARE, 512411, 512411);
+    cell1->segment_i = make_shared<Segment>("22", 51241100, 51241199);
+    raw.load(*(cell1->segment_i));
+    cell1->segment_i->save(redis_cache, segment_key);
+    cell1->compute();
+    cell1->save(redis_cache, cell_key);
+    cell1->extract(51241100, 51241199, result1);
+
+    shared_ptr<Cell> cell2 = factory.create(correlation::LD_RSQUARE, 512411, 512411);
+    cell2->segment_i = make_shared<Segment>("22", 51241100, 51241199);
+    cell2->segment_i->load(redis_cache, segment_key);
+    cell2->load(redis_cache, cell_key);
+    cell2->extract(51241100, 51241199, result2);
+
+    ASSERT_EQ(cell1->segment_i->get_n_variants(), cell2->segment_i->get_n_variants());
+    for (unsigned int i = 0; i < cell1->segment_i->get_n_variants(); ++i) {
+        ASSERT_EQ(cell1->segment_i->get_name(i), cell2->segment_i->get_name(i));
+        ASSERT_EQ(cell1->segment_i->get_position(i), cell2->segment_i->get_position(i));
+    }
+
     ASSERT_EQ(result1.data.size(), result2.data.size());
     for (unsigned int i = 0; i < result1.data.size(); ++i) {
         ASSERT_EQ(result1.data[i].variant1, result2.data[i].variant1);
         ASSERT_EQ(result1.data[i].variant2, result2.data[i].variant2);
-        ASSERT_EQ(result1.data[i].r, result2.data[i].r);
+        ASSERT_EQ(result1.data[i].value, result2.data[i].value);
     }
 }
 
@@ -530,7 +545,7 @@ TEST_F(LDServerTest, cache_enabled) {
     LDQueryResult result(1000);
 
     server.set_file("chr22.test.sav");
-    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241199, result));
+    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241199, correlation::LD_RSQUARE, result));
 
     reply = (redisReply*)redisCommand(redis_cache, "DBSIZE");
     ASSERT_NE(reply, nullptr);
@@ -539,12 +554,11 @@ TEST_F(LDServerTest, cache_enabled) {
 
     result.clear_last();
     server.enable_cache(1, "127.0.0.1", 6379);
-    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241199, result));
+    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241199, correlation::LD_RSQUARE, result));
     reply = (redisReply*)redisCommand(redis_cache, "DBSIZE");
     ASSERT_NE(reply, nullptr);
     ASSERT_EQ(reply->integer, 2);
     freeReplyObject(reply);
-
 }
 
 TEST_F(LDServerTest, large_region_with_paging_and_caching) {
@@ -557,7 +571,7 @@ TEST_F(LDServerTest, large_region_with_paging_and_caching) {
     int result_total_size = 0;
 
     server.set_file("chr22.test.sav");
-    while (server.compute_region_ld("22", 50544251, 50549251, result, "ALL")) {
+    while (server.compute_region_ld("22", 50544251, 50549251, correlation::LD_RSQUARE, result, "ALL")) {
         ASSERT_LE(result.limit, 1000);
         ASSERT_LE(result.data.size(), 1000);
         for (auto &&entry : result.data) {
@@ -565,7 +579,7 @@ TEST_F(LDServerTest, large_region_with_paging_and_caching) {
             ASSERT_NE(entry.variant1, "");
             ASSERT_NE(entry.variant2, "");
             ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.000001);
+            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.000001);
         }
         result_total_size += result.data.size();
     }
@@ -580,7 +594,7 @@ TEST_F(LDServerTest, SAV_one_page_no_segment_intersect_1) {
     LDQueryResult result(1000);
 
     server.set_file("chr22.test.sav");
-    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241280, result));
+    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241280, correlation::LD_RSQUARE, result));
 
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
@@ -590,7 +604,7 @@ TEST_F(LDServerTest, SAV_one_page_no_segment_intersect_1) {
         ASSERT_NE(entry.variant1, "");
         ASSERT_NE(entry.variant2, "");
         ASSERT_EQ(goldstandard.count(key), 1);
-        ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
+        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
     }
 }
 
@@ -602,7 +616,7 @@ TEST_F(LDServerTest, SAV_one_page_no_segment_intersect_2) {
     LDQueryResult result(1000);
 
     server.set_file("chr22.test.sav");
-    ASSERT_TRUE(server.compute_region_ld("22", 51241103, 51241385, result));
+    ASSERT_TRUE(server.compute_region_ld("22", 51241103, 51241385, correlation::LD_RSQUARE, result));
 
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
@@ -612,7 +626,7 @@ TEST_F(LDServerTest, SAV_one_page_no_segment_intersect_2) {
         ASSERT_NE(entry.variant1, "");
         ASSERT_NE(entry.variant2, "");
         ASSERT_EQ(goldstandard.count(key), 1);
-        ASSERT_NEAR(goldstandard.find(key)->second , entry.rsquare, 0.00000000001);
+        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
     }
 }
 
@@ -624,7 +638,7 @@ TEST_F(LDServerTest, known_memory_leak_test) {
     int result_total_size = 0;
 
     server.set_file("../../data/ALL.chr22.sav");
-    while (server.compute_variant_ld("22:45186606_C/T", "22", 45186270, 45286270, result, LDServer::ALL_SAMPLES_KEY));
+    while (server.compute_variant_ld("22:45186606_C/T", "22", 45186270, 45286270, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY));
 }
 
 TEST_F(LDServerTest, DISABLED_read_spead) {
