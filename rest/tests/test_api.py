@@ -55,7 +55,7 @@ def test_reference_population(client, config):
 
 
 def test_region_ld(client, goldstandard_ld):
-    response = client.get('/1000G_GRCh37/ALL/ld/region?chrom=22&start=51241101&stop=51241385')
+    response = client.get('/1000G_GRCh37/ALL/ld_rsquare/region?chrom=22&start=51241101&stop=51241385')
     assert response.status_code == 200
     result = response.get_json()
     assert 'data' in result
@@ -70,7 +70,7 @@ def test_region_ld(client, goldstandard_ld):
         assert key in goldstandard
         assert pytest.approx(result['data']['rsquare'][i], 0.00001) == goldstandard[key]
 
-    response = client.get('/1000G_GRCh37/AFR/ld/region?chrom=22&start=51241101&stop=51241385')
+    response = client.get('/1000G_GRCh37/AFR/ld_rsquare/region?chrom=22&start=51241101&stop=51241385')
     assert response.status_code == 200
     result = response.get_json()
     assert 'data' in result
@@ -87,7 +87,7 @@ def test_region_ld(client, goldstandard_ld):
 
 
 def test_variant_ld(client, goldstandard_ld):
-    response = client.get('/1000G_GRCh37/ALL/ld/variant?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385')
+    response = client.get('/1000G_GRCh37/ALL/ld_rsquare/variant?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385')
     assert response.status_code == 200
     result = response.get_json()
     assert 'data' in result

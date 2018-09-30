@@ -3,7 +3,7 @@ from flask_cors import CORS
 from webargs.flaskparser import parser
 from webargs import fields
 from model import Reference, File, Sample
-from ld.pywrapper import LDServer, LDQueryResult, StringVec
+from ld.pywrapper import LDServer, LDQueryResult, StringVec, correlation
 import time
 
 API_VERSION = "1.0"
@@ -55,8 +55,8 @@ def build_link_next(args, result):
     return None
 
 
-@bp.route('/<reference_name>/<population_name>/ld/region', methods = ['GET'])
-def get_region_ld(reference_name, population_name):
+@bp.route('/<reference_name>/<population_name>/<correlation_type>/region', methods = ['GET'])
+def get_region_ld(reference_name, population_name, correlation_type):
     arguments = {
         'chrom': fields.Str(required = True, validate = lambda x: len(x) > 0),
         'start': fields.Int(required = True, validate = lambda x: x >= 0),
@@ -67,6 +67,12 @@ def get_region_ld(reference_name, population_name):
     args = parser.parse(arguments, validate = validate_query)
     if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
         args['limit'] = current_app.config['API_MAX_PAGE_SIZE']
+    if correlation_type == 'ld_r':
+        correlation_type = correlation.ld_r
+    elif correlation_type == 'ld_rsquare':
+        correlation_type = correlation.ld_rsquare
+    else:
+        abort(404)
     reference = Reference.query.filter_by(name = reference_name).first()
     if reference is None:
         abort(404)
@@ -96,7 +102,7 @@ def get_region_ld(reference_name, population_name):
     if current_app.config['CACHE_ENABLED']:
         ldserver.enable_cache(file.reference_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
     #start = time.time()
-    ldserver.compute_region_ld(str(args['chrom']), args['start'], args['stop'], result, str(population_name))
+    ldserver.compute_region_ld(str(args['chrom']), args['start'], args['stop'], correlation_type, result, str(population_name))
     #print "Computed results in {} seconds.".format("%0.4f" % (time.time() - start))
     #start = time.time()
     base_url = request.base_url + '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))
@@ -109,8 +115,8 @@ def get_region_ld(reference_name, population_name):
     return r
 
 
-@bp.route('/<reference_name>/<population_name>/ld/variant', methods = ['GET'])
-def get_variant_ld(reference_name, population_name):
+@bp.route('/<reference_name>/<population_name>/<correlation_type>/variant', methods = ['GET'])
+def get_variant_ld(reference_name, population_name, correlation_type):
     arguments = {
         'variant': fields.Str(required = True, validate = lambda x: len(x) > 0),
         'chrom': fields.Str(required = True, validate = lambda x: x > 0),
@@ -120,9 +126,14 @@ def get_variant_ld(reference_name, population_name):
         'last': fields.Str(required = False, validate = lambda x: len(x) > 0)
     }
     args = parser.parse(arguments, validate = validate_query)
-    print args
     if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
         args['limit'] = current_app.config['API_MAX_PAGE_SIZE']
+    if correlation_type == 'ld_r':
+        correlation_type = correlation.ld_r
+    elif correlation_type == 'ld_rsquare':
+        correlation_type = correlation.ld_rsquare
+    else:
+        abort(404)
     reference = Reference.query.filter_by(name = reference_name).first()
     if reference is None:
         abort(404)
@@ -146,7 +157,7 @@ def get_variant_ld(reference_name, population_name):
     if current_app.config['CACHE_ENABLED']:
         ldserver.enable_cache(file.reference_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
     start = time.time()
-    ldserver.compute_variant_ld(str(args['variant']), str(args['chrom']), args['start'], args['stop'], result, str(population_name))
+    ldserver.compute_variant_ld(str(args['variant']), str(args['chrom']), args['start'], args['stop'], correlation_type, result, str(population_name))
     print "Computed results in {} seconds.".format("%0.4f" % (time.time() - start))
     start = time.time()
     base_url = request.base_url + '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))

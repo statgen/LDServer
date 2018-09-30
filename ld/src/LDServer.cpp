@@ -175,7 +175,6 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
         string key = make_cell_cache_key(cache_key, samples_name, correlation_type, region_chromosome, z);
         from_morton_code(z, i, j);
         shared_ptr<Cell> cell = factory.create(correlation_type, i, j);
-//        Cell cell(i, j);
         if (cache_enabled) {
             cell->load(cache_context, key);
         }
@@ -264,7 +263,6 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
         string key = make_cell_cache_key(cache_key, samples_name, correlation_type, region_chromosome, z);
         from_morton_code(z, i, j);
         shared_ptr<Cell> cell = factory.create(correlation_type, i, j);
-//        Cell cell(i, j);
         if (cache_enabled) {
             cell->load(cache_context, key);
         }

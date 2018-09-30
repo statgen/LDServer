@@ -6,10 +6,6 @@
 #include <python2.7/Python.h>
 #include "LDServer.h"
 
-void (LDServer::*set_file)(const std::string& file) = &LDServer::set_file;
-bool (LDServer::*compute_region_ld)(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, correlation correlation_type, struct LDQueryResult& result, const std::string& subset_name) const = &LDServer::compute_region_ld;
-bool (LDServer::*compute_variant_ld)(const std::string& index_variant, const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, correlation correlation_type, struct LDQueryResult& result, const std::string& subset_name) const = &LDServer::compute_variant_ld;
-
 BOOST_PYTHON_MODULE(pywrapper) {
 
     boost::python::enum_<correlation>("correlation")
@@ -47,11 +43,11 @@ BOOST_PYTHON_MODULE(pywrapper) {
             ;
 
     boost::python::class_<LDServer, boost::noncopyable>("LDServer", boost::python::init<boost::uint32_t>())
-            .def("set_file", set_file)
+            .def("set_file", &LDServer::set_file)
             .def("set_samples", &LDServer::set_samples)
             .def("enable_cache", &LDServer::enable_cache)
             .def("disable_cache", &LDServer::disable_cache)
-            .def("compute_region_ld", compute_region_ld)
-            .def("compute_variant_ld", compute_variant_ld)
+            .def("compute_region_ld", &LDServer::compute_region_ld)
+            .def("compute_variant_ld", &LDServer::compute_variant_ld)
             ;
 }
