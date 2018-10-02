@@ -1,27 +1,22 @@
 import pytest
 import json
 
-def test_root(client, config):
-    response = client.get('/')
+def test_references(client, config):
+    response = client.get('/references')
     assert response.status_code == 200
     result = response.get_json()
-    assert 'references' in result
-    assert 'api_version' in result
-    for reference in result['references']:
-        assert all(x in reference for x in ['name', 'description', 'genome build', 'populations'])
     with open(config['REFERENCES_JSON'], 'r') as f:
         references_json = json.load(f)
-    assert len(references_json) == len(result['references'])
-    for a, b in zip(references_json, result['references']):
+    assert len(references_json) == len(result)
+    for a, b in zip(references_json, result):
         assert a['Name'] == b['name']
         assert a['Description'] == b['description']
         assert a['Genome build'] == b['genome build']
         assert len(a['Samples'].keys()) == len(b['populations'])
         assert all(x in b['populations'] for x in a['Samples'].keys())
 
-
 def test_reference(client, config):
-    response = client.get('/1000G_GRCh37')
+    response = client.get('/references/1000G_GRCh37')
     assert response.status_code == 200
     result = response.get_json()
     assert all(x in result for x in ['name', 'description', 'genome build', 'populations'])
@@ -32,13 +27,21 @@ def test_reference(client, config):
     assert reference_json['Genome build'] == result['genome build']
     assert len(reference_json['Samples'].keys()) == len(result['populations'])
     assert all(x in result['populations'] for x in reference_json['Samples'].keys())
-
-    response = client.get('/SOMETHING_BAD')
+    response = client.get('/references/SOMETHING_BAD')
     assert response.status_code == 404
 
+def test_reference_populations(client, config):
+    response = client.get('/references/1000G_GRCh37/populations')
+    assert response.status_code == 200
+    result = response.get_json()
+    with open(config['REFERENCES_JSON'], 'r') as f:
+        reference_json = [x for x in json.load(f) if x['Name'] == '1000G_GRCh37'][0]
+        populations = reference_json['Samples'].keys()
+    assert len(result) == len(populations)
+    assert all(x in populations for x in result)
 
 def test_reference_population(client, config):
-    response = client.get('/1000G_GRCh37/EUR')
+    response = client.get('/references/1000G_GRCh37/populations/EUR')
     assert response.status_code == 200
     result = response.get_json()
     assert 'name' in result
@@ -46,16 +49,11 @@ def test_reference_population(client, config):
     with open(config['REFERENCES_JSON'], 'r') as f:
         reference_json = [x for x in json.load(f) if x['Name'] == '1000G_GRCh37'][0]
     assert len(reference_json['Samples']['EUR']) == result['size']
-
-    response = client.get('/SOMETHING_BAD/EUR')
+    response = client.get('/references/1000G_GRCh37/populations/SOMETHING_BAD')
     assert response.status_code == 404
-
-    response = client.get('/1000G_GRCh37/SOMETHING_BAD')
-    assert response.status_code == 404
-
 
 def test_region_ld(client, goldstandard_ld):
-    response = client.get('/1000G_GRCh37/ALL/ld_rsquare/region?chrom=22&start=51241101&stop=51241385')
+    response = client.get('/references/1000G_GRCh37/populations/ALL/regions/compute?chrom=22&start=51241101&stop=51241385&correlation=rsquare')
     assert response.status_code == 200
     result = response.get_json()
     assert 'data' in result
@@ -70,7 +68,7 @@ def test_region_ld(client, goldstandard_ld):
         assert key in goldstandard
         assert pytest.approx(result['data']['rsquare'][i], 0.00001) == goldstandard[key]
 
-    response = client.get('/1000G_GRCh37/AFR/ld_rsquare/region?chrom=22&start=51241101&stop=51241385')
+    response = client.get('/references/1000G_GRCh37/populations/AFR/regions/compute?chrom=22&start=51241101&stop=51241385&correlation=rsquare')
     assert response.status_code == 200
     result = response.get_json()
     assert 'data' in result
@@ -85,9 +83,8 @@ def test_region_ld(client, goldstandard_ld):
         assert key in goldstandard
         assert pytest.approx(result['data']['rsquare'][i], 0.00001) == goldstandard[key]
 
-
 def test_variant_ld(client, goldstandard_ld):
-    response = client.get('/1000G_GRCh37/ALL/ld_rsquare/variant?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385')
+    response = client.get('/references/1000G_GRCh37/populations/ALL/variants/compute?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare')
     assert response.status_code == 200
     result = response.get_json()
     assert 'data' in result

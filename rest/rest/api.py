@@ -12,15 +12,36 @@ bp = Blueprint('api', __name__)
 
 CORS(bp)
 
-@bp.route('/')
-def get_all_datasets():
-    response = { 'api_version': API_VERSION, 'references': [] }
+def validate_query(value):
+    if 'start' in value and 'stop' in value:
+        if value['stop'] <= value['start']:
+            return False
+    return True
+
+def build_link_next(args, result):
+    if result.has_next():
+        link_next = request.base_url + '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))
+        link_next += '&last={}'.format(result.get_last())
+        return link_next
+    return None
+
+@bp.route('/correlations', methods = ['GET'])
+def get_correlations():
+    correlations = [
+        { 'name': 'r', 'label': 'r', 'description': '', 'type': 'LD' },
+        { 'name': 'rsquare', 'label': 'r^2', 'description': '', 'type': 'LD' },
+        { 'name': 'covariance', 'label': 'cov', 'description': '', 'type': 'Covariance' }
+    ]
+    return make_response(jsonify(correlations), 200)
+
+@bp.route('/references', methods = ['GET'])
+def get_references():
+    references = []
     for reference in Reference.query.all():
-        response['references'].append({'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples]))})
-    return make_response(jsonify(response), 200)
+        references.append({'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples]))})
+    return make_response(jsonify(references), 200)
 
-
-@bp.route('/<reference_name>', methods = ['GET'])
+@bp.route('/references/<reference_name>', methods = ['GET'])
 def get_reference_info(reference_name):
     reference = Reference.query.filter_by(name = reference_name).first()
     if reference:
@@ -28,8 +49,15 @@ def get_reference_info(reference_name):
         return make_response(jsonify(response), 200)
     abort(404)
 
+@bp.route('/references/<reference_name>/populations', methods = ['GET'])
+def get_populations(reference_name):
+    reference = Reference.query.filter_by(name = reference_name).first()
+    if reference:
+        populations = list(set([s.subset for s in reference.samples]))
+        return make_response(jsonify(populations), 200)
+    abort(404)
 
-@bp.route('/<reference_name>/<population_name>', methods = ['GET'])
+@bp.route('/references/<reference_name>/populations/<population_name>', methods = ['GET'])
 def get_population_info(reference_name, population_name):
     reference = Reference.query.filter_by(name = reference_name).first()
     if reference is not None:
@@ -39,37 +67,22 @@ def get_population_info(reference_name, population_name):
             return make_response(jsonify(response), 200)
     abort(404)
 
-
-def validate_query(value):
-    if 'start' in value and 'stop' in value:
-        if value['stop'] <= value['start']:
-            return False
-    return True
-
-
-def build_link_next(args, result):
-    if result.has_next():
-        link_next = request.base_url + '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))
-        link_next += '&last={}'.format(result.get_last())
-        return link_next
-    return None
-
-
-@bp.route('/<reference_name>/<population_name>/<correlation_type>/region', methods = ['GET'])
-def get_region_ld(reference_name, population_name, correlation_type):
+@bp.route('/references/<reference_name>/populations/<population_name>/regions/compute', methods = ['GET'])
+def get_region_ld(reference_name, population_name):
     arguments = {
         'chrom': fields.Str(required = True, validate = lambda x: len(x) > 0),
         'start': fields.Int(required = True, validate = lambda x: x >= 0),
         'stop': fields.Int(required = True, validate = lambda x: x > 0),
+        'correlation': fields.Str(required = True, validate = lambda x: x in ['r', 'rsquare']),
         'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE']),
         'last': fields.Str(required = False, validate = lambda x: len(x) > 0)
     }
     args = parser.parse(arguments, validate = validate_query)
     if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
         args['limit'] = current_app.config['API_MAX_PAGE_SIZE']
-    if correlation_type == 'ld_r':
+    if args['correlation'] == 'r':
         correlation_type = correlation.ld_r
-    elif correlation_type == 'ld_rsquare':
+    elif args['correlation'] == 'rsquare':
         correlation_type = correlation.ld_rsquare
     else:
         abort(404)
@@ -115,22 +128,23 @@ def get_region_ld(reference_name, population_name, correlation_type):
     return r
 
 
-@bp.route('/<reference_name>/<population_name>/<correlation_type>/variant', methods = ['GET'])
-def get_variant_ld(reference_name, population_name, correlation_type):
+@bp.route('/references/<reference_name>/populations/<population_name>/variants/compute', methods = ['GET'])
+def get_variant_ld(reference_name, population_name):
     arguments = {
         'variant': fields.Str(required = True, validate = lambda x: len(x) > 0),
         'chrom': fields.Str(required = True, validate = lambda x: x > 0),
         'start': fields.Int(required = True, validate = lambda x: x >= 0),
         'stop': fields.Int(required = True, validate = lambda x: x > 0),
+        'correlation': fields.Str(required = True, validate = lambda x: x in ['r', 'rsquare']),
         'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE']),
         'last': fields.Str(required = False, validate = lambda x: len(x) > 0)
     }
     args = parser.parse(arguments, validate = validate_query)
     if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
         args['limit'] = current_app.config['API_MAX_PAGE_SIZE']
-    if correlation_type == 'ld_r':
+    if args['correlation'] == 'r':
         correlation_type = correlation.ld_r
-    elif correlation_type == 'ld_rsquare':
+    elif args['correlation'] == 'rsquare':
         correlation_type = correlation.ld_rsquare
     else:
         abort(404)
