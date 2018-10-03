@@ -67,7 +67,7 @@ def get_population_info(reference_name, population_name):
             return make_response(jsonify(response), 200)
     abort(404)
 
-@bp.route('/references/<reference_name>/populations/<population_name>/regions/compute', methods = ['GET'])
+@bp.route('/references/<reference_name>/populations/<population_name>/regions', methods = ['GET'])
 def get_region_ld(reference_name, population_name):
     arguments = {
         'chrom': fields.Str(required = True, validate = lambda x: len(x) > 0),
@@ -128,7 +128,7 @@ def get_region_ld(reference_name, population_name):
     return r
 
 
-@bp.route('/references/<reference_name>/populations/<population_name>/variants/compute', methods = ['GET'])
+@bp.route('/references/<reference_name>/populations/<population_name>/variants', methods = ['GET'])
 def get_variant_ld(reference_name, population_name):
     arguments = {
         'variant': fields.Str(required = True, validate = lambda x: len(x) > 0),

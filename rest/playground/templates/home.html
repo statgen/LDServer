@@ -20,11 +20,11 @@ LD Server Playground
                                     <label class="input-group-text" for="select-query-type">Query</label>
                                 </div>
                                 <select class="custom-select" id="select-query-type" onchange="changeQueryType()">
-                                    <option selected>General meta-information</option>
-                                    <option value="1">Reference meta-information</option>
-                                    <option value="2">Population meta-information</option>
-                                    <option value="3">Region LD</option>
-                                    <!--<option value="4">Variant LD query</option>-->
+                                    <option value="1">Correlations meta-information</option>
+                                    <option value="2">References meta-information</option>
+                                    <option value="3">Populations meta-information</option>
+                                    <option value="4">Region correlations</option>
+                                    <option value="5">Variant correlations</option>
                                 </select>
                             </div>
                         </div>
@@ -34,7 +34,7 @@ LD Server Playground
                                 <div class="input-group-prepend">
                                     <label class="input-group-text" for="select-reference">Reference</label>
                                 </div>
-                                <select class="custom-select" id="select-reference" onchange="setHttpRequest()" disabled>
+                                <select class="custom-select" id="select-reference" onchange="changeReference()" disabled>
                                 </select>
                             </div>
                         </div>
@@ -46,6 +46,23 @@ LD Server Playground
                                 </div>
                                 <select class="custom-select" id="select-population" onchange="setHttpRequest()" disabled>
                                 </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <label class="input-group-text" for="select-correlation">Correlation</label>
+                                </div>
+                                <select class="custom-select" id="select-correlation" onchange="setHttpRequest()" disabled>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <label class="input-group-text" for="input-variant">Variant</label>
+                                </div>
+                                <input type="text" class="form-control" id="input-variant" placeholder="CHROM:POSITION_ALT/REF" oninput="setHttpRequest()" disabled>
                             </div>
                         </div>
                         <div class="form-group">
@@ -120,104 +137,202 @@ LD Server Playground
 
 {% block scripts %}
 <script>
+    var restAPI = "http://127.0.0.1:5000";
+    var queryType = 1;
 
-
-    function setHttpRequest() {
-        var restAPI = 'http://127.0.0.1:5001'
-        var httpRequest = restAPI
-        var reference = $("#select-reference option:selected");
-        if (reference.length > 0) {
-            httpRequest += '/' + reference[0].text
-        }
-        var population = $("#select-population option:selected");
-        if (population.length > 0) {
-            httpRequest += '/' + population[0].text
-        }
-        var chromosome = $("#select-chromosome option:selected");
-        if (chromosome.length > 0) {
-            httpRequest += '/ld/region?chrom=' + chromosome[0].text + '&start=' + $("#input-start")[0].value + '&stop=' + $("#input-stop")[0].value;
-        }
-        var limit = $("#input-limit")[0].value;
-        if (limit.length > 0) {
-            httpRequest += '&limit=' + limit;
-        }
-        $("#input-http-request")[0].value = httpRequest;
-    }
-
-    function populateForm(reference, population, region) {
-        var restAPI = 'http://127.0.0.1:5001';
-        $("#select-reference").children().remove();
-        $("#select-reference").prop("disabled", true);
-        $("#select-population").children().remove();
-        $("#select-population").prop("disabled", true);
-        $("#select-chromosome").children().remove();
-        $("#select-chromosome").prop("disabled", true);
-        $("#input-start").prop("disabled", true);
-        $("#input-stop").prop("disabled", true);
-        $("#input-limit").prop("disabled", true);
-        if (reference) {
-            $.ajax({
-                url: restAPI + '/',
-                type: "GET",
-                crossDomain: true,
-                dataType: "json",
-                async: false,
-                success: function (result) {
-                    $.each(result["references"], function (i, reference) {
-                        $("#select-reference").append(
-                            $('<option>', {value: reference.name, text: reference.name})
-                        );
-                    });
-                    $("#select-reference").prop("disabled", false);
-                    if (population) {
-                        $.each(result["references"][0]['populations'], function (i, population) {
-                            $("#select-population").append(
-                                $('<option>', {value: population, text: population})
-                            );
-                        });
-                        $("#select-population").prop("disabled", false);
-                    }
-                }
-            });
-        }
-        if (region) {
-            for (var i = 1; i <= 22; ++i) {
-                $("#select-chromosome").append(
-                    $('<option>', { value: i, text: i })
-                );
-            }
-            $("#select-chromosome").prop("disabled", false);
-            $("#input-start").prop("disabled", false);
-            $("#input-stop").prop("disabled", false);
-            $("#input-limit").prop("disabled", false);
-        }
-    }
-
-    function changeQueryType() {
-        // var restAPI = 'http://127.0.0.1:5001'
-        var queryType = $("#select-query-type option:selected")[0].text;
-        switch(queryType) {
-            case "General meta-information":
-                populateForm(false, false, false);
-                break;
-            case "Reference meta-information":
-                populateForm(true, false, false);
-                break;
-            case "Population meta-information":
-                populateForm(true, true, false);
-                break;
-            case "Region LD":
-                populateForm(true, true, true);
-                break;
-            case "Variant LD":
-                break;
+    function changeReference() {
+        if (!$("#select-population").is(":disabled")) {
+            getPopulations(queryType != 3);
         }
         setHttpRequest();
     }
 
-    function changeReference() {
-        var reference = $("#select-reference option:selected")[0].text;
-        requestInput.value = restAPI + '/' + reference + '/';
+    function setHttpRequest() {
+        if (queryType == 1) {
+            $("#input-http-request")[0].value = restAPI + '/correlations';
+            return;
+        } else {
+            var httpRequest = restAPI + '/references';
+            var reference = $("#select-reference option:selected");
+            var population = $("#select-population option:selected");
+            if (queryType == 2) {
+                if ((reference.length > 0) && (reference.val().length > 0)) {
+                    httpRequest += "/" + reference[0].text;
+                }
+                $("#input-http-request")[0].value = httpRequest;
+                return;
+            } else if (queryType == 3) {
+                httpRequest += "/" + reference.text() + "/populations";
+                if ((population.length > 0) && (population.val().length > 0)) {
+                    httpRequest += "/" + population[0].text
+                }
+                $("#input-http-request")[0].value = httpRequest;
+                return;
+            } else if (queryType == 4) {
+                httpRequest += "/" + reference.text() + "/populations/" + population.text() + "/regions";
+                var correlation = $("#select-correlation option:selected");
+                var chromosome = $("#select-chromosome option:selected");
+                httpRequest += "?correlation=" + correlation.val() + "&chrom=" + chromosome.text() + "&start=" + $("#input-start")[0].value + "&stop=" + $("#input-stop")[0].value;
+                var limit = $("#input-limit")[0].value;
+                if (limit.length > 0) {
+                    httpRequest += '&limit=' + limit;
+                }
+                $("#input-http-request")[0].value = httpRequest;
+                return;
+            } else if (queryType == 5) {
+                httpRequest += "/" + reference.text() + "/populations/" + population.text() + "/regions";
+                var correlation = $("#select-correlation option:selected");
+                var chromosome = $("#select-chromosome option:selected");
+                httpRequest += "?correlation=" + correlation.val() + "&variant=" + $("#input-variant")[0].value + "&chrom=" + chromosome.text() + "&start=" + $("#input-start")[0].value + "&stop=" + $("#input-stop")[0].value;
+                var limit = $("#input-limit")[0].value;
+                if (limit.length > 0) {
+                    httpRequest += '&limit=' + limit;
+                }
+                $("#input-http-request")[0].value = httpRequest;
+                return;
+            }
+        }
+    }
+
+    function getReferences(no_empty) {
+        $("#select-reference").children().remove();
+        $.ajax({
+            url: restAPI + '/references',
+            type: "GET",
+            crossDomain: true,
+            dataType: "json",
+            async: false,
+            success: function (result) {
+                if (!no_empty) {
+                    $("#select-reference").append(
+                        $('<option>', {value: "", text: ""})
+                    );
+                }
+                $.each(result, function (i, reference) {
+                    $("#select-reference").append(
+                        $('<option>', {value: reference.name, text: reference.name})
+                    );
+                });
+            }
+        });
+    }
+
+    function getPopulations(no_empty) {
+        $("#select-population").children().remove();
+        var reference = $("#select-reference option:selected").val();
+        $.ajax({
+            url: restAPI + '/references/' + reference + '/populations',
+            type: "GET",
+            crossDomain: true,
+            dataType: "json",
+            async: false,
+            success: function (result) {
+                if (!no_empty) {
+                    $("#select-population").append(
+                        $('<option>', {value: "", text: ""})
+                    );
+                }
+                $.each(result, function (i, population) {
+                    $("#select-population").append(
+                        $('<option>', {value: population, text: population})
+                    );
+                });
+            }
+        });
+    }
+
+    function getCorrelations() {
+        $("#select-correlation").children().remove();
+        $.ajax({
+            url: restAPI + '/correlations',
+            type: "GET",
+            crossDomain: true,
+            dataType: "json",
+            async: false,
+            success: function (result) {
+                console.log(result);
+                $.each(result, function (i, correlation) {
+                    console.log(correlation);
+                    $("#select-correlation").append(
+                        $('<option>', {value: correlation.name, text: correlation.label})
+                    );
+                });
+            }
+        });
+    }
+
+    function getChromosomes() {
+        $("#select-chromosome").children().remove();
+        for (var i = 1; i <= 22; ++i) {
+            $("#select-chromosome").append(
+                $('<option>', { value: i, text: i })
+            );
+        }
+    }
+
+    function clearAll() {
+        $("#select-reference").children().remove();
+        $("#select-reference").prop("disabled", true);
+        $("#select-population").children().remove();
+        $("#select-population").prop("disabled", true);
+        $("#select-correlation").children().remove();
+        $("#select-correlation").prop("disabled", true);
+        $("#input-variant").prop("disabled", true);
+        $("#select-chromosome").children().remove();
+        $("#select-chromosome").prop("disabled", true);
+        $("#input-start").val("");
+        $("#input-start").prop("disabled", true);
+        $("#input-stop").val("");
+        $("#input-stop").prop("disabled", true);
+        $("#input-limit").val("");
+        $("#input-limit").prop("disabled", true);
+    }
+
+    function changeQueryType() {
+        queryType = parseInt($("#select-query-type option:selected")[0].value);
+        clearAll();
+        switch(queryType) {
+            case 1:
+                break;
+            case 2:
+                getReferences(false);
+                $("#select-reference").prop("disabled", false);
+                break;
+            case 3:
+                getReferences(true);
+                getPopulations(false);
+                $("#select-reference").prop("disabled", false);
+                $("#select-population").prop("disabled", false);
+                break;
+            case 4:
+                getReferences(true);
+                getPopulations(true);
+                getCorrelations();
+                getChromosomes();
+                $("#select-reference").prop("disabled", false);
+                $("#select-population").prop("disabled", false);
+                $("#select-correlation").prop("disabled", false);
+                $("#select-chromosome").prop("disabled", false);
+                $("#input-start").prop("disabled", false);
+                $("#input-stop").prop("disabled", false);
+                $("#input-limit").prop("disabled", false);
+                break;
+            case 5:
+                getReferences(true);
+                getPopulations(true);
+                getCorrelations();
+                getChromosomes();
+                $("#select-reference").prop("disabled", false);
+                $("#select-population").prop("disabled", false);
+                $("#input-variant").prop("disabled", false);
+                $("#select-correlation").prop("disabled", false);
+                $("#select-chromosome").prop("disabled", false);
+                $("#input-start").prop("disabled", false);
+                $("#input-stop").prop("disabled", false);
+                $("#input-limit").prop("disabled", false);
+                break;
+        }
+        setHttpRequest();
     }
 
     function run() {
@@ -230,12 +345,12 @@ LD Server Playground
             dataType: "json",
             success: function(result) {
                 $("#json-response")[0].value = JSON.stringify(result, null, 3);
-                // $("#json-response code")[0].innerText = JSON.stringify(result, null, 3);
             }
         });
     }
 
     $(function() {
+        changeQueryType();
         setHttpRequest();
     });
 </script>

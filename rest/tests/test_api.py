@@ -53,7 +53,8 @@ def test_reference_population(client, config):
     assert response.status_code == 404
 
 def test_region_ld(client, goldstandard_ld):
-    response = client.get('/references/1000G_GRCh37/populations/ALL/regions/compute?chrom=22&start=51241101&stop=51241385&correlation=rsquare')
+    # response = client.post('/references/1000G_GRCh37/populations/ALL/regions/compute', data = json.dumps({ 'chrom': '22', 'start': 51241101, 'stop': 51241385, 'correlation': 'rsquare' }), content_type = 'application/json')
+    response = client.get('/references/1000G_GRCh37/populations/ALL/regions?chrom=22&start=51241101&stop=51241385&correlation=rsquare')
     assert response.status_code == 200
     result = response.get_json()
     assert 'data' in result
@@ -68,7 +69,8 @@ def test_region_ld(client, goldstandard_ld):
         assert key in goldstandard
         assert pytest.approx(result['data']['rsquare'][i], 0.00001) == goldstandard[key]
 
-    response = client.get('/references/1000G_GRCh37/populations/AFR/regions/compute?chrom=22&start=51241101&stop=51241385&correlation=rsquare')
+    # response = client.post('/references/1000G_GRCh37/populations/AFR/regions/compute', data = json.dumps({ 'chrom': '22', 'start': 51241101, 'stop': 51241385, 'correlation': 'rsquare'}), content_type = 'application/json')
+    response = client.get('/references/1000G_GRCh37/populations/AFR/regions?chrom=22&start=51241101&stop=51241385&correlation=rsquare')
     assert response.status_code == 200
     result = response.get_json()
     assert 'data' in result
@@ -84,7 +86,7 @@ def test_region_ld(client, goldstandard_ld):
         assert pytest.approx(result['data']['rsquare'][i], 0.00001) == goldstandard[key]
 
 def test_variant_ld(client, goldstandard_ld):
-    response = client.get('/references/1000G_GRCh37/populations/ALL/variants/compute?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare')
+    response = client.get('/references/1000G_GRCh37/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare')
     assert response.status_code == 200
     result = response.get_json()
     assert 'data' in result
