@@ -1,5 +1,5 @@
 find_library(GTEST_LIB gmock HINT ${CGET_PREFIX}/lib)
-
+find_library(BOOST_SYSTEM_LIB boost_system HINT ${CGET_PREFIX}/lib)
 find_package(Threads REQUIRED)
 
 if(CGET_PREFIX)
@@ -7,7 +7,7 @@ if(CGET_PREFIX)
 endif()
 
 add_executable(testAll LDServerTest.cpp Main_TestAll.cpp)
-target_link_libraries(testAll LDServer ${GTEST_LIB} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(testAll LDServer ${BOOST_SYSTEM_LIB} ${GTEST_LIB} ${CMAKE_THREAD_LIBS_INIT})
 
 install(TARGETS testAll COMPONENT cli RUNTIME DESTINATION test OPTIONAL)
 install(FILES

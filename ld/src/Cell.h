@@ -7,7 +7,6 @@
 #include <map>
 #include <string>
 #include <algorithm>
-#include <strstream>
 #include <chrono>
 #include <savvy/reader.hpp>
 #include <savvy/armadillo_vector.hpp>

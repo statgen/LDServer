@@ -45,9 +45,10 @@ protected:
         ifstream input_file(file);
         string line;
         vector<string> tokens;
+        auto separator = regex("[ \t]");
         getline(input_file, line); // skip header;
         while (getline(input_file, line)) {
-            copy(sregex_token_iterator(line.begin(), line.end(), regex("[ \t]"), -1), sregex_token_iterator(), back_inserter(tokens));
+            copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
             values.emplace(tokens.at(1) + "_" + tokens.at(2), stod(tokens.at(4)));
             tokens.clear();
         }
@@ -57,9 +58,10 @@ protected:
         ifstream input_file(file);
         string line;
         vector<string> tokens;
+        auto separator = regex("[ \t]");
         getline(input_file, line); // skip header;
         while (getline(input_file, line)) {
-            copy(sregex_token_iterator(line.begin(), line.end(), regex("[ \t]"), -1), sregex_token_iterator(), back_inserter(tokens));
+            copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
             values.emplace(tokens.at(1) + "_" + tokens.at(3), stod(tokens.at(5)));
             tokens.clear();
         }

@@ -77,7 +77,8 @@ struct LDQueryResult {
     LDQueryResult(uint32_t page_limit, const string& last) : limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0) {
         data.reserve(page_limit);
         vector<std::string> tokens;
-        copy(sregex_token_iterator(last.begin(), last.end(), regex(":"), -1), sregex_token_iterator(), back_inserter(tokens));
+        auto separator = regex(":");
+        copy(sregex_token_iterator(last.begin(), last.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
         if (tokens.size() > 3) {
             last_cell = std::stoull(tokens[0]);
             last_i = std::stoi(tokens[1]);
