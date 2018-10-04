@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.5)
 project(hiredis VERSION 0.13.2)
 
 string(SUBSTRING ${CMAKE_SHARED_LIBRARY_SUFFIX} 1 -1 SHARED_LIBRARY_SUFFIX)
