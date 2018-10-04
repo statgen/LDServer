@@ -12,6 +12,7 @@ if(CGET_PREFIX)
     include_directories(${CGET_PREFIX}/include)
 endif()
 
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(SOURCE_FILES LDServer.cpp LDServer.h Raw.h Raw.cpp Segment.cpp Segment.h Cell.cpp Cell.h Types.h Morton.cpp Morton.h)
 add_library(LDServer ${SOURCE_FILES})
 target_link_libraries(LDServer ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB})

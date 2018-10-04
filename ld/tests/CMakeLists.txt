@@ -6,6 +6,7 @@ if(CGET_PREFIX)
     include_directories(${CGET_PREFIX}/include)
 endif()
 
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 add_executable(testAll LDServerTest.cpp Main_TestAll.cpp)
 target_link_libraries(testAll LDServer ${BOOST_SYSTEM_LIB} ${GTEST_LIB} ${CMAKE_THREAD_LIBS_INIT})
 
