@@ -3,25 +3,31 @@ LD Server For Web
 
 ## Installation
 
-- Create and activate virtual environment:
+- Clone repository.
+  ```
+  git clone https://github.com/statgen/LDServer
+  cd LDServer
+  ```
+
+- Create and activate virtual environment.
   ```
   python -m virtualenv env
   source env/bin/activate
   ```
 
-- Install and test LDServer C++ shared library
+- Install and test LDServer C++ shared library. The '127.0.0.1' and '8888' arguments are the hostname and port for Redis server which will be started during unit tests. If you wish to run Redis server on another port, then change these values correspondingly.
   ```
   cget install ld
-  cd cget/test/ && ./testAll && cd ../../
+  cd cget/test/ && ./testAll 127.0.0.1 8888 && cd ../../
   ```
 
-- Install required python packages for REST API
+- Install required python packages for REST API.
   ```
   cd rest
   pip install -r requirements.txt
   ```
 
-- Test REST API
+- Test REST API.
   ```
   python -m pytest
   ```
