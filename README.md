@@ -94,10 +94,18 @@ LD Server For Web
    export FLASK_APP=rest
    flask run
    ```
+   with `Gunicorn`
+   ```
+   gunicorn -b 127.0.0.1:[port] -w [n workers] -k gevent "rest:create_app()"
+   ```
 
 ## Run Developers Playground
    ```
    cd rest
    export FLASK_APP=playground
    flask run [ --port ... ] 
+   ```
+   with `Gunicorn`
+   ```
+   gunicorn -b 127.0.0.1:[port] -w [n workers] -k gevent "playground:create_app()"
    ```
