@@ -48,15 +48,15 @@ LD Server For Web
    ```
    The genotypes can be stored in VCF, BCF, and SAV formats. For better runtime performance and more compact storage, we highly recommend using SAV format.
 ### Add new (sub-)population to the reference
-- To define populations in the reference, execute `flask add-reference` command:
+- To define populations in the reference, execute `flask create-population` command:
    ```
    cd rest
    export FLASK_APP=rest
-   flask add-reference <reference name> <population name> <samples file>
+   flask create-population <reference name> <population name> <samples file>
    ```
    For example, the below command defines `AFR` population in the `1000G_GRCh37` reference. The `samples.txt` file stores list of sample names that will be included into `AFR`. 
    ```
-   flask add-reference 1000G_GRCh37 AFR samples.txt
+   flask create-population 1000G_GRCh37 AFR samples.txt
    ```
 ### List loaded references
 - Run the following command to list all references that are currently loaded into the server:
