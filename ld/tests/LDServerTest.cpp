@@ -11,22 +11,25 @@ using namespace std;
 
 class LDServerTest: public::testing::Test {
 protected:
-    static const char* hostname;
+    static string hostname;
     static int port;
     static boost::process::child redis_server;
     static redisContext* redis_cache;
 
-    static void init (int argc, char* argv[]) {
-        cout << "here! " << argc << endl;
-    }
-
     virtual ~LDServerTest() {}
 
     static void SetUpTestCase() {
-        string command("../bin/redis-server --port " + to_string(port) + " --bind " + string(hostname) + " --daemonize no --save \"\"");
+        ifstream config_file("redis-connection.txt");
+        string hostname;
+        string port;
+        getline(config_file, hostname);
+        getline(config_file, port);
+        LDServerTest::port = stoi(port);
+        LDServerTest::hostname = hostname;
+        string command("../bin/redis-server --port " + to_string(LDServerTest::port) + " --bind " + LDServerTest::hostname + " --daemonize no --save \"\"");
         LDServerTest::redis_server = boost::process::child(command);
         this_thread::sleep_for(chrono::seconds(3));
-        redis_cache = redisConnect(hostname, port);
+        redis_cache = redisConnect(LDServerTest::hostname.c_str(), LDServerTest::port);
     }
 
     static void TearDownTestCase() {
@@ -81,7 +84,7 @@ protected:
     }
 };
 
-const char* LDServerTest::hostname = "127.0.0.1";
+string LDServerTest::hostname = "127.0.0.1";
 int LDServerTest::port = 6379;
 boost::process::child LDServerTest::redis_server = boost::process::child();
 redisContext* LDServerTest::redis_cache = nullptr;
@@ -422,7 +425,7 @@ TEST_F(LDServerTest, large_variant_with_paging) {
 TEST_F(LDServerTest, hiredis) {
     redisContext *context = nullptr;
     struct timeval timeout = { 1, 500000 }; // 1.5 seconds
-    context = redisConnectWithTimeout(hostname, port, timeout);
+    context = redisConnectWithTimeout(hostname.c_str(), port, timeout);
     ASSERT_NE(context, nullptr);
     ASSERT_EQ(context->err, 0);
     redisFree(context);
@@ -573,7 +576,7 @@ TEST_F(LDServerTest, large_region_with_paging_and_caching) {
     this->load_region_goldstandard("region_ld_22_50544251_50549251.hap.ld", goldstandard);
 
     LDServer server(1000);
-    server.enable_cache(1, hostname, port);
+    server.enable_cache(1, hostname.c_str(), port);
     LDQueryResult result(1000);
     int result_total_size = 0;
 
@@ -640,7 +643,7 @@ TEST_F(LDServerTest, SAV_one_page_no_segment_intersect_2) {
 TEST_F(LDServerTest, known_memory_leak_test) {
 
     LDServer server(1000);
-    server.enable_cache(1, hostname, port);
+    server.enable_cache(1, hostname.c_str(), port);
     LDQueryResult result(100000);
     int result_total_size = 0;
 
