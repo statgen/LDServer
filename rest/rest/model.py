@@ -49,11 +49,13 @@ def load_references(json_file):
             db.session.commit()
 
 def show_references():
+    db.create_all()
     print '\t'.join(['NAME', 'DESCRIPTION', 'GENOME BUILD', 'POPULATIONS'])
     for reference in Reference.query.all():
         print '\t'.join([reference.name, reference.description, reference.genome_build, ';'.join(list(set([s.subset for s in reference.samples])))])
 
 def add_reference(name, description, genome_build, samples_filename, genotype_files):
+    db.create_all()
     samples = []
     with open(samples_filename, 'r') as f:
         for sample in f:
@@ -69,6 +71,7 @@ def add_reference(name, description, genome_build, samples_filename, genotype_fi
     db.session.commit()
 
 def create_subset(reference_name, subset_name, samples_filename):
+    db.create_all()
     samples = []
     with open(samples_filename, 'r') as f:
         for sample in f:
@@ -84,6 +87,7 @@ def create_subset(reference_name, subset_name, samples_filename):
     db.session.commit()
 
 def show_genotypes(reference_name):
+    db.create_all()
     reference = Reference.query.filter_by(name = reference_name).first()
     if reference is None:
         click.echo('Reference {} doesn\'t exist'.format(reference_name))
@@ -93,6 +97,7 @@ def show_genotypes(reference_name):
         print '\t'.join([reference.name, file.path])
 
 def show_samples(reference_name, subset_name):
+    db.create_all()
     reference = Reference.query.filter_by(name = reference_name).first()
     if reference is None:
         click.echo('Reference {} doesn\'t exist'.format(reference_name))
