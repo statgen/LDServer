@@ -54,7 +54,7 @@ if __name__ == '__main__':
                 start_bp, stop_bp = random.choice(genes)
                 start_bp = random.randrange( start_bp - window_bp if start_bp > window_bp else start_bp, stop_bp + window_bp, 1)
                 stop_bp = start_bp + args.region_length
-                query = '1000G_GRCh37/ALL/ld/region?chrom=22&start={}&stop={}&limit={}'.format(start_bp, stop_bp, args.page_size)
+                query = 'references/1000G_GRCh37/populations/ALL/regions?correlation=rsquare&chrom=22&start={}&stop={}&limit={}'.format(start_bp, stop_bp, args.page_size)
             url = 'http://{}{}/{}'.format(args.hostname, ':' + str(args.port) if args.port else '', query)
             total_time = 0
             all_variants = set()
@@ -99,7 +99,7 @@ if __name__ == '__main__':
                 chrom, position, ref, alt = random.choice(variants)
                 start_bp = random.randrange(position - args.region_length if position > args.region_length else 0 , position, 1)
                 stop_bp = start_bp + args.region_length
-                query = '1000G_GRCh37/ALL/ld/variant?variant={}:{}_{}/{}&chrom={}&start={}&stop={}&limit={}'.format(chrom, position, ref, alt, chrom, start_bp, stop_bp, args.page_size)
+                query = 'references/1000G_GRCh37/populations/ALL/variants?correlation=rsquare&variant={}:{}_{}/{}&chrom={}&start={}&stop={}&limit={}'.format(chrom, position, ref, alt, chrom, start_bp, stop_bp, args.page_size)
             url = 'http://{}{}/{}'.format(args.hostname, ':' + str(args.port) if args.port else '', query)
             total_time = 0
             all_variants = set()
