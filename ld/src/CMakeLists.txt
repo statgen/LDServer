@@ -6,7 +6,7 @@ find_library(BOOST_PYTHON_LIB boost_python27 HINT ${CGET_PREFIX}/lib)
 find_library(PYTHON_LIB python2.7 HINT ${CGET_PREFIX}/lib)
 find_library(HIREDIS_LIB hiredis HINT ${CGET_PREFIX}/lib)
 find_library(ARMADILLO_LIB armadillo HINT ${CGET_PREFIX}/lib)
-find_package(PythonLibs REQUIRED)
+find_package(PythonLibs 2.7 REQUIRED)
 
 if(CGET_PREFIX)
     include_directories(${CGET_PREFIX}/include)
