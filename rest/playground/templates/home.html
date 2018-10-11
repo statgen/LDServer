@@ -180,7 +180,7 @@ LD Server Playground
                 $("#input-http-request")[0].value = httpRequest;
                 return;
             } else if (queryType == 5) {
-                httpRequest += "/" + reference.text() + "/populations/" + population.text() + "/regions";
+                httpRequest += "/" + reference.text() + "/populations/" + population.text() + "/variants";
                 var correlation = $("#select-correlation option:selected");
                 var chromosome = $("#select-chromosome option:selected");
                 httpRequest += "?correlation=" + correlation.val() + "&variant=" + $("#input-variant")[0].value + "&chrom=" + chromosome.text() + "&start=" + $("#input-start")[0].value + "&stop=" + $("#input-stop")[0].value;
