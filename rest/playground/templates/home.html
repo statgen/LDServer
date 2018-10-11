@@ -5,6 +5,13 @@ LD Server Playground
 {% endblock %}
 
 {% block content %}
+<style>
+#json-response {
+  height:200px;
+  width:100%;
+}
+</style>
+
 <nav class="navbar sticky-top navbar-dark bg-primary mb-2">
     <span class="navbar-brand mb-0 h1">LD Server Playground</span>
 </nav>
@@ -117,15 +124,9 @@ LD Server Playground
                                 <textarea class="form-control" row="2" id="input-http-request" readonly></textarea>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label for="json-response">JSON Response</label>
-                            <div class="input-group">
-                                <!--<pre class="pre-scrollable" id="json-response">-->
-                                    <!--<code></code>-->
-                                <!--</pre>-->
-                                <textarea class="form-control" rows="5" id="json-response" readonly></textarea>
-                            </div>
-                        </div>
+                        <div class="text-danger" id="status-message"></div>
+                        <label for="json-response">JSON Response</label>
+                        <div id="json-response"></div>
                     </form>
                 </div>
             </div>
@@ -137,6 +138,12 @@ LD Server Playground
 
 {% block scripts %}
 <script>
+    // Configure ACE editor (for exploring JSON)
+    var editor = ace.edit("json-response", {
+        readOnly: true,
+        mode: "ace/mode/javascript",
+    });
+
     var restAPI = "http://127.0.0.1:5000";
     var queryType = 1;
 
@@ -250,9 +257,7 @@ LD Server Playground
             dataType: "json",
             async: false,
             success: function (result) {
-                console.log(result);
                 $.each(result, function (i, correlation) {
-                    console.log(correlation);
                     $("#select-correlation").append(
                         $('<option>', {value: correlation.name, text: correlation.label})
                     );
@@ -337,15 +342,18 @@ LD Server Playground
 
     function run() {
         var request = $("#input-http-request")[0].value;
-
+        var statusdiv = $('#status-message');
+        editor.setValue("");
+        statusdiv.text("");
         $.ajax({
             url: request,
             type: "GET",
             crossDomain: true,
-            dataType: "json",
-            success: function(result) {
-                $("#json-response")[0].value = JSON.stringify(result, null, 3);
-            }
+        }).done(function(result) {
+            editor.setValue(JSON.stringify(result, null, 4));
+        }).fail(function(xhr, status, err) {
+            console.error(err);
+            statusdiv.text(err ? (err.message || err) : "An error occurred")
         });
     }
 
