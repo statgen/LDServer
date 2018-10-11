@@ -118,7 +118,11 @@ def get_region_ld(reference_name, population_name):
     ldserver.compute_region_ld(str(args['chrom']), args['start'], args['stop'], correlation_type, result, str(population_name))
     #print "Computed results in {} seconds.".format("%0.4f" % (time.time() - start))
     #start = time.time()
-    base_url = request.base_url + '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))
+    if current_app.config['PROXY_PASS']:
+        base_url = '/'.join(x.strip('/') for x in [current_app.config['PROXY_PASS'], request.path])
+    else:
+        base_url = request.base_url
+    base_url += '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))
     j = result.get_json(str(base_url))
     #print "Jsonified result in {} seconds.".format("%0.4f" % (time.time() - start))
     #start = time.time()
@@ -174,7 +178,11 @@ def get_variant_ld(reference_name, population_name):
     ldserver.compute_variant_ld(str(args['variant']), str(args['chrom']), args['start'], args['stop'], correlation_type, result, str(population_name))
     print "Computed results in {} seconds.".format("%0.4f" % (time.time() - start))
     start = time.time()
-    base_url = request.base_url + '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))
+    if current_app.config['PROXY_PASS']:
+        base_url = '/'.join(x.strip('/') for x in [current_app.config['PROXY_PASS'], request.path])
+    else:
+        base_url = request.base_url
+    base_url += '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))
     j = result.get_json(str(base_url))
     print "Jsonified result in {} seconds.".format("%0.4f" % (time.time() - start))
     start = time.time()
