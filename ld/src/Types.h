@@ -120,7 +120,7 @@ struct LDQueryResult {
         rapidjson::Value variant2(rapidjson::kArrayType);
         rapidjson::Value chromosome2(rapidjson::kArrayType);
         rapidjson::Value position2(rapidjson::kArrayType);
-        rapidjson::Value rsquare(rapidjson::kArrayType);
+        rapidjson::Value correlation(rapidjson::kArrayType);
 
         for (auto&& p: this->data) {
             variant1.PushBack(rapidjson::StringRef(p.variant1.c_str()), allocator);
@@ -130,9 +130,9 @@ struct LDQueryResult {
             chromosome2.PushBack(rapidjson::StringRef(p.chromosome2.c_str()), allocator);
             position2.PushBack(p.position2, allocator);
             if (std::isnan(p.value)) { // nan is not allowed by JSON, so we replace it with null
-                rsquare.PushBack(rapidjson::Value(), allocator);
+                correlation.PushBack(rapidjson::Value(), allocator);
             } else {
-                rsquare.PushBack(p.value, allocator);
+                correlation.PushBack(p.value, allocator);
             }
         }
 
@@ -142,7 +142,7 @@ struct LDQueryResult {
         data.AddMember("variant2", variant2, allocator);
         data.AddMember("chromosome2", chromosome2, allocator);
         data.AddMember("position2", position2, allocator);
-        data.AddMember("rsquare", rsquare, allocator);
+        data.AddMember("correlation", correlation, allocator);
 
         document.AddMember("data", data, allocator);
         if (is_last()) {
