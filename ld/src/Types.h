@@ -145,6 +145,7 @@ struct LDQueryResult {
         data.AddMember("correlation", correlation, allocator);
 
         document.AddMember("data", data, allocator);
+        document.AddMember("error", rapidjson::Value(), allocator);
         if (is_last()) {
             document.AddMember("next", rapidjson::Value(), allocator);
         } else {

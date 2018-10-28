@@ -8,6 +8,7 @@ def app():
         'TESTING': True,
         'SQLALCHEMY_DATABASE_URI': 'sqlite:///' + os.path.join(os.path.dirname(__file__), 'sql.db'),
         'SQLALCHEMY_TRACK_MODIFICATIONS': False,
+        'PROXY_PASS': None,
         'API_MAX_PAGE_SIZE': 1000,
         'SEGMENT_SIZE_BP': 1000,
         'CACHE_ENABLED': False,

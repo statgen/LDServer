@@ -1,7 +1,7 @@
 from flask import current_app, Blueprint, request, jsonify, make_response, abort
 from flask_cors import CORS
 from webargs.flaskparser import parser
-from webargs import fields
+from webargs import fields, ValidationError
 from model import Reference, File, Sample
 from ld.pywrapper import LDServer, LDQueryResult, StringVec, correlation
 import time
@@ -12,11 +12,24 @@ bp = Blueprint('api', __name__)
 
 CORS(bp)
 
+
+@parser.error_handler
+def handle_parsing_error(error, request):
+    for field, message in error.messages.iteritems():
+        message = 'Error while parsing \'{}\' query parameter: {}'.format(field, message[0])
+        print message
+        break
+    response = jsonify({'data': None, 'error': message })
+    response.status_code = 422
+    abort(response)
+
+
 def validate_query(value):
     if 'start' in value and 'stop' in value:
         if value['stop'] <= value['start']:
-            return False
+            raise ValidationError({'start': ['Start position must be greater than stop position.']})
     return True
+
 
 def build_link_next(args, result):
     if result.has_next():
@@ -25,37 +38,46 @@ def build_link_next(args, result):
         return link_next
     return None
 
+
 @bp.route('/correlations', methods = ['GET'])
 def get_correlations():
-    correlations = [
+    data = [
         { 'name': 'r', 'label': 'r', 'description': '', 'type': 'LD' },
         { 'name': 'rsquare', 'label': 'r^2', 'description': '', 'type': 'LD' },
         { 'name': 'covariance', 'label': 'cov', 'description': '', 'type': 'Covariance' }
     ]
-    return make_response(jsonify(correlations), 200)
+    response = { 'data': data, 'error': None }
+    return make_response(jsonify(response), 200)
+
 
 @bp.route('/references', methods = ['GET'])
 def get_references():
-    references = []
+    data = []
     for reference in Reference.query.all():
-        references.append({'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples]))})
-    return make_response(jsonify(references), 200)
+        data.append({'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples]))})
+    response = { 'data': data, 'error': None }
+    return make_response(jsonify(response), 200)
+
 
 @bp.route('/references/<reference_name>', methods = ['GET'])
 def get_reference_info(reference_name):
     reference = Reference.query.filter_by(name = reference_name).first()
     if reference:
-        response = { 'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples])) }
+        data = { 'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples])) }
+        response = { 'data': data, 'error': None }
         return make_response(jsonify(response), 200)
     abort(404)
+
 
 @bp.route('/references/<reference_name>/populations', methods = ['GET'])
 def get_populations(reference_name):
     reference = Reference.query.filter_by(name = reference_name).first()
     if reference:
-        populations = list(set([s.subset for s in reference.samples]))
-        return make_response(jsonify(populations), 200)
+        data = list(set([s.subset for s in reference.samples]))
+        response = { 'data': data, 'error': None }
+        return make_response(jsonify(response), 200)
     abort(404)
+
 
 @bp.route('/references/<reference_name>/populations/<population_name>', methods = ['GET'])
 def get_population_info(reference_name, population_name):
@@ -63,19 +85,21 @@ def get_population_info(reference_name, population_name):
     if reference is not None:
         samples = Sample.query.with_parent(reference).filter_by(subset = population_name).all()
         if samples:
-            response = { 'name': population_name, 'size': len(samples) }
+            data = { 'name': population_name, 'size': len(samples) }
+            response = { 'data': data, 'error': None }
             return make_response(jsonify(response), 200)
     abort(404)
+
 
 @bp.route('/references/<reference_name>/populations/<population_name>/regions', methods = ['GET'])
 def get_region_ld(reference_name, population_name):
     arguments = {
-        'chrom': fields.Str(required = True, validate = lambda x: len(x) > 0),
-        'start': fields.Int(required = True, validate = lambda x: x >= 0),
-        'stop': fields.Int(required = True, validate = lambda x: x > 0),
-        'correlation': fields.Str(required = True, validate = lambda x: x in ['r', 'rsquare']),
-        'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE']),
-        'last': fields.Str(required = False, validate = lambda x: len(x) > 0)
+        'chrom': fields.Str(required = True, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
+        'start': fields.Int(required = True, validate = lambda x: x >= 0, error_messages = {'validator_failed': 'Value must be greater than or equal to 0.'}),
+        'stop': fields.Int(required = True, validate = lambda x: x > 0, error_messages = {'validator_failed': 'Value must be greater than 0.'}),
+        'correlation': fields.Str(required = True, validate = lambda x: x in ['r', 'rsquare'], error_messages = {'validator_failed': 'Value must be equal to \'r\' or \'rsquare\'.'}),
+        'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE'], error_messages = {'validator_failed': 'Value must be greater than 0.'}),
+        'last': fields.Str(required = False, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'})
     }
     args = parser.parse(arguments, validate = validate_query)
     if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
@@ -135,13 +159,13 @@ def get_region_ld(reference_name, population_name):
 @bp.route('/references/<reference_name>/populations/<population_name>/variants', methods = ['GET'])
 def get_variant_ld(reference_name, population_name):
     arguments = {
-        'variant': fields.Str(required = True, validate = lambda x: len(x) > 0),
-        'chrom': fields.Str(required = True, validate = lambda x: x > 0),
-        'start': fields.Int(required = True, validate = lambda x: x >= 0),
-        'stop': fields.Int(required = True, validate = lambda x: x > 0),
-        'correlation': fields.Str(required = True, validate = lambda x: x in ['r', 'rsquare']),
-        'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE']),
-        'last': fields.Str(required = False, validate = lambda x: len(x) > 0)
+        'variant': fields.Str(required = True, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
+        'chrom': fields.Str(required = True, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
+        'start': fields.Int(required = True, validate = lambda x: x >= 0, error_messages = {'validator_failed': 'Value must be greater than or equal to 0.'}),
+        'stop': fields.Int(required = True, validate = lambda x: x > 0, error_messages = {'validator_failed': 'Value must be greater than 0.'}),
+        'correlation': fields.Str(required = True, validate = lambda x: x in ['r', 'rsquare'], error_messages = {'validator_failed': 'Value must be equal to \'r\' or \'rsquare\'.'}),
+        'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE'], error_messages = {'validator_failed': 'Value must be greater than 0.'}),
+        'last': fields.Str(required = False, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'})
     }
     args = parser.parse(arguments, validate = validate_query)
     if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:

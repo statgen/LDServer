@@ -34,6 +34,7 @@ class Sample(db.Model):
     def __repr__(self):
         return '<Sample %r %r>' % (self.subset, self.sample)
 
+
 def load_references(json_file):
     db.drop_all()
     db.create_all()
