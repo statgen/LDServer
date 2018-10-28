@@ -1,8 +1,9 @@
 SQLALCHEMY_DATABASE_URI = 'sqlite:///sql.db'
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 PROXY_PASS = None # set if Apache mod_proxy is used e.g. http://my.host.com/prefix/
-API_MAX_PAGE_SIZE = 10000
+API_MAX_PAGE_SIZE = 100000
 SEGMENT_SIZE_BP = 1000
 CACHE_ENABLED = True
 CACHE_REDIS_HOSTNAME = '127.0.0.1'
 CACHE_REDIS_PORT = 6379
+GZIP_COMPRESSION = True # enable build-in response compression if necessary (alternatively enable it through Apache)

@@ -1,5 +1,6 @@
 Flask
 flask-cors
+flask-compress
 webargs
 gevent
 gunicorn

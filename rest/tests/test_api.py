@@ -1,5 +1,7 @@
 import pytest
 import json
+import StringIO
+import gzip
 
 def test_correlations(client, config):
     response = client.get('/correlations')
@@ -130,6 +132,16 @@ def test_variant_ld(client, goldstandard_ld):
         key = str(data['position1'][i]) + '_' + str(data['position2'][i])
         assert key in goldstandard
         assert pytest.approx(data['correlation'][i], 0.00001) == goldstandard[key]
+
+
+def test_compression(client):
+    response = client.get('/references/1000G_GRCh37/populations/ALL/regions?chrom=22&start=51241101&stop=51241385&correlation=rsquare', headers=[('Accept-Encoding', 'gzip')])
+    assert response.headers['Content-Encoding'] == 'gzip'
+    compressed_payload = StringIO.StringIO(response.data)
+    uncompressed_payload = gzip.GzipFile(fileobj = compressed_payload, mode = 'rb').read()
+    assert len(uncompressed_payload) > 0
+    result = json.loads(uncompressed_payload)
+    assert all(x in result for x in ['data', 'error', 'next'])
 
 
 def test_malformed_region_ld(client):

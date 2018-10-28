@@ -1,5 +1,6 @@
 from flask import current_app, Blueprint, request, jsonify, make_response, abort
 from flask_cors import CORS
+from flask_compress import Compress
 from webargs.flaskparser import parser
 from webargs import fields, ValidationError
 from model import Reference, File, Sample
@@ -9,9 +10,9 @@ import time
 API_VERSION = "1.0"
 
 bp = Blueprint('api', __name__)
-
 CORS(bp)
 
+compress = Compress()
 
 @parser.error_handler
 def handle_parsing_error(error, request):

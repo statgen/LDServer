@@ -13,7 +13,8 @@ def app():
         'SEGMENT_SIZE_BP': 1000,
         'CACHE_ENABLED': False,
         'CACHE_REDIS_HOSTNAME': '127.0.0.1',
-        'CACHE_REDIS_PORT': 6379
+        'CACHE_REDIS_PORT': 6379,
+        'GZIP_COMPRESSION': True
     })
 
     app.config['REFERENCES_JSON'] = os.path.join(os.path.dirname(__file__), 'datasets.json')
