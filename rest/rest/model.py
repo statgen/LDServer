@@ -9,11 +9,14 @@ db = SQLAlchemy()
 class Reference(db.Model):
     __tablename__ = 'reference'
     id = db.Column(db.Integer, primary_key = True)
-    name = db.Column(db.String(), unique = True, nullable = False)
-    description = db.Column(db.String(), unique = False, nullable = False)
+    name = db.Column(db.String(), unique = False, nullable = False)
     genome_build = db.Column(db.String(), unique = False, nullable = False)
+    description = db.Column(db.String(), unique = False, nullable = False)
     files = db.relationship('File', backref = 'reference', lazy = True)
     samples = db.relationship('Sample', backref = 'reference', lazy = True)
+    __table_args__ = (
+        db.UniqueConstraint('name', 'genome_build', name = 'name_build_uc'),
+    )
     def __repr__(self):
         return '<Reference %r>' % self.name
 
@@ -34,6 +37,46 @@ class Sample(db.Model):
     def __repr__(self):
         return '<Sample %r %r>' % (self.subset, self.sample)
 
+def get_genome_builds():
+    return [x[0] for x in db.session.query(Reference.genome_build).distinct()]
+
+def get_references(genome_build):
+    data = []
+    for reference in Reference.query.filter_by(genome_build = genome_build).all():
+        data.append({'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples]))})
+    return data
+
+def get_reference(genome_build, reference_name):
+    data = None
+    reference = Reference.query.filter_by(genome_build = genome_build, name = reference_name).first()
+    if reference is not None:
+        data = { 'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples])) }
+    return data
+
+def get_populations(genome_build, reference_name):
+    data = []
+    reference = Reference.query.filter_by(genome_build = genome_build, name = reference_name).first()
+    if reference is not None:
+        data = list(set([s.subset for s in reference.samples]))
+    return data
+
+def get_population(genome_build, reference_name, population_name):
+    data = None
+    reference = Reference.query.filter_by(genome_build = genome_build, name = reference_name).first()
+    if reference is not None:
+        samples = Sample.query.with_parent(reference).filter_by(subset = population_name).all()
+        if samples:
+            data = { 'name': population_name, 'size': len(samples) }
+    return data
+
+def get_samples(reference, subset):
+    #return [v for v, in db.session.query(Sample.sample).filter_by(subset = subset, reference_id = reference).all()]
+    print db.session.query(Sample.sample).filter_by(subset = subset, reference_id = reference)
+    return db.session.query(Sample.sample).filter_by(subset = subset, reference_id = reference).all()
+
+    #sql = text('SELECT sample FROM sample WHERE reference_id = :reference_id AND subset = :subset')
+    #result = [x for x in db.engine.execute(sql, reference_id = reference, subset = subset)]
+    #return result
 
 def load_references(json_file):
     db.drop_all()
@@ -45,7 +88,7 @@ def load_references(json_file):
                 r.files.append(File(path = path))
             for subset, samples in reference['Samples'].iteritems():
                 for sample in samples:
-                    r.samples.append(Sample(subset = subset, sample = sample));
+                    r.samples.append(Sample(subset = subset, sample = sample))
             db.session.add(r)
             db.session.commit()
 

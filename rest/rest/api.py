@@ -4,6 +4,7 @@ from flask_compress import Compress
 from webargs.flaskparser import parser
 from webargs import fields, ValidationError
 from model import Reference, File, Sample
+import model
 from ld.pywrapper import LDServer, LDQueryResult, StringVec, correlation
 import time
 
@@ -51,49 +52,63 @@ def get_correlations():
     return make_response(jsonify(response), 200)
 
 
-@bp.route('/references', methods = ['GET'])
-def get_references():
-    data = []
-    for reference in Reference.query.all():
-        data.append({'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples]))})
+@bp.route('/genome_builds', methods = ['GET'])
+def get_genome_build():
+    data = model.get_genome_builds()
+    response = { 'data': data, 'error': None}
+    return make_response(jsonify(response), 200)
+
+
+@bp.route('/genome_builds/<genome_build>/references', methods = ['GET'])
+def get_references(genome_build):
+    data = model.get_references(genome_build)
     response = { 'data': data, 'error': None }
     return make_response(jsonify(response), 200)
 
 
-@bp.route('/references/<reference_name>', methods = ['GET'])
-def get_reference_info(reference_name):
-    reference = Reference.query.filter_by(name = reference_name).first()
-    if reference:
-        data = { 'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples])) }
-        response = { 'data': data, 'error': None }
-        return make_response(jsonify(response), 200)
-    abort(404)
+@bp.route('/genome_builds/<genome_build>/references/<reference_name>', methods = ['GET'])
+def get_reference(genome_build, reference_name):
+    data = model.get_reference(genome_build, reference_name)
+    response = { 'data': data, 'error': None }
+    return make_response(jsonify(response), 200)
+    #reference = Reference.query.filter_by(name = reference_name).first()
+    #if reference:
+    #    data = { 'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples])) }
+    #    response = { 'data': data, 'error': None }
+    #    return make_response(jsonify(response), 200)
+    #bort(404)
 
 
-@bp.route('/references/<reference_name>/populations', methods = ['GET'])
-def get_populations(reference_name):
-    reference = Reference.query.filter_by(name = reference_name).first()
-    if reference:
-        data = list(set([s.subset for s in reference.samples]))
-        response = { 'data': data, 'error': None }
-        return make_response(jsonify(response), 200)
-    abort(404)
+@bp.route('/genome_builds/<genome_build>/references/<reference_name>/populations', methods = ['GET'])
+def get_populations(genome_build, reference_name):
+    data = model.get_populations(genome_build, reference_name)
+    response = { 'data': data, 'error': None }
+    return make_response(jsonify(response), 200)
+    # reference = Reference.query.filter_by(name = reference_name).first()
+    # if reference:
+    #     data = list(set([s.subset for s in reference.samples]))
+    #     response = { 'data': data, 'error': None }
+    #     return make_response(jsonify(response), 200)
+    # abort(404)
 
 
-@bp.route('/references/<reference_name>/populations/<population_name>', methods = ['GET'])
-def get_population_info(reference_name, population_name):
-    reference = Reference.query.filter_by(name = reference_name).first()
-    if reference is not None:
-        samples = Sample.query.with_parent(reference).filter_by(subset = population_name).all()
-        if samples:
-            data = { 'name': population_name, 'size': len(samples) }
-            response = { 'data': data, 'error': None }
-            return make_response(jsonify(response), 200)
-    abort(404)
+@bp.route('/genome_builds/<genome_build>/references/<reference_name>/populations/<population_name>', methods = ['GET'])
+def get_population(genome_build, reference_name, population_name):
+    data = model.get_population(genome_build, reference_name, population_name)
+    response = { 'data': data, 'error': None }
+    return make_response(jsonify(response), 200)
+    # reference = Reference.query.filter_by(name = reference_name).first()
+    # if reference is not None:
+    #     samples = Sample.query.with_parent(reference).filter_by(subset = population_name).all()
+    #     if samples:
+    #         data = { 'name': population_name, 'size': len(samples) }
+    #         response = { 'data': data, 'error': None }
+    #         return make_response(jsonify(response), 200)
+    # abort(404)
 
 
-@bp.route('/references/<reference_name>/populations/<population_name>/regions', methods = ['GET'])
-def get_region_ld(reference_name, population_name):
+@bp.route('/genome_builds/<genome_build>/references/<reference_name>/populations/<population_name>/regions', methods = ['GET'])
+def get_region_ld(genome_build, reference_name, population_name):
     arguments = {
         'chrom': fields.Str(required = True, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
         'start': fields.Int(required = True, validate = lambda x: x >= 0, error_messages = {'validator_failed': 'Value must be greater than or equal to 0.'}),
@@ -111,7 +126,7 @@ def get_region_ld(reference_name, population_name):
         correlation_type = correlation.ld_rsquare
     else:
         abort(404)
-    reference = Reference.query.filter_by(name = reference_name).first()
+    reference = Reference.query.filter_by(genome_build = genome_build, name = reference_name).first()
     if reference is None:
         abort(404)
     samples = Sample.query.with_parent(reference).filter_by(subset = population_name).all()
@@ -157,8 +172,8 @@ def get_region_ld(reference_name, population_name):
     return r
 
 
-@bp.route('/references/<reference_name>/populations/<population_name>/variants', methods = ['GET'])
-def get_variant_ld(reference_name, population_name):
+@bp.route('/genome_builds/<genome_build>/references/<reference_name>/populations/<population_name>/variants', methods = ['GET'])
+def get_variant_ld(genome_build, reference_name, population_name):
     arguments = {
         'variant': fields.Str(required = True, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
         'chrom': fields.Str(required = True, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
@@ -177,7 +192,7 @@ def get_variant_ld(reference_name, population_name):
         correlation_type = correlation.ld_rsquare
     else:
         abort(404)
-    reference = Reference.query.filter_by(name = reference_name).first()
+    reference = Reference.query.filter_by(genome_build = genome_build, name = reference_name).first()
     if reference is None:
         abort(404)
     samples = Sample.query.with_parent(reference).filter_by(subset = population_name).all()

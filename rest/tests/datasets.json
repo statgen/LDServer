@@ -1,6 +1,6 @@
 [
     {
-        "Name": "1000G_GRCh37",
+        "Name": "1000G",
         "Description": "1000 Genomes Project Phase 3", 
         "Genome build": "GRCh37",
         "Files": [ "../data/chr21.test.sav", "../data/chr22.test.sav",  "../data/chrX.test.sav"],
