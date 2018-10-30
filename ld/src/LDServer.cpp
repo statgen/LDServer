@@ -138,6 +138,14 @@ shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, const str
     return segment_it->second;
 }
 
+vector<string> LDServer::get_chromosomes() {
+    vector<string> chromosomes;
+    for (const auto& x : this->raw) {
+        chromosomes.emplace_back(x.first);
+    }
+    return chromosomes;
+}
+
 bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, correlation correlation_type, LDQueryResult& result, const std::string& samples_name) const {
 //    auto start = std::chrono::system_clock::now();
     if (result.is_last()) {

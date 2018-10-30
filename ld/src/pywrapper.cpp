@@ -47,6 +47,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("set_samples", &LDServer::set_samples)
             .def("enable_cache", &LDServer::enable_cache)
             .def("disable_cache", &LDServer::disable_cache)
+            .def("get_chromosomes", &LDServer::get_chromosomes)
             .def("compute_region_ld", &LDServer::compute_region_ld)
             .def("compute_variant_ld", &LDServer::compute_variant_ld)
             ;

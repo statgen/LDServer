@@ -107,6 +107,21 @@ def get_population(genome_build, reference_name, population_name):
     # abort(404)
 
 
+@bp.route('/genome_builds/<genome_build>/references/<reference_name>/chromosomes', methods = ['GET'])
+def get_chromosomes(genome_build, reference_name):
+    reference = Reference.query.filter_by(genome_build = genome_build, name = reference_name).first()
+    if reference is None:
+        abort(404)
+    files = File.query.with_parent(reference).all()
+    if not files:
+        abort(404)
+    ldserver = LDServer(current_app.config['SEGMENT_SIZE_BP'])
+    for file in files:
+        ldserver.set_file(str(file.path))
+    response = { 'data': [x for x in ldserver.get_chromosomes()], 'error': None }
+    return make_response(jsonify(response), 200)
+
+
 @bp.route('/genome_builds/<genome_build>/references/<reference_name>/populations/<population_name>/regions', methods = ['GET'])
 def get_region_ld(genome_build, reference_name, population_name):
     arguments = {

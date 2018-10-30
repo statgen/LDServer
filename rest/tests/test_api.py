@@ -94,6 +94,17 @@ def test_reference_population(client, config):
     # assert response.status_code == 404
 
 
+def test_chromosomes(client):
+    response = client.get('/genome_builds/GRCh37/references/1000G/chromosomes')
+    assert response.status_code == 200
+    result = response.get_json()
+    assert all(x in result for x in ['data', 'error'])
+    assert result['error'] is None
+    data = result['data']
+    assert len(data) > 0
+    print result
+
+
 def test_region_ld(client, goldstandard_ld):
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=22&start=51241101&stop=51241385&correlation=rsquare')
     assert response.status_code == 200
