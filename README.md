@@ -44,7 +44,7 @@ LD Server For Web
    ```
    For example, the below command adds a new reference panel named `1000G_GRCh37`. The `samples.txt` file stores list of sample names in `ALL.chr*.bcf` files. 
    ```
-   flask add-reference 1000G_GRCh37 "1000 Genomes Project Phase 3" GRCh37 samples.txt ALL.chr*.bcf
+   flask add-reference 1000G "1000 Genomes Project Phase 3" GRCh37 samples.txt ALL.chr*.bcf
    ```
    The genotypes can be stored in VCF, BCF, and SAV formats. For better runtime performance and more compact storage, we highly recommend using SAV format.
 ### Add new (sub-)population to the reference
@@ -52,11 +52,11 @@ LD Server For Web
    ```
    cd rest
    export FLASK_APP=rest
-   flask create-population <reference name> <population name> <samples file>
+   flask create-population <genome build> <reference name> <population name> <samples file>
    ```
    For example, the below command defines `AFR` population in the `1000G_GRCh37` reference. The `samples.txt` file stores list of sample names that will be included into `AFR`. 
    ```
-   flask create-population 1000G_GRCh37 AFR samples.txt
+   flask create-population GRCh37 1000G AFR samples.txt
    ```
 ### List loaded references
 - Run the following command to list all references that are currently loaded into the server:
@@ -66,20 +66,20 @@ LD Server For Web
 ### List loaded genotype files
 - Run the following command to list all genotype files loaded for a specified reference:
   ```
-  flask show-genotypes <reference name>
+  flask show-genotypes <genome build> <reference name>
   ```
   Example:
   ```
-  flask show-genotypes 1000G_GRCh37
+  flask show-genotypes GRCh37 1000G
   ```
 ### List loaded population samples
 - Run the following command to list all sample names from a specified population in a specified reference:
   ```
-  flask show-population <reference name> <population name>
+  flask show-population <genome build> <reference name> <population name>
   ```
   Example:
   ```
-  flask show-population 1000G_GRCh37 EUR
+  flask show-population GRCh37 1000G EUR
   ```
    
 ## Run REST API
