@@ -137,6 +137,34 @@ def test_region_ld(client, goldstandard_ld):
         assert key in goldstandard
         assert pytest.approx(data['correlation'][i], 0.00001) == goldstandard[key]
 
+    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=10&start=51241101&stop=51241385&correlation=rsquare')
+    assert response.status_code == 200
+    result = response.get_json()
+    assert result['error'] is None
+    data = result['data']
+    assert all(x in data for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
+    assert all(len(data[x]) == 0 for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
+
+
+    url = '/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=22&start=51241101&stop=51241385&correlation=rsquare'
+    response = client.get(url)
+    assert response.status_code == 200
+    data = response.get_json()['data']
+    single_page_result = [x for x in zip(data['variant1'], data['variant2'], data['correlation'])]
+    url += '&limit=2'
+    multi_page_result = []
+    while True:
+        response = client.get(url)
+        assert response.status_code == 200
+        result = response.get_json()
+        data = result['data']
+        multi_page_result.extend([x for x in zip(data['variant1'], data['variant2'], data['correlation'])])
+        url = result['next']
+        if url is None:
+            break
+    assert len(single_page_result) == len(multi_page_result)
+    assert all(x == y for x, y in zip(single_page_result, multi_page_result))
+
 
 def test_variant_ld(client, goldstandard_ld):
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare')
@@ -154,6 +182,33 @@ def test_variant_ld(client, goldstandard_ld):
         key = str(data['position1'][i]) + '_' + str(data['position2'][i])
         assert key in goldstandard
         assert pytest.approx(data['correlation'][i], 0.00001) == goldstandard[key]
+
+    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=21&start=51241101&stop=51241385&correlation=rsquare')
+    assert response.status_code == 200
+    result = response.get_json()
+    assert result['error'] is None
+    data = result['data']
+    assert all(x in data for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
+    assert all(len(data[x]) == 0 for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
+
+    url = '/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare'
+    response = client.get(url)
+    assert response.status_code == 200
+    data = response.get_json()['data']
+    single_page_result = [x for x in zip(data['variant1'], data['variant2'], data['correlation'])]
+    url += '&limit=2'
+    multi_page_result = []
+    while True:
+        response = client.get(url)
+        assert response.status_code == 200
+        result = response.get_json()
+        data = result['data']
+        multi_page_result.extend([x for x in zip(data['variant1'], data['variant2'], data['correlation'])])
+        url = result['next']
+        if url is None:
+            break
+    assert len(single_page_result) == len(multi_page_result)
+    assert all(x == y for x, y in zip(single_page_result, multi_page_result))
 
 
 def test_compression(client):

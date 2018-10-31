@@ -154,6 +154,8 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
 
     result.clear_data();
 
+    result.page += 1;
+
     auto raw_it = raw.find(region_chromosome);
     if (raw_it == raw.end()) { // no such chromosome - return empty result
         result.clear_last();
@@ -211,7 +213,6 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
             break;
         }
     }
-    result.page += 1;
 //    auto end = std::chrono::system_clock::now();
 //    std::chrono::duration<double> elapsed = end - start;
 //    std::cout << "Page elapsed time: " << elapsed.count() << " s\n";
@@ -223,12 +224,15 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
         return false;
     }
 
+    result.page += 1;
+
     std::string index_chromosome, index_ref_allele, index_alt_allele;
     std::uint64_t index_bp;
 
     parse_variant(index_variant, index_chromosome, index_bp, index_ref_allele, index_alt_allele);
 
     if (index_chromosome.compare(region_chromosome) != 0) {
+        result.clear_last();
         return false; // todo: raise exception - index variant must be from the same chromosome as the region
     }
 
@@ -298,6 +302,5 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
             break;
         }
     }
-    result.page += 1;
     return true;
 }

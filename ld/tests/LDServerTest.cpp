@@ -133,6 +133,7 @@ TEST_F(LDServerTest, SAV_one_page) {
 
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
+    ASSERT_TRUE(result.is_last());
     ASSERT_EQ(result.data.size(), goldstandard.size());
     for (auto&& entry : result.data) {
         string key(to_string(entry.position1) + "_" + to_string(entry.position2));
@@ -155,6 +156,7 @@ TEST_F(LDServerTest, BCF_one_page) {
 
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
+    ASSERT_TRUE(result.is_last());
     ASSERT_EQ(result.data.size(), goldstandard.size());
     for (auto&& entry : result.data) {
         string key(to_string(entry.position1) + "_" + to_string(entry.position2));
@@ -178,6 +180,7 @@ TEST_F(LDServerTest, VCF_one_page) {
 
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
+    ASSERT_TRUE(result.is_last());
     ASSERT_EQ(result.data.size(), goldstandard.size());
     for (auto&& entry : result.data) {
         string key(to_string(entry.position1) + "_" + to_string(entry.position2));
@@ -202,6 +205,7 @@ TEST_F(LDServerTest, SAV_chrX_one_page) {
 
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
+    ASSERT_TRUE(result.is_last());
     ASSERT_EQ(result.data.size(), goldstandard.size());
     for (auto&& entry : result.data) {
         string key(to_string(entry.position1) + "_" + to_string(entry.position2));
@@ -562,7 +566,7 @@ TEST_F(LDServerTest, cache_enabled) {
     ASSERT_EQ(reply->integer, 0);
     freeReplyObject(reply);
 
-    result.clear_last();
+    result.erase();
     server.enable_cache(1, hostname, port);
     ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241199, correlation::LD_RSQUARE, result));
     reply = (redisReply*)redisCommand(redis_cache, "DBSIZE");
@@ -608,6 +612,7 @@ TEST_F(LDServerTest, SAV_one_page_no_segment_intersect_1) {
 
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
+    ASSERT_TRUE(result.is_last());
     ASSERT_EQ(result.data.size(), 1);
     for (auto&& entry : result.data) {
         string key(to_string(entry.position1) + "_" + to_string(entry.position2));
@@ -630,6 +635,7 @@ TEST_F(LDServerTest, SAV_one_page_no_segment_intersect_2) {
 
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
+    ASSERT_TRUE(result.is_last());
     ASSERT_GT(result.data.size(), 1);
     for (auto&& entry : result.data) {
         string key(to_string(entry.position1) + "_" + to_string(entry.position2));
@@ -641,14 +647,21 @@ TEST_F(LDServerTest, SAV_one_page_no_segment_intersect_2) {
 }
 
 TEST_F(LDServerTest, known_memory_leak_test) {
-
     LDServer server(1000);
     server.enable_cache(1, hostname.c_str(), port);
     LDQueryResult result(100000);
-    int result_total_size = 0;
-
     server.set_file("../../data/ALL.chr22.sav");
     while (server.compute_variant_ld("22:45186606_C/T", "22", 45186270, 45286270, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY));
+}
+
+TEST_F(LDServerTest, empty_data_test) {
+    LDServer server(100);
+    LDQueryResult result(1000);
+    server.set_file("chr22.test.sav");
+    ASSERT_FALSE(server.compute_region_ld("21", 51241103, 51241385, correlation::LD_RSQUARE, result));
+    ASSERT_EQ(result.get_last(), "");
+    ASSERT_TRUE(result.is_last());
+    ASSERT_EQ(result.data.size(), 0);
 }
 
 TEST_F(LDServerTest, DISABLED_read_spead) {
