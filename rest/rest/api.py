@@ -3,6 +3,7 @@ from flask_cors import CORS
 from flask_compress import Compress
 from webargs.flaskparser import parser
 from webargs import fields, ValidationError
+from functools import partial
 from model import Reference, File, Sample
 import model
 from ld.pywrapper import LDServer, LDQueryResult, StringVec, correlation
@@ -16,19 +17,21 @@ CORS(bp)
 compress = Compress()
 
 @parser.error_handler
-def handle_parsing_error(error, request):
+def handle_parsing_error(error, request, schema):
     for field, message in error.messages.iteritems():
         message = 'Error while parsing \'{}\' query parameter: {}'.format(field, message[0])
-        print message
         break
     response = jsonify({'data': None, 'error': message })
     response.status_code = 422
     abort(response)
 
 
-def validate_query(value):
-    if 'start' in value and 'stop' in value:
-        if value['stop'] <= value['start']:
+def validate_query(parsed_fields, all_fields):
+    for key, value in request.args.iteritems():
+        if key not in all_fields:
+            raise ValidationError({key: ['Unknown parameter.']})
+    if 'start' in parsed_fields and 'stop' in parsed_fields:
+        if parsed_fields['stop'] <= parsed_fields['start']:
             raise ValidationError({'start': ['Start position must be greater than stop position.']})
     return True
 
@@ -132,7 +135,7 @@ def get_region_ld(genome_build, reference_name, population_name):
         'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE'], error_messages = {'validator_failed': 'Value must be greater than 0.'}),
         'last': fields.Str(required = False, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'})
     }
-    args = parser.parse(arguments, validate = validate_query)
+    args = parser.parse(arguments, validate = partial(validate_query, all_fields = ['chrom', 'start', 'stop', 'correlation', 'limit', 'last']))
     if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
         args['limit'] = current_app.config['API_MAX_PAGE_SIZE']
     if args['correlation'] == 'r':
@@ -198,7 +201,7 @@ def get_variant_ld(genome_build, reference_name, population_name):
         'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE'], error_messages = {'validator_failed': 'Value must be greater than 0.'}),
         'last': fields.Str(required = False, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'})
     }
-    args = parser.parse(arguments, validate = validate_query)
+    args = parser.parse(arguments, validate = partial(validate_query, all_fields = ['variant', 'chrom', 'start', 'stop', 'correlation', 'limit', 'last']))
     if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
         args['limit'] = current_app.config['API_MAX_PAGE_SIZE']
     if args['correlation'] == 'r':

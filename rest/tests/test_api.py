@@ -102,7 +102,6 @@ def test_chromosomes(client):
     assert result['error'] is None
     data = result['data']
     assert len(data) > 0
-    print result
 
 
 def test_region_ld(client, goldstandard_ld):
@@ -168,6 +167,14 @@ def test_compression(client):
 
 
 def test_malformed_region_ld(client):
+    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=22&start=51241101&stop=51241385&variant=10:114758349_C/T&correlation=rsquare')
+    assert response.status_code == 422
+    result = response.get_json()
+    assert all(x in result for x in ['data', 'error'])
+    assert result['data'] is None
+    assert result['error'] is not None and len(result['error']) > 0
+    print response.get_json()
+
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/regions?start=100&stop=1000&correlation=rsquare')
     assert response.status_code == 422
     result = response.get_json()

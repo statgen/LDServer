@@ -1,7 +1,8 @@
 Flask
 flask-cors
 flask-compress
-webargs
+marshmallow>=3.0.0b19
+webargs>=4.1.1
 gevent
 gunicorn
 pytest
