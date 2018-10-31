@@ -28,14 +28,23 @@ LD Server Playground
                                 </div>
                                 <select class="custom-select" id="select-query-type" onchange="changeQueryType()">
                                     <option value="1">Correlations meta-information</option>
-                                    <option value="2">References meta-information</option>
-                                    <option value="3">Populations meta-information</option>
-                                    <option value="4">Region correlations</option>
-                                    <option value="5">Variant correlations</option>
+                                    <option value="2">Genome builds meta-information</option>
+                                    <option value="3">References meta-information</option>
+                                    <option value="4">Populations meta-information</option>
+                                    <option value="5">Region correlations</option>
+                                    <option value="6">Variant correlations</option>
                                 </select>
                             </div>
                         </div>
-
+                        <div class="form-group">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <label class="input-group-text" for="select-genome-build">Genome build</label>
+                                </div>
+                                <select class="custom-select" id="select-genome-build" onchange="changeReference()" disabled>
+                                </select>
+                            </div>
+                        </div>
                         <div class="form-group">
                             <div class="input-group">
                                 <div class="input-group-prepend">
@@ -45,7 +54,6 @@ LD Server Playground
                                 </select>
                             </div>
                         </div>
-
                         <div class="form-group">
                             <div class="input-group">
                                 <div class="input-group-prepend">
@@ -102,7 +110,7 @@ LD Server Playground
                                 <div class="input-group-prepend">
                                     <label class="input-group-text" for="input-limit">Limit</label>
                                 </div>
-                                <input type="text" class="form-control" id="input-limit" oninput="setHttpRequest()" disabled>
+                                <input type="text" class="form-control" id="input-limit" placeholder="1 - {{ data.max_limit }} (default {{ data.max_limit }})" oninput="setHttpRequest()" disabled>
                             </div>
                         </div>
                     </form>
@@ -124,8 +132,13 @@ LD Server Playground
                                 <textarea class="form-control" row="2" id="input-http-request" readonly></textarea>
                             </div>
                         </div>
-                        <div class="text-danger" id="status-message"></div>
-                        <label for="json-response">JSON Response</label>
+                        <div class="form-group">
+                            <label for="response-status">HTTP Response Status Code (Message)</label>
+                            <div class="input-group">
+                                <input class="form-control" id="response-status" readonly></input>
+                            </div>
+                        </div>
+                        <label for="json-response">HTTP Response JSON</label>
                         <div id="json-response"></div>
                     </form>
                 </div>
@@ -144,7 +157,7 @@ LD Server Playground
         mode: "ace/mode/javascript",
     });
 
-    var restAPI = "http://127.0.0.1:5000";
+    var restAPI = "{{ data.api_base_url }}";
     var queryType = 1;
 
     function changeReference() {
@@ -157,25 +170,27 @@ LD Server Playground
     function setHttpRequest() {
         if (queryType == 1) {
             $("#input-http-request")[0].value = restAPI + '/correlations';
-            return;
         } else {
-            var httpRequest = restAPI + '/references';
+            var httpRequest = restAPI + '/genome_builds';
+            var build = $("#select-genome-build option:selected");
             var reference = $("#select-reference option:selected");
             var population = $("#select-population option:selected");
-            if (queryType == 2) {
+            if ((build.length > 0) && (build.val().length > 0)) {
+                httpRequest += "/" + build[0].text + "/references";
+            } else {
+                $("#input-http-request")[0].value = httpRequest;
+                return;
+            }
+            if (queryType == 3) {
                 if ((reference.length > 0) && (reference.val().length > 0)) {
                     httpRequest += "/" + reference[0].text;
                 }
-                $("#input-http-request")[0].value = httpRequest;
-                return;
-            } else if (queryType == 3) {
+            } else if (queryType == 4) {
                 httpRequest += "/" + reference.text() + "/populations";
                 if ((population.length > 0) && (population.val().length > 0)) {
                     httpRequest += "/" + population[0].text
                 }
-                $("#input-http-request")[0].value = httpRequest;
-                return;
-            } else if (queryType == 4) {
+            } else if (queryType == 5) {
                 httpRequest += "/" + reference.text() + "/populations/" + population.text() + "/regions";
                 var correlation = $("#select-correlation option:selected");
                 var chromosome = $("#select-chromosome option:selected");
@@ -184,9 +199,7 @@ LD Server Playground
                 if (limit.length > 0) {
                     httpRequest += '&limit=' + limit;
                 }
-                $("#input-http-request")[0].value = httpRequest;
-                return;
-            } else if (queryType == 5) {
+            } else if (queryType == 6) {
                 httpRequest += "/" + reference.text() + "/populations/" + population.text() + "/variants";
                 var correlation = $("#select-correlation option:selected");
                 var chromosome = $("#select-chromosome option:selected");
@@ -195,16 +208,39 @@ LD Server Playground
                 if (limit.length > 0) {
                     httpRequest += '&limit=' + limit;
                 }
-                $("#input-http-request")[0].value = httpRequest;
-                return;
             }
+            $("#input-http-request")[0].value = httpRequest;
         }
+    }
+
+    function getGenomeBuilds(no_empty) {
+        $("#select-genome-build").children().remove();
+        $.ajax({
+            url: restAPI + "/genome_builds",
+            type: "GET",
+            crossDomain: true,
+            dataType: "json",
+            async: false,
+            success: function (result) {
+                if (!no_empty) {
+                    $("#select-genome-build").append(
+                        $('<option>', {value: "", text: ""})
+                    );
+                }
+                $.each(result.data, function(i, build) {
+                    $("#select-genome-build").append(
+                        $('<option>', {value: build, text: build})
+                    );
+                });
+            }
+        });
     }
 
     function getReferences(no_empty) {
         $("#select-reference").children().remove();
+        var build = $("#select-genome-build option:selected").val();
         $.ajax({
-            url: restAPI + '/references',
+            url: restAPI + '/genome_builds/' + build + '/references',
             type: "GET",
             crossDomain: true,
             dataType: "json",
@@ -215,7 +251,7 @@ LD Server Playground
                         $('<option>', {value: "", text: ""})
                     );
                 }
-                $.each(result, function (i, reference) {
+                $.each(result.data, function (i, reference) {
                     $("#select-reference").append(
                         $('<option>', {value: reference.name, text: reference.name})
                     );
@@ -226,9 +262,10 @@ LD Server Playground
 
     function getPopulations(no_empty) {
         $("#select-population").children().remove();
+        var build = $("#select-genome-build option:selected").val();
         var reference = $("#select-reference option:selected").val();
         $.ajax({
-            url: restAPI + '/references/' + reference + '/populations',
+            url: restAPI + '/genome_builds/' + build + '/references/' + reference + '/populations',
             type: "GET",
             crossDomain: true,
             dataType: "json",
@@ -239,7 +276,7 @@ LD Server Playground
                         $('<option>', {value: "", text: ""})
                     );
                 }
-                $.each(result, function (i, population) {
+                $.each(result.data, function (i, population) {
                     $("#select-population").append(
                         $('<option>', {value: population, text: population})
                     );
@@ -257,7 +294,7 @@ LD Server Playground
             dataType: "json",
             async: false,
             success: function (result) {
-                $.each(result, function (i, correlation) {
+                $.each(result.data, function (i, correlation) {
                     $("#select-correlation").append(
                         $('<option>', {value: correlation.name, text: correlation.label})
                     );
@@ -268,14 +305,27 @@ LD Server Playground
 
     function getChromosomes() {
         $("#select-chromosome").children().remove();
-        for (var i = 1; i <= 22; ++i) {
-            $("#select-chromosome").append(
-                $('<option>', { value: i, text: i })
-            );
-        }
+        var build = $("#select-genome-build option:selected").val();
+        var reference = $("#select-reference option:selected").val();
+        $.ajax({
+            url: restAPI + '/genome_builds/' + build + '/references/' + reference + '/chromosomes',
+            type: "GET",
+            crossDomain: true,
+            dataType: "json",
+            async: false,
+            success: function (result) {
+                $.each(result.data, function (i, chromosome) {
+                    $("#select-chromosome").append(
+                        $('<option>', {value: chromosome, text: chromosome})
+                    );
+                });
+            }
+        });
     }
 
     function clearAll() {
+        $("#select-genome-build").children().remove();
+        $("#select-genome-build").prop("disabled", true);
         $("#select-reference").children().remove();
         $("#select-reference").prop("disabled", true);
         $("#select-population").children().remove();
@@ -300,20 +350,28 @@ LD Server Playground
             case 1:
                 break;
             case 2:
-                getReferences(false);
-                $("#select-reference").prop("disabled", false);
                 break;
             case 3:
+                getGenomeBuilds(true);
+                getReferences(false);
+                $("#select-genome-build").prop("disabled", false);
+                $("#select-reference").prop("disabled", false);
+                break;
+            case 4:
+                getGenomeBuilds(true);
                 getReferences(true);
                 getPopulations(false);
+                $("#select-genome-build").prop("disabled", false);
                 $("#select-reference").prop("disabled", false);
                 $("#select-population").prop("disabled", false);
                 break;
-            case 4:
+            case 5:
+                getGenomeBuilds(true);
                 getReferences(true);
                 getPopulations(true);
                 getCorrelations();
                 getChromosomes();
+                $("#select-genome-build").prop("disabled", false);
                 $("#select-reference").prop("disabled", false);
                 $("#select-population").prop("disabled", false);
                 $("#select-correlation").prop("disabled", false);
@@ -322,11 +380,13 @@ LD Server Playground
                 $("#input-stop").prop("disabled", false);
                 $("#input-limit").prop("disabled", false);
                 break;
-            case 5:
+            case 6:
+                getGenomeBuilds(true);
                 getReferences(true);
                 getPopulations(true);
                 getCorrelations();
                 getChromosomes();
+                $("#select-genome-build").prop("disabled", false);
                 $("#select-reference").prop("disabled", false);
                 $("#select-population").prop("disabled", false);
                 $("#input-variant").prop("disabled", false);
@@ -342,18 +402,21 @@ LD Server Playground
 
     function run() {
         var request = $("#input-http-request")[0].value;
-        var statusdiv = $('#status-message');
+        var statusdiv = $("#response-status")[0];
         editor.setValue("");
-        statusdiv.text("");
+        statusdiv.value = "";
         $.ajax({
             url: request,
             type: "GET",
-            crossDomain: true,
-        }).done(function(result) {
+            crossDomain: true
+        }).done(function(result, status, xhr) {
+            statusdiv.value = xhr.status + " (" + xhr.statusText + ")";
             editor.setValue(JSON.stringify(result, null, 4));
         }).fail(function(xhr, status, err) {
-            console.error(err);
-            statusdiv.text(err ? (err.message || err) : "An error occurred")
+            statusdiv.value = xhr.status + " (" + xhr.statusText + ")";
+            if (xhr.status == 422) {
+                editor.setValue(JSON.stringify(xhr.responseJSON, null, 4));
+            }
         });
     }
 
