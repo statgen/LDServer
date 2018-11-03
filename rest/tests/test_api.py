@@ -34,16 +34,12 @@ def test_references(client, config):
     for a, b in zip(references_json, data):
         assert a['Name'] == b['name']
         assert a['Description'] == b['description']
-        assert a['Genome build'] == b['genome build']
-        assert len(a['Samples'].keys()) == len(b['populations'])
-        assert all(x in b['populations'] for x in a['Samples'].keys())
     response = client.get('/genome_builds/SOMETHING/references')
-    assert response.status_code == 200
+    assert response.status_code == 404
     result = response.get_json()
     assert all(x in result for x in ['data', 'error'])
-    assert result['error'] is None
-    data = result['data']
-    assert len(data) == 0
+    assert result['error'] is not None
+    assert result['data'] is None
 
 
 def test_reference(client, config):
@@ -53,16 +49,20 @@ def test_reference(client, config):
     assert all(x in result for x in ['data', 'error'])
     assert result['error'] is None
     data = result['data']
-    assert all(x in data for x in ['name', 'description', 'genome build', 'populations'])
+    assert all(x in data for x in ['name', 'description', 'genome build'])
     with open(config['REFERENCES_JSON'], 'r') as f:
         reference_json = [x for x in json.load(f) if x['Name'] == data['name']][0]
     assert reference_json['Name'] == data['name']
     assert reference_json['Description'] == data['description']
     assert reference_json['Genome build'] == data['genome build']
-    assert len(reference_json['Samples'].keys()) == len(data['populations'])
-    assert all(x in data['populations'] for x in reference_json['Samples'].keys())
-    # response = client.get('/references/SOMETHING_BAD')
-    # assert response.status_code == 404
+    response = client.get('genome_builds/GRCh37/references/SOMETHING_BAD')
+    assert response.status_code == 404
+    assert result['error'] is not None
+    assert result['data'] is None
+    response = client.get('genome_builds/SOMETHING_BAD/references/1000G')
+    assert response.status_code == 404
+    assert result['error'] is not None
+    assert result['data'] is None
 
 
 def test_reference_populations(client, config):

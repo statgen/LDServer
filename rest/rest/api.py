@@ -64,65 +64,73 @@ def get_genome_build():
 
 @bp.route('/genome_builds/<genome_build>/references', methods = ['GET'])
 def get_references(genome_build):
-    data = model.get_references(genome_build)
-    response = { 'data': data, 'error': None }
-    return make_response(jsonify(response), 200)
+    response = { 'data': None, 'error': None }
+    if not model.has_genome_build(genome_build):
+        response['error'] = 'Genome build \'{}\' was not found.'.format(genome_build)
+    else:
+        response['data'] = model.get_references(genome_build)
+    return make_response(jsonify(response), 200 if response['data'] is not None else 404)
 
 
 @bp.route('/genome_builds/<genome_build>/references/<reference_name>', methods = ['GET'])
 def get_reference(genome_build, reference_name):
-    data = model.get_reference(genome_build, reference_name)
-    response = { 'data': data, 'error': None }
-    return make_response(jsonify(response), 200)
-    #reference = Reference.query.filter_by(name = reference_name).first()
-    #if reference:
-    #    data = { 'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples])) }
-    #    response = { 'data': data, 'error': None }
-    #    return make_response(jsonify(response), 200)
-    #bort(404)
+    response = { 'data': None, 'error': None }
+    if not model.has_genome_build(genome_build):
+        response['error'] = 'Genome build \'{}\' was not found.'.format(genome_build)
+    else:
+        data = model.get_reference(genome_build, reference_name)
+        if data is None:
+            response['error'] = 'Reference panel \'{}\' was not found in {} genome build.'.format(reference_name, genome_build)
+        else:
+            response['data'] = data
+    return make_response(jsonify(response), 200 if response['data'] is not None else 404)
 
 
 @bp.route('/genome_builds/<genome_build>/references/<reference_name>/populations', methods = ['GET'])
 def get_populations(genome_build, reference_name):
-    data = model.get_populations(genome_build, reference_name)
-    response = { 'data': data, 'error': None }
-    return make_response(jsonify(response), 200)
-    # reference = Reference.query.filter_by(name = reference_name).first()
-    # if reference:
-    #     data = list(set([s.subset for s in reference.samples]))
-    #     response = { 'data': data, 'error': None }
-    #     return make_response(jsonify(response), 200)
-    # abort(404)
+    response = { 'data': None, 'error': None }
+    if not model.has_genome_build(genome_build):
+        response['error'] = 'Genome build \'{}\' was not found.'.format(genome_build)
+    else:
+        reference_id = model.get_reference_id(genome_build, reference_name)
+        if not reference_id:
+            response['error'] = 'Reference panel \'{}\' was not found in {} genome build.'.format(reference_name, genome_build)
+        else:
+            response['data'] = model.get_populations(reference_id)
+    return make_response(jsonify(response), 200 if response['data'] is not None else 404)
 
 
 @bp.route('/genome_builds/<genome_build>/references/<reference_name>/populations/<population_name>', methods = ['GET'])
 def get_population(genome_build, reference_name, population_name):
-    data = model.get_population(genome_build, reference_name, population_name)
-    response = { 'data': data, 'error': None }
-    return make_response(jsonify(response), 200)
-    # reference = Reference.query.filter_by(name = reference_name).first()
-    # if reference is not None:
-    #     samples = Sample.query.with_parent(reference).filter_by(subset = population_name).all()
-    #     if samples:
-    #         data = { 'name': population_name, 'size': len(samples) }
-    #         response = { 'data': data, 'error': None }
-    #         return make_response(jsonify(response), 200)
-    # abort(404)
+    response = { 'data': None, 'error': None }
+    if not model.has_genome_build(genome_build):
+        response['error'] = 'Genome build \'{}\' was not found.'.format(genome_build)
+    else:
+        reference_id = model.get_reference_id(genome_build, reference_name)
+        if not reference_id:
+            response['error'] = 'Reference panel \'{}\' was not found in {} genome build.'.format(reference_name, genome_build)
+        elif not model.has_population(reference_id, population_name):
+            response['error'] = 'Population \'{}\' was not found in {} reference panel.'.format(population_name, reference_name)
+        else:
+            response['data'] = { 'name': population_name, 'size': model.get_samples_count(reference_id, population_name) }
+    return make_response(jsonify(response), 200 if response['data'] is not None else 404)
 
 
 @bp.route('/genome_builds/<genome_build>/references/<reference_name>/chromosomes', methods = ['GET'])
 def get_chromosomes(genome_build, reference_name):
-    reference = Reference.query.filter_by(genome_build = genome_build, name = reference_name).first()
-    if reference is None:
-        abort(404)
-    files = File.query.with_parent(reference).all()
-    if not files:
-        abort(404)
-    ldserver = LDServer(current_app.config['SEGMENT_SIZE_BP'])
-    for file in files:
-        ldserver.set_file(str(file.path))
-    response = { 'data': [x for x in ldserver.get_chromosomes()], 'error': None }
-    return make_response(jsonify(response), 200)
+    response = { 'data': None, 'error': None }
+    if not model.has_genome_build(genome_build):
+        response['error'] = 'Genome build \'{}\' was not found.'.format(genome_build)
+    else:
+        reference_id = model.get_reference_id(genome_build, reference_name)
+        if not reference_id:
+            response['error'] = 'Reference panel \'{}\' was not found in {} genome build.'.format(reference_name, genome_build)
+        else:
+            ldserver = LDServer(current_app.config['SEGMENT_SIZE_BP'])
+            for f in model.get_files(reference_id):
+                ldserver.set_file(f)
+            response['data'] = [x for x in ldserver.get_chromosomes()]
+    return make_response(jsonify(response), 200 if response['data'] is not None else 404)
 
 
 @bp.route('/genome_builds/<genome_build>/references/<reference_name>/populations/<population_name>/regions', methods = ['GET'])
@@ -144,34 +152,24 @@ def get_region_ld(genome_build, reference_name, population_name):
         correlation_type = correlation.ld_rsquare
     else:
         abort(404)
-    reference = Reference.query.filter_by(genome_build = genome_build, name = reference_name).first()
-    if reference is None:
+    reference_id = model.get_reference_id(genome_build, reference_name)
+    if reference_id is None:
         abort(404)
-    samples = Sample.query.with_parent(reference).filter_by(subset = population_name).all()
-    if not samples:
+    if not model.has_samples(reference_id, population_name):
         abort(404)
-    files = File.query.with_parent(reference).all()
-    if not files:
-        abort(404)
-    #start = time.time()
     ldserver = LDServer(current_app.config['SEGMENT_SIZE_BP'])
-    #end = time.time()
-    #print "Created LD server in {} seconds.".format("%0.4f" % (end - start))
-    #start = time.time()
-    for file in files:
-        ldserver.set_file(str(file.path))
-    #end = time.time()
-    #print "Files initialized in {} seconds.".format("%0.4f" % (end - start))
+    for f in model.get_files(reference_id):
+        ldserver.set_file(f)
     if 'last' in args:
         result = LDQueryResult(args['limit'], str(args['last']))
     else:
         result = LDQueryResult(args['limit'])
     if population_name != 'ALL':
         s = StringVec()
-        s.extend(str(sample.sample) for sample in samples)
+        s.extend(model.get_samples(reference_id, population_name))
         ldserver.set_samples(str(population_name), s)
     if current_app.config['CACHE_ENABLED']:
-        ldserver.enable_cache(file.reference_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
+        ldserver.enable_cache(reference_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
     #start = time.time()
     ldserver.compute_region_ld(str(args['chrom']), args['start'], args['stop'], correlation_type, result, str(population_name))
     #print "Computed results in {} seconds.".format("%0.4f" % (time.time() - start))
@@ -210,28 +208,24 @@ def get_variant_ld(genome_build, reference_name, population_name):
         correlation_type = correlation.ld_rsquare
     else:
         abort(404)
-    reference = Reference.query.filter_by(genome_build = genome_build, name = reference_name).first()
-    if reference is None:
+    reference_id = model.get_reference_id(genome_build, reference_name)
+    if reference_id is None:
         abort(404)
-    samples = Sample.query.with_parent(reference).filter_by(subset = population_name).all()
-    if not samples:
-        abort(404)
-    files = File.query.with_parent(reference).all()
-    if not files:
+    if not model.has_samples(reference_id, population_name):
         abort(404)
     ldserver = LDServer(current_app.config['SEGMENT_SIZE_BP'])
-    for file in files:
-        ldserver.set_file(str(file.path))
+    for f in model.get_files(reference_id):
+        ldserver.set_file(f)
     if 'last' in args:
         result = LDQueryResult(args['limit'], str(args['last']))
     else:
         result = LDQueryResult(args['limit'])
     if population_name != 'ALL':
         s = StringVec()
-        s.extend(str(sample.sample) for sample in samples)
+        s.extend(model.get_samples(reference_id, population_name))
         ldserver.set_samples(str(population_name), s)
     if current_app.config['CACHE_ENABLED']:
-        ldserver.enable_cache(file.reference_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
+        ldserver.enable_cache(reference_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
     start = time.time()
     ldserver.compute_variant_ld(str(args['variant']), str(args['chrom']), args['start'], args['stop'], correlation_type, result, str(population_name))
     print "Computed results in {} seconds.".format("%0.4f" % (time.time() - start))

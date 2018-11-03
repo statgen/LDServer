@@ -1,4 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import Index
 from flask import current_app
 from flask.cli import with_appcontext
 import click
@@ -37,46 +38,45 @@ class Sample(db.Model):
     def __repr__(self):
         return '<Sample %r %r>' % (self.subset, self.sample)
 
+Index('reference_index_1', Reference.genome_build)
+Index('file_index', File.reference_id, File.path)
+Index('sample_index', Sample.reference_id, Sample.subset, Sample.sample)
+
+def has_genome_build(genome_build):
+    return db.session.query(Reference.genome_build).filter_by(genome_build = genome_build).first() is not None
+
 def get_genome_builds():
-    return [x[0] for x in db.session.query(Reference.genome_build).distinct()]
+    return [x for x, in db.session.query(Reference.genome_build).distinct()]
 
 def get_references(genome_build):
-    data = []
-    for reference in Reference.query.filter_by(genome_build = genome_build).all():
-        data.append({'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples]))})
-    return data
+    return [{'name': name, 'description': desc } for name, desc, in db.session.query(Reference.name, Reference.description).filter_by(genome_build = genome_build)]
+
+def get_reference_id(genome_build, reference_name):
+    return db.session.query(Reference.id).filter_by(genome_build = genome_build).filter_by(name = reference_name).scalar()
 
 def get_reference(genome_build, reference_name):
-    data = None
     reference = Reference.query.filter_by(genome_build = genome_build, name = reference_name).first()
     if reference is not None:
-        data = { 'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build, 'populations': list(set([s.subset for s in reference.samples])) }
-    return data
+        return { 'name': reference.name, 'description': reference.description, 'genome build': reference.genome_build }
+    return None
 
-def get_populations(genome_build, reference_name):
-    data = []
-    reference = Reference.query.filter_by(genome_build = genome_build, name = reference_name).first()
-    if reference is not None:
-        data = list(set([s.subset for s in reference.samples]))
-    return data
+def has_population(reference_id, subset):
+    return db.session.query(Sample.subset).filter_by(reference_id = reference_id).filter_by(subset = subset).first() is not None
 
-def get_population(genome_build, reference_name, population_name):
-    data = None
-    reference = Reference.query.filter_by(genome_build = genome_build, name = reference_name).first()
-    if reference is not None:
-        samples = Sample.query.with_parent(reference).filter_by(subset = population_name).all()
-        if samples:
-            data = { 'name': population_name, 'size': len(samples) }
-    return data
+def get_populations(reference_id):
+    return [x for x, in db.session.query(Sample.subset).filter_by(reference_id = reference_id).distinct()]
 
-def get_samples(reference, subset):
-    #return [v for v, in db.session.query(Sample.sample).filter_by(subset = subset, reference_id = reference).all()]
-    print db.session.query(Sample.sample).filter_by(subset = subset, reference_id = reference)
-    return db.session.query(Sample.sample).filter_by(subset = subset, reference_id = reference).all()
+def has_samples(reference_id, subset):
+    return db.session.query(Sample.sample).filter_by(reference_id = reference_id).filter_by(subset = subset).first() is not None
 
-    #sql = text('SELECT sample FROM sample WHERE reference_id = :reference_id AND subset = :subset')
-    #result = [x for x in db.engine.execute(sql, reference_id = reference, subset = subset)]
-    #return result
+def get_samples_count(reference_id, subset):
+    return db.session.query(Sample).filter_by(reference_id = reference_id).filter_by(subset = subset).count()
+
+def get_samples(reference_id, subset):
+    return [str(x) for x, in db.session.query(Sample.sample).filter_by(reference_id = reference_id).filter_by(subset = subset)]
+
+def get_files(reference_id):
+    return [str(x) for x, in db.session.query(File.path).filter_by(reference_id = reference_id)]
 
 def load_references(json_file):
     db.drop_all()
