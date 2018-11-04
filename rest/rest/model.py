@@ -1,11 +1,20 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Index
-from flask import current_app
 from flask.cli import with_appcontext
 import click
 import json
 
 db = SQLAlchemy()
+
+class Correlation(db.Model):
+    __tablename__ = 'correlation'
+    id = db.Column(db.Integer, primary_key = True)
+    name = db.Column(db.String(), unique = True, nullable = False)
+    label = db.Column(db.String(), unique = False, nullable = False)
+    descripition = db.Column(db.String(), unique = False, nullable = False)
+    type = db.Column(db.String(), unique = False, nullable = False)
+    def __repr__(self):
+        return '<Correlation %r>' % self.name
 
 class Reference(db.Model):
     __tablename__ = 'reference'
@@ -41,6 +50,9 @@ class Sample(db.Model):
 Index('reference_index_1', Reference.genome_build)
 Index('file_index', File.reference_id, File.path)
 Index('sample_index', Sample.reference_id, Sample.subset, Sample.sample)
+
+def get_correlations():
+    return [{'name': name, 'label': label, 'description': desc, 'type': type} for name, label, desc, type in db.session.query(Correlation.name, Correlation.label, Correlation.descripition, Correlation.type)]
 
 def has_genome_build(genome_build):
     return db.session.query(Reference.genome_build).filter_by(genome_build = genome_build).first() is not None
@@ -78,8 +90,23 @@ def get_samples(reference_id, subset):
 def get_files(reference_id):
     return [str(x) for x, in db.session.query(File.path).filter_by(reference_id = reference_id)]
 
+def load_correlations():
+    db.create_all()
+    correlations = [str(x) for x, in db.session.query(Correlation.name)]
+    if not correlations:
+        correlations = [{ 'name': 'r', 'label': 'r', 'description': '', 'type': 'LD' },
+                        { 'name': 'rsquare', 'label': 'r^2', 'description': '', 'type': 'LD' },
+                        { 'name': 'covariance', 'label': 'cov', 'description': '', 'type': 'Covariance' }]
+        for correlation in correlations:
+            db.session.add(Correlation(name = correlation['name'], label = correlation['label'], descripition = correlation['description'], type = correlation['type']))
+        db.session.commit()
+        return [x['name'] for x in correlations]
+    return correlations
+
 def load_references(json_file):
-    db.drop_all()
+    for t in db.metadata.sorted_tables:
+        if t.name != 'correlation':
+            t.drop(db.engine)
     db.create_all()
     with open(json_file, 'r') as f:
         for reference in json.load(f):
@@ -90,7 +117,7 @@ def load_references(json_file):
                 for sample in samples:
                     r.samples.append(Sample(subset = subset, sample = sample))
             db.session.add(r)
-            db.session.commit()
+        db.session.commit()
 
 def show_references():
     db.create_all()

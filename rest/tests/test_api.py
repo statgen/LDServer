@@ -3,6 +3,7 @@ import json
 import StringIO
 import gzip
 
+
 def test_correlations(client):
     response = client.get('/correlations')
     assert response.status_code == 200
@@ -10,6 +11,7 @@ def test_correlations(client):
     assert all(x in result for x in ['data', 'error'])
     assert result['error'] is None
     data = result['data']
+    assert len(data) == 3
     for correlation in data:
         assert all(x in correlation for x in ['name', 'label', 'description', 'type'])
 

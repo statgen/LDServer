@@ -36,22 +36,9 @@ def validate_query(parsed_fields, all_fields):
     return True
 
 
-def build_link_next(args, result):
-    if result.has_next():
-        link_next = request.base_url + '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))
-        link_next += '&last={}'.format(result.get_last())
-        return link_next
-    return None
-
-
 @bp.route('/correlations', methods = ['GET'])
 def get_correlations():
-    data = [
-        { 'name': 'r', 'label': 'r', 'description': '', 'type': 'LD' },
-        { 'name': 'rsquare', 'label': 'r^2', 'description': '', 'type': 'LD' },
-        { 'name': 'covariance', 'label': 'cov', 'description': '', 'type': 'Covariance' }
-    ]
-    response = { 'data': data, 'error': None }
+    response = { 'data': model.get_correlations(), 'error': None }
     return make_response(jsonify(response), 200)
 
 
@@ -132,6 +119,8 @@ def get_chromosomes(genome_build, reference_name):
             response['data'] = [x for x in ldserver.get_chromosomes()]
     return make_response(jsonify(response), 200 if response['data'] is not None else 404)
 
+def correlation_type(correlation_name):
+    return { 'r': correlation.ld_r, 'rsquare': correlation.ld_rsquare, 'cov': correlation.cov }[correlation_name]
 
 @bp.route('/genome_builds/<genome_build>/references/<reference_name>/populations/<population_name>/regions', methods = ['GET'])
 def get_region_ld(genome_build, reference_name, population_name):
@@ -139,19 +128,13 @@ def get_region_ld(genome_build, reference_name, population_name):
         'chrom': fields.Str(required = True, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
         'start': fields.Int(required = True, validate = lambda x: x >= 0, error_messages = {'validator_failed': 'Value must be greater than or equal to 0.'}),
         'stop': fields.Int(required = True, validate = lambda x: x > 0, error_messages = {'validator_failed': 'Value must be greater than 0.'}),
-        'correlation': fields.Str(required = True, validate = lambda x: x in ['r', 'rsquare'], error_messages = {'validator_failed': 'Value must be equal to \'r\' or \'rsquare\'.'}),
+        'correlation': fields.Str(required = True, validate = lambda x: x in current_app.config['CORRELATIONS'], error_messages = {'validator_failed': 'Value must be one of the following: {}.'.format(', '.join(current_app.config['CORRELATIONS']))}),
         'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE'], error_messages = {'validator_failed': 'Value must be greater than 0.'}),
         'last': fields.Str(required = False, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'})
     }
     args = parser.parse(arguments, validate = partial(validate_query, all_fields = ['chrom', 'start', 'stop', 'correlation', 'limit', 'last']))
     if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
         args['limit'] = current_app.config['API_MAX_PAGE_SIZE']
-    if args['correlation'] == 'r':
-        correlation_type = correlation.ld_r
-    elif args['correlation'] == 'rsquare':
-        correlation_type = correlation.ld_rsquare
-    else:
-        abort(404)
     if not model.has_genome_build(genome_build):
         response = { 'data': None, 'error': 'Genome build \'{}\' was not found.'.format(genome_build) }
         return make_response(jsonify(response), 404)
@@ -176,7 +159,7 @@ def get_region_ld(genome_build, reference_name, population_name):
     if current_app.config['CACHE_ENABLED']:
         ldserver.enable_cache(reference_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
     #start = time.time()
-    ldserver.compute_region_ld(str(args['chrom']), args['start'], args['stop'], correlation_type, result, str(population_name))
+    ldserver.compute_region_ld(str(args['chrom']), args['start'], args['stop'], correlation_type(args['correlation']), result, str(population_name))
     #print "Computed results in {} seconds.".format("%0.4f" % (time.time() - start))
     #start = time.time()
     if current_app.config['PROXY_PASS']:
@@ -199,19 +182,13 @@ def get_variant_ld(genome_build, reference_name, population_name):
         'chrom': fields.Str(required = True, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
         'start': fields.Int(required = True, validate = lambda x: x >= 0, error_messages = {'validator_failed': 'Value must be greater than or equal to 0.'}),
         'stop': fields.Int(required = True, validate = lambda x: x > 0, error_messages = {'validator_failed': 'Value must be greater than 0.'}),
-        'correlation': fields.Str(required = True, validate = lambda x: x in ['r', 'rsquare'], error_messages = {'validator_failed': 'Value must be equal to \'r\' or \'rsquare\'.'}),
+        'correlation': fields.Str(required = True, validate = lambda x: x in current_app.config['CORRELATIONS'], error_messages = {'validator_failed': 'Value must be one of the following: {}.'.format(', '.join(current_app.config['CORRELATIONS']))}),
         'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE'], error_messages = {'validator_failed': 'Value must be greater than 0.'}),
         'last': fields.Str(required = False, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'})
     }
     args = parser.parse(arguments, validate = partial(validate_query, all_fields = ['variant', 'chrom', 'start', 'stop', 'correlation', 'limit', 'last']))
     if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
         args['limit'] = current_app.config['API_MAX_PAGE_SIZE']
-    if args['correlation'] == 'r':
-        correlation_type = correlation.ld_r
-    elif args['correlation'] == 'rsquare':
-        correlation_type = correlation.ld_rsquare
-    else:
-        abort(404)
     if not model.has_genome_build(genome_build):
         response = { 'data': None, 'error': 'Genome build \'{}\' was not found.'.format(genome_build) }
         return make_response(jsonify(response), 404)
@@ -236,7 +213,7 @@ def get_variant_ld(genome_build, reference_name, population_name):
     if current_app.config['CACHE_ENABLED']:
         ldserver.enable_cache(reference_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
     start = time.time()
-    ldserver.compute_variant_ld(str(args['variant']), str(args['chrom']), args['start'], args['stop'], correlation_type, result, str(population_name))
+    ldserver.compute_variant_ld(str(args['variant']), str(args['chrom']), args['start'], args['stop'], correlation_type(args['correlation']), result, str(population_name))
     print "Computed results in {} seconds.".format("%0.4f" % (time.time() - start))
     if current_app.config['PROXY_PASS']:
         base_url = '/'.join(x.strip('/') for x in [current_app.config['PROXY_PASS'], request.path])
