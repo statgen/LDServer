@@ -34,6 +34,7 @@ def test_references(client, config):
     for a, b in zip(references_json, data):
         assert a['Name'] == b['name']
         assert a['Description'] == b['description']
+
     response = client.get('/genome_builds/SOMETHING/references')
     assert response.status_code == 404
     result = response.get_json()
@@ -55,14 +56,14 @@ def test_reference(client, config):
     assert reference_json['Name'] == data['name']
     assert reference_json['Description'] == data['description']
     assert reference_json['Genome build'] == data['genome build']
-    response = client.get('genome_builds/GRCh37/references/SOMETHING_BAD')
-    assert response.status_code == 404
-    assert result['error'] is not None
-    assert result['data'] is None
-    response = client.get('genome_builds/SOMETHING_BAD/references/1000G')
-    assert response.status_code == 404
-    assert result['error'] is not None
-    assert result['data'] is None
+
+    for bad_url in ['genome_builds/GRCh37/references/SOMETHING_BAD', 'genome_builds/SOMETHING_BAD/references/1000G']:
+        response = client.get(bad_url)
+        assert response.status_code == 404
+        result = response.get_json()
+        assert all(x in result for x in ['data', 'error'])
+        assert result['error'] is not None
+        assert result['data'] is None
 
 
 def test_reference_populations(client, config):
@@ -78,6 +79,15 @@ def test_reference_populations(client, config):
     assert len(data) == len(populations)
     assert all(x in populations for x in data)
 
+    for bad_url in ['genome_builds/GRCh37/references/SOMETHING_BAD/populations', 'genome_builds/SOMETHING_BAD/references/1000G/populations']:
+        response = client.get(bad_url)
+        assert response.status_code == 404
+        result = response.get_json()
+        assert all(x in result for x in ['data', 'error'])
+        assert result['error'] is not None
+        assert result['data'] is None
+
+
 
 def test_reference_population(client, config):
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/EUR')
@@ -90,8 +100,17 @@ def test_reference_population(client, config):
     with open(config['REFERENCES_JSON'], 'r') as f:
         reference_json = [x for x in json.load(f) if x['Name'] == '1000G'][0]
     assert len(reference_json['Samples']['EUR']) == data['size']
-    # response = client.get('/references/1000G_GRCh37/populations/SOMETHING_BAD')
-    # assert response.status_code == 404
+
+    for bad_url in ['genome_builds/GRCh37/references/SOMETHING_BAD/populations/EUR',
+                    'genome_builds/SOMETHING_BAD/references/1000G/populations/EUR',
+                    '/genome_builds/GRCh37/references/1000G/populations/SOMETHING_BAD']:
+        response = client.get(bad_url)
+        assert response.status_code == 404
+        result = response.get_json()
+        assert all(x in result for x in ['data', 'error'])
+        assert result['error'] is not None
+        assert result['data'] is None
+
 
 
 def test_chromosomes(client):
@@ -102,6 +121,15 @@ def test_chromosomes(client):
     assert result['error'] is None
     data = result['data']
     assert len(data) > 0
+
+    for bad_url in ['/genome_builds/SOMETHING_BAD/references/1000G/chromosomes',
+                    '/genome_builds/GRCh37/references/SOMETHING_BAD/chromosomes']:
+        response = client.get(bad_url)
+        assert response.status_code == 404
+        result = response.get_json()
+        assert all(x in result for x in ['data', 'error'])
+        assert result['error'] is not None
+        assert result['data'] is None
 
 
 def test_region_ld(client, goldstandard_ld):
@@ -144,7 +172,6 @@ def test_region_ld(client, goldstandard_ld):
     data = result['data']
     assert all(x in data for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
     assert all(len(data[x]) == 0 for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
-
 
     url = '/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=22&start=51241101&stop=51241385&correlation=rsquare'
     response = client.get(url)
@@ -222,103 +249,52 @@ def test_compression(client):
 
 
 def test_malformed_region_ld(client):
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=22&start=51241101&stop=51241385&variant=10:114758349_C/T&correlation=rsquare')
-    assert response.status_code == 422
-    result = response.get_json()
-    assert all(x in result for x in ['data', 'error'])
-    assert result['data'] is None
-    assert result['error'] is not None and len(result['error']) > 0
-    print response.get_json()
+    for bad_url in ['/genome_builds/SOMETHING_BAD/references/1000G/populations/ALL/regions?chrom=22&start=51241101&stop=51241385&correlation=rsquare',
+                    '/genome_builds/GRCh37/references/SOMETHING_BAD/populations/ALL/regions?chrom=22&start=51241101&stop=51241385&correlation=rsquare',
+                    '/genome_builds/GRCh37/references/1000G/populations/SOMETHING_BAD/regions?chrom=22&start=51241101&stop=51241385&correlation=rsquare']:
+        response = client.get(bad_url)
+        assert response.status_code == 404
+        result = response.get_json()
+        assert all(x in result for x in ['data', 'error'])
+        assert result['data'] is None
+        assert result['error'] is not None and len(result['error']) > 0
 
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/regions?start=100&stop=1000&correlation=rsquare')
-    assert response.status_code == 422
-    result = response.get_json()
-    assert all(x in result for x in ['data', 'error'])
-    assert result['data'] is None
-    assert result['error'] is not None and len(result['error']) > 0
-
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=chr22&start=-100&stop=1000&correlation=rsquare')
-    assert response.status_code == 422
-    result = response.get_json()
-    assert all(x in result for x in ['data', 'error'])
-    assert result['data'] is None
-    assert result['error'] is not None and len(result['error']) > 0
-
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=chr22&start=100&stop=-1000&correlation=rsquare')
-    assert response.status_code == 422
-    result = response.get_json()
-    assert all(x in result for x in ['data', 'error'])
-    assert result['data'] is None
-    assert result['error'] is not None and len(result['error']) > 0
-
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=chr22&start=1000&stop=100&correlation=rsquare')
-    assert response.status_code == 422
-    result = response.get_json()
-    assert all(x in result for x in ['data', 'error'])
-    assert result['data'] is None
-    assert result['error'] is not None and len(result['error']) > 0
-
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=chr22&start=100&stop=1000&correlation=nonsense')
-    assert response.status_code == 422
-    result = response.get_json()
-    assert all(x in result for x in ['data', 'error'])
-    assert result['data'] is None
-    assert result['error'] is not None and len(result['error']) > 0
-
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=chr22&start=100&stop=1000&correlation=rsquare&limit=0')
-    assert response.status_code == 422
-    result = response.get_json()
-    assert all(x in result for x in ['data', 'error'])
-    assert result['data'] is None
-    assert result['error'] is not None and len(result['error']) > 0
+    for bad_url in ['/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=22&start=51241101&stop=51241385&variant=10:114758349_C/T&correlation=rsquare',
+                    '/genome_builds/GRCh37/references/1000G/populations/ALL/regions?start=100&stop=1000&correlation=rsquare',
+                    '/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=chr22&start=-100&stop=1000&correlation=rsquare',
+                    '/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=chr22&start=100&stop=-1000&correlation=rsquare',
+                    '/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=chr22&start=1000&stop=100&correlation=rsquare',
+                    '/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=chr22&start=100&stop=1000&correlation=nonsense',
+                    '/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=chr22&start=100&stop=1000&correlation=rsquare&limit=0']:
+        response = client.get(bad_url)
+        assert response.status_code == 422
+        result = response.get_json()
+        assert all(x in result for x in ['data', 'error'])
+        assert result['data'] is None
+        assert result['error'] is not None and len(result['error']) > 0
 
 
 def test_malformed_variant_ld(client):
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?chrom=22&start=51241101&stop=51241385&correlation=rsquare')
-    assert response.status_code == 422
-    result = response.get_json()
-    assert all(x in result for x in ['data', 'error'])
-    assert result['data'] is None
-    assert result['error'] is not None and len(result['error']) > 0
+    for bad_url in ['/genome_builds/SOMETHING_BAD/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare',
+                    '/genome_builds/GRCh37/references/SOMETHING_BAD/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare',
+                    '/genome_builds/GRCh37/references/1000G/populations/SOMETHING_BAD/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare']:
+        response = client.get(bad_url)
+        assert response.status_code == 404
+        result = response.get_json()
+        assert all(x in result for x in ['data', 'error'])
+        assert result['data'] is None
+        assert result['error'] is not None and len(result['error']) > 0
 
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&start=51241101&stop=51241385&correlation=rsquare')
-    assert response.status_code == 422
-    result = response.get_json()
-    assert all(x in result for x in ['data', 'error'])
-    assert result['data'] is None
-    assert result['error'] is not None and len(result['error']) > 0
-
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=-1000&stop=51241385&correlation=rsquare')
-    assert response.status_code == 422
-    result = response.get_json()
-    assert all(x in result for x in ['data', 'error'])
-    assert result['data'] is None
-    assert result['error'] is not None and len(result['error']) > 0
-
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=1000&stop=-100&correlation=rsquare')
-    assert response.status_code == 422
-    result = response.get_json()
-    assert all(x in result for x in ['data', 'error'])
-    assert result['data'] is None
-    assert result['error'] is not None and len(result['error']) > 0
-
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=1000&stop=100&correlation=rsquare')
-    assert response.status_code == 422
-    result = response.get_json()
-    assert all(x in result for x in ['data', 'error'])
-    assert result['data'] is None
-    assert result['error'] is not None and len(result['error']) > 0
-
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=1000&stop=10000&correlation=nonsense')
-    assert response.status_code == 422
-    result = response.get_json()
-    assert all(x in result for x in ['data', 'error'])
-    assert result['data'] is None
-    assert result['error'] is not None and len(result['error']) > 0
-
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=1000&stop=10000&correlation=rsquare&limit=0')
-    assert response.status_code == 422
-    result = response.get_json()
-    assert all(x in result for x in ['data', 'error'])
-    assert result['data'] is None
-    assert result['error'] is not None and len(result['error']) > 0
+    for bad_url in ['/genome_builds/GRCh37/references/1000G/populations/ALL/variants?chrom=22&start=51241101&stop=51241385&correlation=rsquare',
+                    '/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&start=51241101&stop=51241385&correlation=rsquare',
+                    '/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=-1000&stop=51241385&correlation=rsquare',
+                    '/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=1000&stop=-100&correlation=rsquare',
+                    '/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=1000&stop=100&correlation=rsquare',
+                    '/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=1000&stop=10000&correlation=nonsense',
+                    '/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=1000&stop=10000&correlation=rsquare&limit=0']:
+        response = client.get(bad_url)
+        assert response.status_code == 422
+        result = response.get_json()
+        assert all(x in result for x in ['data', 'error'])
+        assert result['data'] is None
+        assert result['error'] is not None and len(result['error']) > 0
