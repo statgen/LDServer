@@ -499,26 +499,46 @@ TEST_F(LDServerTest, segment_cache) {
 
 TEST_F(LDServerTest, cell_key) {
     uint32_t unique_key = 0;
+    correlation correlation = correlation::LD_R;
     uint64_t morton_code = 0;
 
     string key = LDServer::make_cell_cache_key(1, "", correlation::LD_RSQUARE, "", 3);
 
-    ASSERT_EQ(12, key.size());
+    ASSERT_EQ(13, key.size());
     memcpy(&unique_key, key.c_str(), 4);
     ASSERT_EQ(unique_key, 1);
-    memcpy(&morton_code, key.c_str() + 4, 8);
+    memcpy(&correlation, key.c_str() + 4, 1);
+    ASSERT_EQ(correlation, correlation::LD_RSQUARE);
+    memcpy(&morton_code, key.c_str() + 5, 8);
     ASSERT_EQ(morton_code, 3);
+//    ASSERT_EQ(12, key.size());
+//    memcpy(&unique_key, key.c_str(), 4);
+//    ASSERT_EQ(unique_key, 1);
+//    memcpy(&morton_code, key.c_str() + 4, 8);
+//    ASSERT_EQ(morton_code, 3);
 
-    key = LDServer::make_cell_cache_key(2, "ALL", correlation::LD_RSQUARE, "chr22", 300);
-    ASSERT_EQ(20, key.size());
+    key = LDServer::make_cell_cache_key(2, "ALL", correlation::COV, "chr22", 300);
+    ASSERT_EQ(21, key.size());
     memcpy(&unique_key, key.c_str(), 4);
     ASSERT_EQ(unique_key, 2);
     string samples_name(key.c_str() + 4, 3);
     ASSERT_EQ(samples_name, "ALL");
     string chromosome(key.c_str() + 7, 5);
     ASSERT_EQ(chromosome, "chr22");
-    memcpy(&morton_code, key.c_str() + 12 , 8);
+    memcpy(&correlation, key.c_str() + 12, 1);
+    ASSERT_EQ(correlation, correlation::COV);
+    memcpy(&morton_code, key.c_str() + 13 , 8);
     ASSERT_EQ(morton_code, 300);
+
+//    ASSERT_EQ(20, key.size());
+//    memcpy(&unique_key, key.c_str(), 4);
+//    ASSERT_EQ(unique_key, 2);
+//    string samples_name(key.c_str() + 4, 3);
+//    ASSERT_EQ(samples_name, "ALL");
+//    string chromosome(key.c_str() + 7, 5);
+//    ASSERT_EQ(chromosome, "chr22");
+//    memcpy(&morton_code, key.c_str() + 12 , 8);
+//    ASSERT_EQ(morton_code, 300);
 }
 
 TEST_F(LDServerTest, cell_cache) {

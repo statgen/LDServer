@@ -69,6 +69,7 @@ string LDServer::make_cell_cache_key(uint32_t cache_key, const string& samples_n
     os.write(reinterpret_cast<const char*>(&cache_key), sizeof(cache_key));
     os.write(samples_name.c_str(), samples_name.size());
     os.write(chromosome.c_str(), chromosome.size());
+    os.write(reinterpret_cast<const char*>(&correlation_type), sizeof(correlation_type));
     os.write(reinterpret_cast<const char*>(&morton_code), sizeof(morton_code));
     os.flush();
     return os.str();
