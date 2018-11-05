@@ -82,6 +82,13 @@ protected:
             samples.emplace_back(line);
         }
     }
+
+    void flush_cache() {
+        redisReply* reply = nullptr;
+        reply = (redisReply*)redisCommand(redis_cache, "FLUSHDB");
+        assert(reply != nullptr);
+        freeReplyObject(reply);
+    }
 };
 
 string LDServerTest::hostname = "127.0.0.1";
@@ -573,6 +580,27 @@ TEST_F(LDServerTest, cache_enabled) {
     ASSERT_NE(reply, nullptr);
     ASSERT_EQ(reply->integer, 2);
     freeReplyObject(reply);
+}
+
+TEST_F(LDServerTest, cache_with_different_correlations) {
+    LDServer server;
+    LDQueryResult result1(1000);
+    LDQueryResult result2(1000);
+
+    flush_cache();
+
+    server.enable_cache(1, hostname, port);
+    server.set_file("chr22.test.sav");
+    ASSERT_TRUE(server.compute_region_ld("22", 50248762, 50249221, correlation::LD_RSQUARE, result1));
+    ASSERT_TRUE(server.compute_region_ld("22", 50248762, 50249221, correlation::LD_R, result2));
+    ASSERT_TRUE(result1.is_last());
+    ASSERT_TRUE(result2.is_last());
+    ASSERT_EQ(result1.data.size(), result2.data.size());
+    for (unsigned int i = 0u; i < result1.data.size(); ++i) {
+        ASSERT_NE(result1.data[i].value, result2.data[i].value);
+    }
+
+    flush_cache();
 }
 
 TEST_F(LDServerTest, large_region_with_paging_and_caching) {
