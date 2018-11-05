@@ -1,6 +1,7 @@
 //#include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <string>
+#include <cmath>
 #include <fstream>
 #include <regex>
 #include <map>
@@ -137,7 +138,6 @@ TEST_F(LDServerTest, SAV_one_page) {
 
     server.set_file("chr22.test.sav");
     ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241385, correlation::LD_RSQUARE, result));
-
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
     ASSERT_TRUE(result.is_last());
@@ -148,6 +148,20 @@ TEST_F(LDServerTest, SAV_one_page) {
         ASSERT_NE(entry.variant2, "");
         ASSERT_EQ(goldstandard.count(key), 1);
         ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
+    }
+
+    result.erase();
+    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241385, correlation::LD_R, result));
+    ASSERT_EQ(result.limit, 1000);
+    ASSERT_EQ(result.get_last(), "");
+    ASSERT_TRUE(result.is_last());
+    ASSERT_EQ(result.data.size(), goldstandard.size());
+    for (auto&& entry : result.data) {
+        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+        ASSERT_NE(entry.variant1, "");
+        ASSERT_NE(entry.variant2, "");
+        ASSERT_EQ(goldstandard.count(key), 1);
+        ASSERT_NEAR(goldstandard.find(key)->second , pow(entry.value, 2.0), 0.00000000001);
     }
 }
 
@@ -511,11 +525,6 @@ TEST_F(LDServerTest, cell_key) {
     ASSERT_EQ(correlation, correlation::LD_RSQUARE);
     memcpy(&morton_code, key.c_str() + 5, 8);
     ASSERT_EQ(morton_code, 3);
-//    ASSERT_EQ(12, key.size());
-//    memcpy(&unique_key, key.c_str(), 4);
-//    ASSERT_EQ(unique_key, 1);
-//    memcpy(&morton_code, key.c_str() + 4, 8);
-//    ASSERT_EQ(morton_code, 3);
 
     key = LDServer::make_cell_cache_key(2, "ALL", correlation::COV, "chr22", 300);
     ASSERT_EQ(21, key.size());
@@ -529,16 +538,6 @@ TEST_F(LDServerTest, cell_key) {
     ASSERT_EQ(correlation, correlation::COV);
     memcpy(&morton_code, key.c_str() + 13 , 8);
     ASSERT_EQ(morton_code, 300);
-
-//    ASSERT_EQ(20, key.size());
-//    memcpy(&unique_key, key.c_str(), 4);
-//    ASSERT_EQ(unique_key, 2);
-//    string samples_name(key.c_str() + 4, 3);
-//    ASSERT_EQ(samples_name, "ALL");
-//    string chromosome(key.c_str() + 7, 5);
-//    ASSERT_EQ(chromosome, "chr22");
-//    memcpy(&morton_code, key.c_str() + 12 , 8);
-//    ASSERT_EQ(morton_code, 300);
 }
 
 TEST_F(LDServerTest, cell_cache) {
