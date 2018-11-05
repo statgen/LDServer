@@ -333,13 +333,26 @@ void CellCov::compute() {
         return;
     }
     if (this->i == this->j) { // diagonal cell
-        arma::sp_fmat S_i = segment_i->get_genotypes();
-//        cout << S_i << endl;
-//        cout << S_i.n_rows << " " << S_i.n_cols << endl;
+        arma::fmat R(arma::cov(arma::fmat(segment_i->get_genotypes()), 1));
+        float* old_raw_mat = raw_fmat.release();
+        if (old_raw_mat != nullptr) {
+            delete[] old_raw_mat;
+        }
+        raw_fmat = unique_ptr<float[]>(new float[R.n_elem]);
+        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R.memptr(), R.n_elem * sizeof(float));
     } else {
-
+        auto n_variants_j = segment_j->get_n_variants();
+        if (n_variants_j <= 0) {
+            return;
+        }
+        arma::fmat R(arma::cov(arma::fmat(segment_i->get_genotypes()), arma::fmat(segment_j->get_genotypes()), 1));
+        float* old_raw_mat = raw_fmat.release();
+        if (old_raw_mat != nullptr) {
+            delete[] old_raw_mat;
+        }
+        raw_fmat = unique_ptr<float[]>(new float[R.n_elem]);
+        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R.memptr(), R.n_elem * sizeof(float));
     }
-    throw runtime_error("Not implemented.");
 }
 
 

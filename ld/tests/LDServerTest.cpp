@@ -163,6 +163,22 @@ TEST_F(LDServerTest, SAV_one_page) {
         ASSERT_EQ(goldstandard.count(key), 1);
         ASSERT_NEAR(goldstandard.find(key)->second , pow(entry.value, 2.0), 0.00000000001);
     }
+
+    result.erase();
+    //TODO: compare against pre-computed "golden standard" results. currently we jsut check if number of pairs matches the expected
+    server.set_file("chr22.test.sav");
+    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241385, correlation::COV, result));
+    ASSERT_EQ(result.limit, 1000);
+    ASSERT_EQ(result.get_last(), "");
+    ASSERT_TRUE(result.is_last());
+    ASSERT_EQ(result.data.size(), goldstandard.size());
+    for (auto&& entry : result.data) {
+        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+        ASSERT_NE(entry.variant1, "");
+        ASSERT_NE(entry.variant2, "");
+        ASSERT_EQ(goldstandard.count(key), 1);
+//        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
+    }
 }
 
 TEST_F(LDServerTest, BCF_one_page) {
@@ -710,21 +726,6 @@ TEST_F(LDServerTest, empty_data_test) {
     ASSERT_TRUE(result.is_last());
     ASSERT_EQ(result.data.size(), 0);
 }
-
-TEST_F(LDServerTest, region_covariance) {
-    LDServer server(100);
-    LDQueryResult result(1000);
-
-    server.set_file("chr22.test.sav");
-
-    ASSERT_FALSE(server.compute_region_ld("22", 51241103, 51241385, correlation::COV, result));
-
-//    ASSERT_EQ(result.get_last(), "");
-//    ASSERT_TRUE(result.is_last());
-//    ASSERT_EQ(result.data.size(), 0);
-}
-
-
 
 TEST_F(LDServerTest, DISABLED_read_spead) {
     vector<string> names;
