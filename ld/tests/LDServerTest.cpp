@@ -513,7 +513,7 @@ TEST_F(LDServerTest, segment_cache) {
 
 TEST_F(LDServerTest, cell_key) {
     uint32_t unique_key = 0;
-    correlation correlation = correlation::LD_R;
+    correlation correlation_type = correlation::LD_R;
     uint64_t morton_code = 0;
 
     string key = LDServer::make_cell_cache_key(1, "", correlation::LD_RSQUARE, "", 3);
@@ -521,8 +521,8 @@ TEST_F(LDServerTest, cell_key) {
     ASSERT_EQ(13, key.size());
     memcpy(&unique_key, key.c_str(), 4);
     ASSERT_EQ(unique_key, 1);
-    memcpy(&correlation, key.c_str() + 4, 1);
-    ASSERT_EQ(correlation, correlation::LD_RSQUARE);
+    memcpy(&correlation_type, key.c_str() + 4, 1);
+    ASSERT_EQ(correlation_type, correlation::LD_RSQUARE);
     memcpy(&morton_code, key.c_str() + 5, 8);
     ASSERT_EQ(morton_code, 3);
 
@@ -534,8 +534,8 @@ TEST_F(LDServerTest, cell_key) {
     ASSERT_EQ(samples_name, "ALL");
     string chromosome(key.c_str() + 7, 5);
     ASSERT_EQ(chromosome, "chr22");
-    memcpy(&correlation, key.c_str() + 12, 1);
-    ASSERT_EQ(correlation, correlation::COV);
+    memcpy(&correlation_type, key.c_str() + 12, 1);
+    ASSERT_EQ(correlation_type, correlation::COV);
     memcpy(&morton_code, key.c_str() + 13 , 8);
     ASSERT_EQ(morton_code, 300);
 }
