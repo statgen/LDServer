@@ -65,6 +65,13 @@ public:
     void compute() override;
 };
 
+class CellCov : public Cell {
+public:
+    using Cell::Cell;
+    virtual ~CellCov();
+    void compute() override;
+};
+
 class CellFactory {
 public:
     static shared_ptr<Cell> create(correlation correlation_type, uint64_t i, uint64_t j);

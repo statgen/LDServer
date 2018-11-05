@@ -323,10 +323,31 @@ void CellRsquare::compute() {
 //    std::cout << "Cell compute elapsed time: " << elapsed.count() << " s\n";
 }
 
+CellCov::~CellCov() {
+
+}
+
+void CellCov::compute() {
+    auto n_variants_i = segment_i->get_n_variants();
+    if (n_variants_i <= 0) {
+        return;
+    }
+    if (this->i == this->j) { // diagonal cell
+        arma::sp_fmat S_i = segment_i->get_genotypes();
+//        cout << S_i << endl;
+//        cout << S_i.n_rows << " " << S_i.n_cols << endl;
+    } else {
+
+    }
+    throw runtime_error("Not implemented.");
+}
+
+
 shared_ptr<Cell> CellFactory::create(correlation correlation_type, uint64_t i, uint64_t j) {
     switch (correlation_type) {
         case LD_R: return shared_ptr<Cell>(new CellR(i, j));
         case LD_RSQUARE: return shared_ptr<Cell>(new CellRsquare(i, j));
+        case COV: return shared_ptr<Cell>(new CellCov(i, j));
     }
     throw runtime_error("Unknown correlation type");
 }

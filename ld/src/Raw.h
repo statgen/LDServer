@@ -20,7 +20,7 @@ public:
     Raw(const string& file);
     virtual ~Raw();
 
-    virtual void open(const string& chromosome, const vector<string>& samples) = 0;
+    virtual void open(const string& chromosome, const vector<string>& samples, bool coded012) = 0;
     virtual vector<string> get_samples() const = 0;
     virtual vector<string> get_chromosomes() const = 0;
     virtual void load(Segment& segment) = 0;
@@ -39,7 +39,7 @@ public:
     using Raw::Raw;
     virtual ~RawVCF();
 
-    void open(const string& chromosome, const vector<string>& samples) override;
+    void open(const string& chromosome, const vector<string>& samples, bool coded012) override;
     vector<string> get_samples() const override;
     vector<string> get_chromosomes() const override;
     void load(Segment& segment) override;
@@ -58,7 +58,7 @@ public:
     using Raw::Raw;
     virtual ~RawSAV();
 
-    void open(const string& chromosome, const vector<string>& samples) override;
+    void open(const string& chromosome, const vector<string>& samples, bool coded012) override;
     vector<string> get_samples() const override;
     vector<string> get_chromosomes() const override;
     void load(Segment& segment) override;

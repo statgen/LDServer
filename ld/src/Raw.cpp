@@ -12,9 +12,9 @@ RawVCF::~RawVCF() {
 
 }
 
-void RawVCF::open(const string& chromosome, const vector<string>& samples) {
+void RawVCF::open(const string& chromosome, const vector<string>& samples, bool coded012) {
     f.release();
-    f = unique_ptr<savvy::vcf::indexed_reader<1>>(new savvy::vcf::indexed_reader<1>(file, {chromosome}, savvy::fmt::gt));
+    f = unique_ptr<savvy::vcf::indexed_reader<1>>(new savvy::vcf::indexed_reader<1>(file, {chromosome}, coded012 ? savvy::fmt::ac : savvy::fmt::gt));
     f->subset_samples({samples.begin(), samples.end()});
     has_cached = false;
 }
@@ -83,9 +83,9 @@ void RawVCF::load_genotypes(Segment &segment) {
 RawSAV::~RawSAV() {
 }
 
-void RawSAV::open(const string& chromosome, const vector<string>& samples) {
+void RawSAV::open(const string& chromosome, const vector<string>& samples, bool coded012) {
     f.release();
-    f = unique_ptr<savvy::indexed_reader>(new savvy::indexed_reader(file, {chromosome}, savvy::fmt::gt));
+    f = unique_ptr<savvy::indexed_reader>(new savvy::indexed_reader(file, {chromosome}, coded012 ? savvy::fmt::ac : savvy::fmt::gt));
     f->subset_samples({samples.begin(), samples.end()});
     has_cached = false;
 }

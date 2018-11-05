@@ -485,7 +485,7 @@ TEST_F(LDServerTest, segment_key) {
 
 TEST_F(LDServerTest, segment_cache) {
     RawSAV raw("chr22.test.sav");
-    raw.open("22", raw.get_samples());
+    raw.open("22", raw.get_samples(), false);
     string key = LDServer::make_segment_cache_key(1, "ALL", "22", 51241101, 51241385);
     Segment segment1("22", 51241101, 51241385);
     ASSERT_FALSE(segment1.has_names());
@@ -545,7 +545,7 @@ TEST_F(LDServerTest, cell_cache) {
     LDQueryResult result2(1000);
 
     RawSAV raw("chr22.test.sav");
-    raw.open("22", raw.get_samples());
+    raw.open("22", raw.get_samples(), false);
     string cell_key = LDServer::make_cell_cache_key(1, "ALL", correlation::LD_RSQUARE, "22", to_morton_code(512411, 512411));
     string segment_key = LDServer::make_segment_cache_key(1, "ALL", "22", 51241100, 51241199);
 
@@ -710,6 +710,21 @@ TEST_F(LDServerTest, empty_data_test) {
     ASSERT_TRUE(result.is_last());
     ASSERT_EQ(result.data.size(), 0);
 }
+
+TEST_F(LDServerTest, region_covariance) {
+    LDServer server(100);
+    LDQueryResult result(1000);
+
+    server.set_file("chr22.test.sav");
+
+    ASSERT_FALSE(server.compute_region_ld("22", 51241103, 51241385, correlation::COV, result));
+
+//    ASSERT_EQ(result.get_last(), "");
+//    ASSERT_TRUE(result.is_last());
+//    ASSERT_EQ(result.data.size(), 0);
+}
+
+
 
 TEST_F(LDServerTest, DISABLED_read_spead) {
     vector<string> names;

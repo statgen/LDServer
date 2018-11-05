@@ -168,7 +168,7 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
         return false;
     }
 
-    raw_it->second->open(region_chromosome, samples_it->second);
+    raw_it->second->open(region_chromosome, samples_it->second, correlation_type == correlation::COV);
 
     std::map<std::uint64_t, shared_ptr<Segment>> segments;
 
@@ -251,7 +251,7 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
         return false;
     }
 
-    raw_it->second->open(index_chromosome, samples_it->second);
+    raw_it->second->open(index_chromosome, samples_it->second, correlation_type == correlation::COV);
 
     std::map<std::uint64_t, shared_ptr<Segment>> segments;
 
