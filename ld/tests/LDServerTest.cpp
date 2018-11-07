@@ -727,6 +727,27 @@ TEST_F(LDServerTest, empty_data_test) {
     ASSERT_EQ(result.data.size(), 0);
 }
 
+TEST_F(LDServerTest, rsquare_approx_test) {
+    map<string, double> goldstandard;
+    this->load_region_goldstandard("region_ld_22_51241101_51241385.hap.ld", goldstandard);
+
+    LDServer server(100);
+    LDQueryResult result(1000);
+    server.set_file("chr22.test.sav");
+    ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241385, correlation::LD_RSQUARE_APPROX, result));
+    ASSERT_EQ(result.limit, 1000);
+    ASSERT_EQ(result.get_last(), "");
+    ASSERT_TRUE(result.is_last());
+    ASSERT_EQ(result.data.size(), goldstandard.size());
+    for (auto&& entry : result.data) {
+        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+        ASSERT_NE(entry.variant1, "");
+        ASSERT_NE(entry.variant2, "");
+        ASSERT_EQ(goldstandard.count(key), 1);
+        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
+    }
+}
+
 TEST_F(LDServerTest, DISABLED_read_spead) {
     vector<string> names;
     vector<uint64_t> positions;

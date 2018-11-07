@@ -355,12 +355,92 @@ void CellCov::compute() {
     }
 }
 
+CellRsquareApprox::~CellRsquareApprox() {
+
+}
+
+void CellRsquareApprox::compute() {
+    auto n_variants_i = segment_i->get_n_variants();
+    if (n_variants_i <= 0) {
+        return;
+    }
+    if (this->i == this->j) {
+        arma::sp_fmat G_i = segment_i->get_genotypes(); // genotypes
+        arma::sp_fmat F_i = arma::mean(G_i, 0); // frequencies
+        arma::fmat R(G_i.n_cols, G_i.n_cols, arma::fill::zeros);
+        for(arma::uword i = 0; i < G_i.n_cols - 1; ++i) {
+            for(auto j = i + 1; j < G_i.n_cols; ++j) {
+//                cout << "column " << i << " " << F_i(i) << " vs column " << j << " " << F_i(j);
+                int p = 0;
+                auto it_end = G_i.end_col(i);
+                for (auto it = G_i.begin_col(i); it != it_end; ++it) {
+                    if (G_i(it.row(), j) == 1) {
+                        ++p;
+                    }
+
+                }
+                float d = p / float(G_i.n_rows) -  F_i.at(i) * F_i.at(j);
+                float denom = sqrt(F_i.at(i) * (1.0 - F_i.at(i)) * F_i.at(j) * (1.0 - F_i.at(j)));
+                float r = numeric_limits<float>::quiet_NaN();
+                if ( denom != 0.0) {
+                    r = d / denom;
+                }
+//                cout << " = " << pow(r, 2.0) << endl;
+                R(i, j) = pow(r, 2.0);
+            }
+        }
+        float* old_raw_mat = raw_fmat.release();
+        if (old_raw_mat != nullptr) {
+            delete[] old_raw_mat;
+        }
+        raw_fmat = unique_ptr<float[]>(new float[R.n_elem]);
+        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R.memptr(), R.n_elem * sizeof(float));
+    } else {
+        auto n_variants_j = segment_j->get_n_variants();
+        if (n_variants_j <= 0) {
+            return;
+        }
+        arma::sp_fmat G_i = segment_i->get_genotypes(); // genotypes
+        arma::sp_fmat F_i = arma::mean(G_i, 0); // frequencies
+        arma::sp_fmat G_j = segment_j->get_genotypes(); // genotypes
+        arma::sp_fmat F_j = arma::mean(G_j, 0); // frequencies
+        arma::fmat R(G_i.n_cols, G_j.n_cols, arma::fill::zeros);
+        for(arma::uword i = 0; i < G_i.n_cols; ++i) {
+            for(arma::uword  j = 0; j < G_j.n_cols; ++j) {
+//                cout << "column A " << i << " " << F_i(i) << " vs column B " << j << " " << F_j(j);
+                int p = 0;
+                auto it_end = G_i.end_col(i);
+                for (auto it = G_i.begin_col(i); it != it_end; ++it) {
+                    if (G_j(it.row(), j) == 1) {
+                        ++p;
+                    }
+                }
+                float d = p / float(G_i.n_rows) -  F_i.at(i) * F_j.at(j);
+                float denom = sqrt(F_i.at(i) * (1.0 - F_i.at(i)) * F_j.at(j) * (1.0 - F_j.at(j)));
+                float r = numeric_limits<float>::quiet_NaN();
+                if ( denom != 0.0) {
+                    r = d / denom;
+                }
+//                cout << " = " << pow(r, 2.0) << endl;
+                R(i, j) = pow(r, 2.0);
+            }
+        }
+        float* old_raw_mat = raw_fmat.release();
+        if (old_raw_mat != nullptr) {
+            delete[] old_raw_mat;
+        }
+        raw_fmat = unique_ptr<float[]>(new float[R.n_elem]);
+        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R.memptr(), R.n_elem * sizeof(float));
+    }
+}
+
 
 shared_ptr<Cell> CellFactory::create(correlation correlation_type, uint64_t i, uint64_t j) {
     switch (correlation_type) {
         case LD_R: return shared_ptr<Cell>(new CellR(i, j));
         case LD_RSQUARE: return shared_ptr<Cell>(new CellRsquare(i, j));
         case COV: return shared_ptr<Cell>(new CellCov(i, j));
+        case LD_RSQUARE_APPROX: return shared_ptr<Cell>(new CellRsquareApprox(i, j));
     }
     throw runtime_error("Unknown correlation type");
 }

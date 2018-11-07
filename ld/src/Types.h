@@ -17,7 +17,8 @@ using namespace std;
 enum correlation : uint8_t {
     LD_R,
     LD_RSQUARE,
-    COV
+    COV,
+    LD_RSQUARE_APPROX
 };
 
 struct VariantMeta {
