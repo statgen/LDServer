@@ -96,7 +96,7 @@ def load_correlations():
     if not correlations:
         correlations = [{ 'name': 'r', 'label': 'r', 'description': '', 'type': 'LD' },
                         { 'name': 'rsquare', 'label': 'r^2', 'description': '', 'type': 'LD' },
-                        { 'name': 'covariance', 'label': 'cov', 'description': '', 'type': 'Covariance' }]
+                        { 'name': 'cov', 'label': 'covariance', 'description': '', 'type': 'Covariance' }]
         for correlation in correlations:
             db.session.add(Correlation(name = correlation['name'], label = correlation['label'], descripition = correlation['description'], type = correlation['type']))
         db.session.commit()
