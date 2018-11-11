@@ -7,7 +7,6 @@
 #include <memory>
 #include <limits>
 #include <savvy/reader.hpp>
-#include <savvy/armadillo_vector.hpp>
 #include "Segment.h"
 
 using namespace std;
@@ -33,7 +32,7 @@ private:
     unique_ptr<savvy::vcf::indexed_reader<1>> f;
     bool has_cached;
     savvy::site_info anno;
-    savvy::armadillo::sparse_vector<float> alleles;
+    savvy::compressed_vector<float> alleles;
 
 public:
     using Raw::Raw;
@@ -52,7 +51,7 @@ private:
     unique_ptr<savvy::indexed_reader> f;
     bool has_cached;
     savvy::site_info anno;
-    savvy::armadillo::sparse_vector<float> alleles;
+    savvy::compressed_vector<float> alleles;
 
 public:
     using Raw::Raw;

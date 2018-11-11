@@ -17,6 +17,7 @@
 #include "Morton.h"
 #include "Segment.h"
 #include "Types.h"
+#include <bitset>
 
 using namespace std;
 

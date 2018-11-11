@@ -11,7 +11,7 @@
 #include <cereal/types/string.hpp>
 #include <cereal/types/vector.hpp>
 #include <savvy/reader.hpp>
-#include <savvy/armadillo_vector.hpp>
+//#include <savvy/armadillo_vector.hpp>
 #include "Types.h"
 
 using namespace std;
@@ -31,7 +31,13 @@ private:
 
     vector<arma::uword> sp_mat_rowind;
     vector<arma::uword> sp_mat_colind;
+
 public:
+    vector<vector<bool>> alleles;
+    vector<vector<arma::uword>> alt_allele_carriers;
+    vector<float> freqs;
+
+//public:
     Segment(const string& chromosome, uint64_t start_bp, uint64_t stop_bp);
     Segment(Segment&& segment);
     virtual ~Segment();
@@ -39,9 +45,9 @@ public:
     void clear();
     void clear_names();
     void clear_genotypes();
-    void add(savvy::site_info& anno, savvy::armadillo::sparse_vector<float>& alleles);
-    void add_name(savvy::site_info& anno, savvy::armadillo::sparse_vector<float>& alleles);
-    void add_genotypes(savvy::armadillo::sparse_vector<float>& alleles);
+    void add(savvy::site_info& anno, savvy::compressed_vector<float>& alleles);
+    void add_name(savvy::site_info& anno, savvy::compressed_vector<float>& alleles);
+    void add_genotypes(savvy::compressed_vector<float>& alleles);
     void freeze();
     void freeze_names();
     void freeze_genotypes();

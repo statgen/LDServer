@@ -71,22 +71,27 @@ void Segment::clear_genotypes() {
     genotypes_loaded = false;
 }
 
-void Segment::add(savvy::site_info& anno, savvy::armadillo::sparse_vector<float>& alleles) {
-    n_haplotypes = alleles.n_rows;
-    if (alleles.n_nonzero > 0) {
+void Segment::add(savvy::site_info& anno, savvy::compressed_vector<float>& alleles) {
+    n_haplotypes = alleles.size();
+    if (alleles.non_zero_size() > 0) {
         std::stringstream ss("");
         ss << anno.chromosome() << ":" << anno.position() << "_" << anno.ref() << "/" << anno.alt();
         names.emplace_back(ss.str());
         positions.push_back(anno.position());
         sp_mat_colind.push_back(sp_mat_rowind.size());
+        this->alleles.emplace_back(n_haplotypes, false);
+        alt_allele_carriers.emplace_back();
+        freqs.push_back(alleles.non_zero_size() / (float)n_haplotypes);
         for (auto it = alleles.begin(); it != alleles.end(); ++it) {
-            sp_mat_rowind.push_back(it.row());
+            sp_mat_rowind.push_back(it.offset());
+            this->alleles.back()[it.offset()] = true;
+            alt_allele_carriers.back().push_back(it.offset());
         }
     }
 }
 
-void Segment::add_name(savvy::site_info& anno, savvy::armadillo::sparse_vector<float>& alleles) {
-    if (alleles.n_nonzero > 0) {
+void Segment::add_name(savvy::site_info& anno, savvy::compressed_vector<float>& alleles) {
+    if (alleles.non_zero_size() > 0) {
         std::stringstream ss("");
         ss << anno.chromosome() << ":" << anno.position() << "_" << anno.ref() << "/" << anno.alt();
         names.emplace_back(ss.str());
@@ -94,12 +99,12 @@ void Segment::add_name(savvy::site_info& anno, savvy::armadillo::sparse_vector<f
     }
 }
 
-void Segment::add_genotypes(savvy::armadillo::sparse_vector<float>& alleles) {
-    n_haplotypes = alleles.n_rows;
-    if (alleles.n_nonzero > 0) {
+void Segment::add_genotypes(savvy::compressed_vector<float>& alleles) {
+    n_haplotypes = alleles.size();
+    if (alleles.non_zero_size() > 0) {
         sp_mat_colind.push_back(sp_mat_rowind.size());
         for (auto it = alleles.begin(); it != alleles.end(); ++it) {
-            sp_mat_rowind.push_back(it.row());
+            sp_mat_rowind.push_back(it.offset());
         }
     }
 }

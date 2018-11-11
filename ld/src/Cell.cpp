@@ -365,28 +365,26 @@ void CellRsquareApprox::compute() {
         return;
     }
     if (this->i == this->j) {
-        arma::sp_fmat G_i = segment_i->get_genotypes(); // genotypes
-        arma::sp_fmat F_i = arma::mean(G_i, 0); // frequencies
-        arma::fmat R(G_i.n_cols, G_i.n_cols, arma::fill::zeros);
-        for(arma::uword i = 0; i < G_i.n_cols - 1; ++i) {
-            for(auto j = i + 1; j < G_i.n_cols; ++j) {
-//                cout << "column " << i << " " << F_i(i) << " vs column " << j << " " << F_i(j);
+        arma::fmat R(n_variants_i, n_variants_i, arma::fill::zeros);
+        for (unsigned int i = 0; i < segment_i->alt_allele_carriers.size() - 1; ++i) {
+            for (unsigned int j = i + 1; j < segment_i->alt_allele_carriers.size(); ++j) {
                 int p = 0;
-                auto it_end = G_i.end_col(i);
-                for (auto it = G_i.begin_col(i); it != it_end; ++it) {
-                    if (G_i(it.row(), j) == 1) {
-                        ++p;
+                if (segment_i->alt_allele_carriers[i].size() <= segment_i->alt_allele_carriers[j].size()) {
+                    for (auto&& c : segment_i->alt_allele_carriers[i]) {
+                        p += segment_i->alleles[j][c];
                     }
-
+                } else {
+                    for (auto&& c : segment_i->alt_allele_carriers[j]) {
+                        p += segment_i->alleles[i][c];
+                    }
                 }
-                float d = p / float(G_i.n_rows) -  F_i.at(i) * F_i.at(j);
-                float denom = sqrt(F_i.at(i) * (1.0 - F_i.at(i)) * F_i.at(j) * (1.0 - F_i.at(j)));
+                float d = p / float(segment_i->get_n_haplotypes()) -  segment_i->freqs[i] * segment_i->freqs[j];
+                float denom = sqrt(segment_i->freqs[i] * (1.0 - segment_i->freqs[i]) * segment_i->freqs[j] * (1.0 - segment_i->freqs[j]));
                 float r = numeric_limits<float>::quiet_NaN();
                 if ( denom != 0.0) {
                     r = d / denom;
                 }
-//                cout << " = " << pow(r, 2.0) << endl;
-                R(i, j) = pow(r, 2.0);
+                R.at(i, j) = pow(r, 2.0);
             }
         }
         float* old_raw_mat = raw_fmat.release();
@@ -400,29 +398,26 @@ void CellRsquareApprox::compute() {
         if (n_variants_j <= 0) {
             return;
         }
-        arma::sp_fmat G_i = segment_i->get_genotypes(); // genotypes
-        arma::sp_fmat F_i = arma::mean(G_i, 0); // frequencies
-        arma::sp_fmat G_j = segment_j->get_genotypes(); // genotypes
-        arma::sp_fmat F_j = arma::mean(G_j, 0); // frequencies
-        arma::fmat R(G_i.n_cols, G_j.n_cols, arma::fill::zeros);
-        for(arma::uword i = 0; i < G_i.n_cols; ++i) {
-            for(arma::uword  j = 0; j < G_j.n_cols; ++j) {
-//                cout << "column A " << i << " " << F_i(i) << " vs column B " << j << " " << F_j(j);
+        arma::fmat R(n_variants_i, n_variants_j, arma::fill::zeros);
+        for (unsigned int i = 0; i < segment_i->alt_allele_carriers.size(); ++i) {
+            for (unsigned int j = 0; j < segment_j->alt_allele_carriers.size(); ++j) {
                 int p = 0;
-                auto it_end = G_i.end_col(i);
-                for (auto it = G_i.begin_col(i); it != it_end; ++it) {
-                    if (G_j(it.row(), j) == 1) {
-                        ++p;
+                if (segment_i->alt_allele_carriers[i].size() <= segment_j->alt_allele_carriers[j].size()) {
+                    for (auto&& c : segment_i->alt_allele_carriers[i]) {
+                        p += segment_j->alleles[j][c];
+                    }
+                } else {
+                    for (auto&& c : segment_j->alt_allele_carriers[j]) {
+                        p += segment_i->alleles[i][c];
                     }
                 }
-                float d = p / float(G_i.n_rows) -  F_i.at(i) * F_j.at(j);
-                float denom = sqrt(F_i.at(i) * (1.0 - F_i.at(i)) * F_j.at(j) * (1.0 - F_j.at(j)));
+                float d = p / float(segment_i->get_n_haplotypes()) -  segment_i->freqs[i] * segment_j->freqs[j];
+                float denom = sqrt(segment_i->freqs[i] * (1.0 - segment_i->freqs[i]) * segment_j->freqs[j] * (1.0 - segment_j->freqs[j]));
                 float r = numeric_limits<float>::quiet_NaN();
                 if ( denom != 0.0) {
                     r = d / denom;
                 }
-//                cout << " = " << pow(r, 2.0) << endl;
-                R(i, j) = pow(r, 2.0);
+                R.at(i, j) = pow(r, 2.0);
             }
         }
         float* old_raw_mat = raw_fmat.release();
