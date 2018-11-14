@@ -366,20 +366,24 @@ void CellRsquareApprox::compute() {
     }
     if (this->i == this->j) {
         arma::fmat R(n_variants_i, n_variants_i, arma::fill::zeros);
-        for (unsigned int i = 0; i < segment_i->alt_allele_carriers.size() - 1; ++i) {
-            for (unsigned int j = i + 1; j < segment_i->alt_allele_carriers.size(); ++j) {
+        float n_haplotypes = (float)segment_i->get_n_haplotypes();
+        auto& freqs_i = segment_i->get_freqs();
+        auto& alleles_i = segment_i->get_alleles();
+        auto& alt_carriers_i = segment_i->get_alt_carriers();
+        for (unsigned int i = 0; i < alt_carriers_i.size() - 1; ++i) {
+            for (unsigned int j = i + 1; j < alt_carriers_i.size(); ++j) {
                 int p = 0;
-                if (segment_i->alt_allele_carriers[i].size() <= segment_i->alt_allele_carriers[j].size()) {
-                    for (auto&& c : segment_i->alt_allele_carriers[i]) {
-                        p += segment_i->alleles[j][c];
+                if (alt_carriers_i[i].size() <= alt_carriers_i[j].size()) {
+                    for (auto&& c : alt_carriers_i[i]) {
+                        p += alleles_i[j][c];
                     }
                 } else {
-                    for (auto&& c : segment_i->alt_allele_carriers[j]) {
-                        p += segment_i->alleles[i][c];
+                    for (auto&& c : alt_carriers_i[j]) {
+                        p += alleles_i[i][c];
                     }
                 }
-                float d = p / float(segment_i->get_n_haplotypes()) -  segment_i->freqs[i] * segment_i->freqs[j];
-                float denom = sqrt(segment_i->freqs[i] * (1.0 - segment_i->freqs[i]) * segment_i->freqs[j] * (1.0 - segment_i->freqs[j]));
+                float d = p / n_haplotypes -  freqs_i[i] * freqs_i[j];
+                float denom = sqrt(freqs_i[i] * (1.0 - freqs_i[i]) * freqs_i[j] * (1.0 - freqs_i[j]));
                 float r = numeric_limits<float>::quiet_NaN();
                 if ( denom != 0.0) {
                     r = d / denom;
@@ -399,20 +403,29 @@ void CellRsquareApprox::compute() {
             return;
         }
         arma::fmat R(n_variants_i, n_variants_j, arma::fill::zeros);
-        for (unsigned int i = 0; i < segment_i->alt_allele_carriers.size(); ++i) {
-            for (unsigned int j = 0; j < segment_j->alt_allele_carriers.size(); ++j) {
+        float n_haplotypes = (float)segment_i->get_n_haplotypes();
+        auto& freqs_i = segment_i->get_freqs();
+        auto& alleles_i = segment_i->get_alleles();
+        auto& alt_carriers_i = segment_i->get_alt_carriers();
+
+        auto& freqs_j = segment_j->get_freqs();
+        auto& alleles_j = segment_j->get_alleles();
+        auto& alt_carriers_j = segment_j->get_alt_carriers();
+
+        for (unsigned int i = 0; i < alt_carriers_i.size(); ++i) {
+            for (unsigned int j = 0; j < alt_carriers_j.size(); ++j) {
                 int p = 0;
-                if (segment_i->alt_allele_carriers[i].size() <= segment_j->alt_allele_carriers[j].size()) {
-                    for (auto&& c : segment_i->alt_allele_carriers[i]) {
-                        p += segment_j->alleles[j][c];
+                if (alt_carriers_i[i].size() <= alt_carriers_j[j].size()) {
+                    for (auto&& c : alt_carriers_i[i]) {
+                        p += alleles_j[j][c];
                     }
                 } else {
-                    for (auto&& c : segment_j->alt_allele_carriers[j]) {
-                        p += segment_i->alleles[i][c];
+                    for (auto&& c : alt_carriers_j[j]) {
+                        p += alleles_i[i][c];
                     }
                 }
-                float d = p / float(segment_i->get_n_haplotypes()) -  segment_i->freqs[i] * segment_j->freqs[j];
-                float denom = sqrt(segment_i->freqs[i] * (1.0 - segment_i->freqs[i]) * segment_j->freqs[j] * (1.0 - segment_j->freqs[j]));
+                float d = p / n_haplotypes -  freqs_i[i] * freqs_j[j];
+                float denom = sqrt(freqs_i[i] * (1.0 - freqs_i[i]) * freqs_j[j] * (1.0 - freqs_j[j]));
                 float r = numeric_limits<float>::quiet_NaN();
                 if ( denom != 0.0) {
                     r = d / denom;

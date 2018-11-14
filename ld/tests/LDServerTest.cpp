@@ -503,7 +503,7 @@ TEST_F(LDServerTest, segment_cache) {
     RawSAV raw("chr22.test.sav");
     raw.open("22", raw.get_samples(), false);
     string key = LDServer::make_segment_cache_key(1, "ALL", "22", 51241101, 51241385);
-    Segment segment1("22", 51241101, 51241385);
+    Segment segment1("22", 51241101, 51241385, genotypes_store::CSC_ALL_ONES);
     ASSERT_FALSE(segment1.has_names());
     ASSERT_FALSE(segment1.has_genotypes());
     raw.load(segment1);
@@ -512,7 +512,7 @@ TEST_F(LDServerTest, segment_cache) {
 
     segment1.save(redis_cache, key);
 
-    Segment segment2("22", 51241101, 51241385);
+    Segment segment2("22", 51241101, 51241385, genotypes_store::CSC_ALL_ONES);
     ASSERT_FALSE(segment2.has_names());
     ASSERT_FALSE(segment2.has_genotypes());
     ASSERT_EQ(segment2.get_n_variants(), 0);
@@ -568,7 +568,7 @@ TEST_F(LDServerTest, cell_cache) {
     CellFactory factory;
 
     shared_ptr<Cell> cell1 = factory.create(correlation::LD_RSQUARE, 512411, 512411);
-    cell1->segment_i = make_shared<Segment>("22", 51241100, 51241199);
+    cell1->segment_i = make_shared<Segment>("22", 51241100, 51241199, genotypes_store::CSC_ALL_ONES);
     raw.load(*(cell1->segment_i));
     cell1->segment_i->save(redis_cache, segment_key);
     cell1->compute();
@@ -576,7 +576,7 @@ TEST_F(LDServerTest, cell_cache) {
     cell1->extract(51241100, 51241199, result1);
 
     shared_ptr<Cell> cell2 = factory.create(correlation::LD_RSQUARE, 512411, 512411);
-    cell2->segment_i = make_shared<Segment>("22", 51241100, 51241199);
+    cell2->segment_i = make_shared<Segment>("22", 51241100, 51241199, genotypes_store::CSC_ALL_ONES);
     cell2->segment_i->load(redis_cache, segment_key);
     cell2->load(redis_cache, cell_key);
     cell2->extract(51241100, 51241199, result2);

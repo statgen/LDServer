@@ -99,14 +99,14 @@ void LDServer::parse_variant(const std::string& variant, std::string& chromosome
     alt_allele = variant_name_tokens[3];
 }
 
-shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, const string& samples_name, bool only_variants, const std::string& chromosome, uint64_t i, std::map<std::uint64_t, shared_ptr<Segment>>& segments) const {
+shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, genotypes_store store, const string& samples_name, bool only_variants, const std::string& chromosome, uint64_t i, std::map<std::uint64_t, shared_ptr<Segment>>& segments) const {
 //    auto start = std::chrono::system_clock::now();
     uint64_t start_bp = i * segment_size;
     uint64_t stop_bp = i * segment_size + segment_size - 1u;
     string key = make_segment_cache_key(cache_key, samples_name, chromosome, start_bp, stop_bp);
     auto segment_it = segments.find(i);
     if (segment_it == segments.end()) {
-        segment_it = segments.emplace(make_pair(i, make_shared<Segment>(chromosome, start_bp, stop_bp))).first;
+        segment_it = segments.emplace(make_pair(i, make_shared<Segment>(chromosome, start_bp, stop_bp, store))).first;
         if (cache_enabled) {
             segment_it->second->load(cache_context, key);
         }
@@ -169,6 +169,12 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
     }
 
     raw_it->second->open(region_chromosome, samples_it->second, correlation_type == correlation::COV);
+    genotypes_store store = genotypes_store::CSC_ALL_ONES;
+    if (correlation_type == correlation::COV) {
+        store = genotypes_store::CSC;
+    } else if (correlation_type == correlation::LD_RSQUARE_APPROX) {
+        store = genotypes_store::BITSET;
+    }
 
     std::map<std::uint64_t, shared_ptr<Segment>> segments;
 
@@ -189,9 +195,9 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
         if (cache_enabled) {
             cell->load(cache_context, key);
         }
-        cell->segment_i = load_segment(raw_it->second, samples_name, cell->is_cached(), region_chromosome, cell->get_i(), segments);
+        cell->segment_i = load_segment(raw_it->second, store, samples_name, cell->is_cached(), region_chromosome, cell->get_i(), segments);
         if (!cell->is_diagonal()) {
-            cell->segment_j = load_segment(raw_it->second, samples_name, cell->is_cached(), region_chromosome, cell->get_j(), segments);
+            cell->segment_j = load_segment(raw_it->second, store, samples_name, cell->is_cached(), region_chromosome, cell->get_j(), segments);
         }
         if (!cell->is_cached()) {
             cell->compute();
@@ -252,6 +258,12 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
     }
 
     raw_it->second->open(index_chromosome, samples_it->second, correlation_type == correlation::COV);
+    genotypes_store store = genotypes_store::CSC_ALL_ONES;
+    if (correlation_type == correlation::COV) {
+        store = genotypes_store::CSC;
+    } else if (correlation_type == correlation::LD_RSQUARE_APPROX) {
+        store = genotypes_store::BITSET;
+    }
 
     std::map<std::uint64_t, shared_ptr<Segment>> segments;
 
@@ -279,9 +291,9 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
         if (cache_enabled) {
             cell->load(cache_context, key);
         }
-        cell->segment_i = load_segment(raw_it->second, samples_name, cell->is_cached(), region_chromosome, cell->get_i(), segments);
+        cell->segment_i = load_segment(raw_it->second, store, samples_name, cell->is_cached(), region_chromosome, cell->get_i(), segments);
         if (!cell->is_diagonal()) {
-            cell->segment_j = load_segment(raw_it->second, samples_name, cell->is_cached(), region_chromosome, cell->get_j(), segments);
+            cell->segment_j = load_segment(raw_it->second, store, samples_name, cell->is_cached(), region_chromosome, cell->get_j(), segments);
         }
         if (!cell->is_cached()) {
             cell->compute();

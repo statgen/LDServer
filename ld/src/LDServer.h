@@ -35,11 +35,8 @@ private:
     int cache_port;
     redisContext* cache_context;
 
-
-
     static void parse_variant(const string& variant, string& chromosome, uint64_t& position, string& ref_allele, string& alt_allele);
-    shared_ptr<Segment> load_segment(const shared_ptr<Raw>& raw, const string& samples_name, bool only_variants, const std::string& chromosome, uint64_t i, std::map<std::uint64_t, shared_ptr<Segment>>& segments) const;
-
+    shared_ptr<Segment> load_segment(const shared_ptr<Raw>& raw, genotypes_store store, const string& samples_name, bool only_variants, const std::string& chromosome, uint64_t i, std::map<std::uint64_t, shared_ptr<Segment>>& segments) const;
 
 public:
     static const string ALL_SAMPLES_KEY;

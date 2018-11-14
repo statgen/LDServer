@@ -1,7 +1,9 @@
 #include "Segment.h"
 
-Segment::Segment(const string& chromosome, uint64_t start_bp, uint64_t stop_bp) :
-        cached(false), names_loaded(false), genotypes_loaded(false), chromosome(chromosome), start_bp(start_bp), stop_bp(stop_bp), n_haplotypes(0u) {
+Segment::Segment(const string& chromosome, uint64_t start_bp, uint64_t stop_bp, genotypes_store store) :
+        cached(false), names_loaded(false), genotypes_loaded(false),
+        chromosome(chromosome), start_bp(start_bp), stop_bp(stop_bp),
+        n_haplotypes(0u), store(store) {
 
 }
 
@@ -14,8 +16,13 @@ Segment::Segment(Segment&& segment) {
     this->stop_bp = segment.stop_bp;
     this->names = move(segment.names);
     this->positions = move(segment.positions);
+    this->store = segment.store;
     this->sp_mat_rowind = move(segment.sp_mat_rowind);
     this->sp_mat_colind = move(segment.sp_mat_colind);
+    this->sp_mat_values = move(segment.sp_mat_values);
+    this->freqs = move(segment.freqs);
+    this->alleles = move(segment.alleles);
+    this->alt_carriers = move(segment.alt_carriers);
 }
 
 Segment::~Segment() {
@@ -40,6 +47,10 @@ uint64_t Segment::get_stop_bp() const {
 
 uint64_t Segment::get_n_haplotypes() const {
     return n_haplotypes;
+}
+
+uint64_t Segment::get_n_genotypes() const {
+    return n_haplotypes / 2;
 }
 
 uint32_t Segment::get_n_variants() const {
@@ -73,19 +84,40 @@ void Segment::clear_genotypes() {
 
 void Segment::add(savvy::site_info& anno, savvy::compressed_vector<float>& alleles) {
     n_haplotypes = alleles.size();
-    if (alleles.non_zero_size() > 0) {
+    unsigned int n_non_zero = alleles.non_zero_size();
+    if (n_non_zero > 0) {
         std::stringstream ss("");
         ss << anno.chromosome() << ":" << anno.position() << "_" << anno.ref() << "/" << anno.alt();
         names.emplace_back(ss.str());
         positions.push_back(anno.position());
-        sp_mat_colind.push_back(sp_mat_rowind.size());
-        this->alleles.emplace_back(n_haplotypes, false);
-        alt_allele_carriers.emplace_back();
-        freqs.push_back(alleles.non_zero_size() / (float)n_haplotypes);
-        for (auto it = alleles.begin(); it != alleles.end(); ++it) {
-            sp_mat_rowind.push_back(it.offset());
-            this->alleles.back()[it.offset()] = true;
-            alt_allele_carriers.back().push_back(it.offset());
+        auto index_data = alleles.index_data();
+        switch (store) {
+            case CSC_ALL_ONES:
+                sp_mat_colind.emplace_back(sp_mat_rowind.size());
+                for (unsigned int i = 0u; i < n_non_zero; ++i) {
+                    sp_mat_rowind.emplace_back(index_data[i]);
+                }
+                break;
+            case CSC:
+                {
+                n_haplotypes *= 2;
+                sp_mat_colind.emplace_back(sp_mat_rowind.size());
+                auto value_data = alleles.value_data();
+                for (unsigned int i = 0u; i < n_non_zero; ++i) {
+                    sp_mat_rowind.emplace_back(index_data[i]);
+                    sp_mat_values.emplace_back(value_data[i]);
+                }
+                }
+                break;
+            case BITSET:
+                this->alleles.emplace_back(n_haplotypes, false);
+                alt_carriers.emplace_back();
+                freqs.push_back(n_non_zero / (float)n_haplotypes);
+                for (unsigned int i = 0u; i < n_non_zero; ++i) {
+                    this->alleles.back()[index_data[i]] = true;
+                    alt_carriers.back().emplace_back(index_data[i]);
+                }
+                break;
         }
     }
 }
@@ -101,10 +133,36 @@ void Segment::add_name(savvy::site_info& anno, savvy::compressed_vector<float>& 
 
 void Segment::add_genotypes(savvy::compressed_vector<float>& alleles) {
     n_haplotypes = alleles.size();
-    if (alleles.non_zero_size() > 0) {
-        sp_mat_colind.push_back(sp_mat_rowind.size());
-        for (auto it = alleles.begin(); it != alleles.end(); ++it) {
-            sp_mat_rowind.push_back(it.offset());
+    unsigned int n_non_zero = alleles.non_zero_size();
+    if (n_non_zero > 0) {
+        auto index_data = alleles.index_data();
+        switch (store) {
+            case CSC_ALL_ONES:
+                sp_mat_colind.emplace_back(sp_mat_rowind.size());
+                for (unsigned int i = 0u; i < n_non_zero; ++i) {
+                    sp_mat_rowind.emplace_back(index_data[i]);
+                }
+                break;
+            case CSC:
+                {
+                n_haplotypes *= 2;
+                sp_mat_colind.emplace_back(sp_mat_rowind.size());
+                auto value_data = alleles.value_data();
+                for (unsigned int i = 0u; i < n_non_zero; ++i) {
+                    sp_mat_rowind.emplace_back(index_data[i]);
+                    sp_mat_values.emplace_back(value_data[i]);
+                }
+                }
+                break;
+            case BITSET:
+                this->alleles.emplace_back(n_haplotypes, false);
+                alt_carriers.emplace_back();
+                freqs.push_back(n_non_zero / (float)n_haplotypes);
+                for (unsigned int i = 0u; i < n_non_zero; ++i) {
+                    this->alleles.back()[index_data[i]] = true;
+                    alt_carriers.back().emplace_back(index_data[i]);
+                }
+                break;
         }
     }
 }
@@ -119,9 +177,10 @@ void Segment::freeze_names() {
 }
 
 void Segment::freeze_genotypes() {
-    sp_mat_colind.push_back(sp_mat_rowind.size());
+    if ((store == CSC_ALL_ONES) || (store == CSC)) {
+        sp_mat_colind.push_back(sp_mat_rowind.size());
+    }
     genotypes_loaded = true;
-//    cout << "Freeze genotypes: " << names.size() << " " << positions.size() << endl;
 }
 
 bool Segment::has_names() const {
@@ -133,10 +192,32 @@ bool Segment::has_genotypes() const {
 }
 
 arma::sp_fmat Segment::get_genotypes() {
-    return arma::sp_fmat(arma::uvec(sp_mat_rowind.data(), sp_mat_rowind.size(), false, false),
-                          arma::uvec(sp_mat_colind.data(), sp_mat_colind.size(), false, false),
-                          arma::fvec(sp_mat_rowind.size(), arma::fill::ones),
-                          n_haplotypes, names.size()); // hope that copy elision will take care about not using copy/move constructors
+    switch (store) {
+        case CSC_ALL_ONES:
+            return arma::sp_fmat(arma::uvec(sp_mat_rowind.data(), sp_mat_rowind.size(), false, false),
+                                 arma::uvec(sp_mat_colind.data(), sp_mat_colind.size(), false, false),
+                                 arma::fvec(sp_mat_rowind.size(), arma::fill::ones),
+                                 n_haplotypes, names.size()); // hope that copy elision will take care about not using copy/move constructors
+        case CSC:
+            return arma::sp_fmat(arma::uvec(sp_mat_rowind.data(), sp_mat_rowind.size(), false, false),
+                                 arma::uvec(sp_mat_colind.data(), sp_mat_colind.size(), false, false),
+                                 arma::fvec(sp_mat_values.data(), sp_mat_values.size(), false, false),
+                                 n_haplotypes / 2, names.size()); // hope that copy elision will take care about not using copy/move constructors
+        default:
+            throw runtime_error("Not supported");
+    }
+}
+
+const vector<float>& Segment::get_freqs() const {
+    return freqs;
+}
+
+const vector<vector<bool>>& Segment::get_alleles() const {
+    return alleles;
+}
+
+const vector<vector<unsigned int>>& Segment::get_alt_carriers() const {
+    return alt_carriers;
 }
 
 void Segment::create_pair(Segment& segment1, Segment& segment2, int i, int j, double value, vector<VariantsPair>& pairs) {

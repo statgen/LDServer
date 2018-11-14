@@ -11,10 +11,16 @@
 #include <cereal/types/string.hpp>
 #include <cereal/types/vector.hpp>
 #include <savvy/reader.hpp>
-//#include <savvy/armadillo_vector.hpp>
+#include <armadillo>
 #include "Types.h"
 
 using namespace std;
+
+enum genotypes_store : uint8_t {
+    CSC_ALL_ONES, // all-ones matrix in compressed sparse column representation,
+    CSC, // matrix in compressed sparse column representation
+    BITSET // bitsets
+};
 
 class Segment {
 private:
@@ -29,16 +35,21 @@ private:
     vector<string> names;
     vector<uint64_t> positions;
 
+    // tells in which format to store the genotypes
+    genotypes_store store;
+
+    // for CSC representation
     vector<arma::uword> sp_mat_rowind;
     vector<arma::uword> sp_mat_colind;
+    vector<float> sp_mat_values;
+
+    // for BITSET representation
+    vector<float> freqs;
+    vector<vector<bool>> alleles;
+    vector<vector<unsigned int>> alt_carriers;
 
 public:
-    vector<vector<bool>> alleles;
-    vector<vector<arma::uword>> alt_allele_carriers;
-    vector<float> freqs;
-
-//public:
-    Segment(const string& chromosome, uint64_t start_bp, uint64_t stop_bp);
+    Segment(const string& chromosome, uint64_t start_bp, uint64_t stop_bp, genotypes_store store);
     Segment(Segment&& segment);
     virtual ~Segment();
 
@@ -66,10 +77,14 @@ public:
     uint64_t get_start_bp() const;
     uint64_t get_stop_bp() const;
     uint64_t get_n_haplotypes() const;
+    uint64_t get_n_genotypes() const;
     uint32_t get_n_variants() const;
     const string& get_name(int i) const;
     uint64_t get_position(int i) const;
     arma::sp_fmat get_genotypes();
+    const vector<float>& get_freqs() const;
+    const vector<vector<bool>>& get_alleles() const;
+    const vector<vector<unsigned int>>& get_alt_carriers() const;
 
     static void create_pair(Segment& segment1, Segment& segment2, int index_i, int index_j, double value, vector<VariantsPair>& pairs);
 
