@@ -36,13 +36,14 @@ if __name__ == '__main__':
         with open(args.genes_file, 'r') as f:
             for line in f:
                 if line:
-                    start_bp, stop_bp = map(int, line.rstrip().split())
-                    genes.append((start_bp, stop_bp))
+                    chrom, start_bp, stop_bp = line.rstrip().split()
+                    start_bp, stop_bp = map(int, (start_bp, stop_bp))
+                    genes.append((chrom, start_bp, stop_bp))
         for i in range(0, args.c):
-            start_bp, stop_bp = random.choice(genes)
+            chrom, start_bp, stop_bp = random.choice(genes)
             start_bp = random.randrange( start_bp - window_bp if start_bp > window_bp else start_bp, stop_bp + window_bp, 1)
             stop_bp = start_bp + args.region_length
-            query = 'genome_builds/{}/references/{}/populations/ALL/regions?correlation=rsquare&chrom=22&start={}&stop={}&limit={}'.format(args.genome_build, args.reference, start_bp, stop_bp, args.page_size)
+            query = 'genome_builds/{}/references/{}/populations/ALL/regions?correlation=rsquare&chrom={}&start={}&stop={}&limit={}'.format(args.genome_build, args.reference, chrom, start_bp, stop_bp, args.page_size)
             queries.append((query, args.region_length, args.page_size))
     elif args.command == 'variant':
         variants = []
