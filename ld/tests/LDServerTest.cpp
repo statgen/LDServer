@@ -27,7 +27,15 @@ protected:
         getline(config_file, port);
         LDServerTest::port = stoi(port);
         LDServerTest::hostname = hostname;
-        string command("../bin/redis-server --port " + to_string(LDServerTest::port) + " --bind " + LDServerTest::hostname + " --daemonize no --save \"\"");
+
+        auto env_redis = getenv("REDIS_BIN");
+        string redis_bin = "../bin/redis-server"; // default path to search
+        if (env_redis != nullptr) {
+          cout << "Found REDIS_BIN envvar, using it for redis-server path" << endl;
+          redis_bin = static_cast<string>(env_redis);
+        }
+
+        string command(redis_bin + " --port " + to_string(LDServerTest::port) + " --bind " + LDServerTest::hostname + " --daemonize no --save \"\"");
         LDServerTest::redis_server = boost::process::child(command);
         this_thread::sleep_for(chrono::seconds(3));
         redis_cache = redisConnect(LDServerTest::hostname.c_str(), LDServerTest::port);
