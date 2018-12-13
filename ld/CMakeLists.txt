@@ -4,7 +4,7 @@ include(GNUInstallDirs)
 add_compile_options(-Wall -Wpedantic)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 
 add_subdirectory(src)
 add_subdirectory(tests)
