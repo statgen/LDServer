@@ -84,6 +84,59 @@ protected:
         }
     }
 
+    void load_raremetal_covariance(const string &file, map<string, double> &values) {
+        ifstream input_file(file);
+        string line;
+        vector<string> tokens;
+        vector<uint64_t> positions;
+        vector<double> cov;
+        auto line_separator = regex("[ \t]");
+        auto field_separator = regex(",");
+        string comment = "#";
+
+        getline(input_file, line); // skip header;
+        while (getline(input_file, line)) {
+            if (std::equal(comment.begin(), comment.end(), line.begin())) {
+              continue;
+            }
+
+            // Split line and insert into tokens
+            copy(sregex_token_iterator(line.begin(), line.end(), line_separator, -1), sregex_token_iterator(), back_inserter(tokens));
+
+            string chrom(tokens.at(0));
+            string ref_pos(tokens.at(1));
+
+            // Load the positions on this row
+            transform(
+              sregex_token_iterator(tokens.at(2).begin(), tokens.at(2).end(), field_separator, -1),
+              sregex_token_iterator(),
+              back_inserter(positions),
+              [](const string &str) { return stoi(str); }
+            );
+
+            // Load the covariance values on this row
+            transform(
+              sregex_token_iterator(tokens.at(3).begin(), tokens.at(3).end(), field_separator, -1),
+              sregex_token_iterator(),
+              back_inserter(cov),
+              [](const string &str) { return stod(str); }
+            );
+
+            // Store values to map
+            string pair_key;
+            double pair_cov;
+            for (int index = 0; index < positions.size(); index++) {
+              pair_key = ref_pos + "_" + to_string(positions[index]);
+              pair_cov = cov[index];
+              values.emplace(pair_key, pair_cov);
+            }
+
+            tokens.clear();
+            positions.clear();
+            cov.clear();
+        }
+    }
+
     void load_samples(const string &file, vector<string>& samples) {
         ifstream input_file(file);
         string line;
@@ -186,6 +239,28 @@ TEST_F(LDServerTest, SAV_one_page) {
         ASSERT_NE(entry.variant2, "");
         ASSERT_EQ(goldstandard.count(key), 1);
 //        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
+    }
+}
+
+TEST_F(LDServerTest, simple_cov_test) {
+    // Load gold standard covariance values from RAREMETAL
+    map<string, double> gold_standard;
+    this->load_raremetal_covariance("chr21.test.RAND_QT.singlevar.cov.txt", gold_standard);
+
+    // LD Server start
+    LDServer server(100);
+    LDQueryResult result(1000);
+
+    server.set_file("chr21.test.vcf.gz");
+    ASSERT_TRUE(server.compute_region_ld("21", 9411239, 9411793, correlation::COV, result));
+    ASSERT_EQ(result.limit, 1000);
+    ASSERT_EQ(result.get_last(), "");
+    ASSERT_TRUE(result.is_last());
+    for (auto&& entry : result.data) {
+        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+        ASSERT_NE(entry.variant1, "");
+        ASSERT_NE(entry.variant2, "");
+        ASSERT_NEAR(gold_standard.find(key)->second, entry.value, 0.00000000001);
     }
 }
 
