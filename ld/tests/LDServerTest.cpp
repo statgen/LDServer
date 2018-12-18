@@ -7,6 +7,7 @@
 #include <map>
 #include <boost/process/system.hpp>
 #include "../src/LDServer.h"
+#include "RareMetal.h"
 
 using namespace std;
 
@@ -82,6 +83,10 @@ protected:
             values.emplace(tokens.at(1) + "_" + tokens.at(3), stod(tokens.at(5)));
             tokens.clear();
         }
+    }
+
+    auto load_raremetal_scores(const string &file) {
+      return make_shared<RareMetalScores>(file);
     }
 
     void load_raremetal_covariance(const string &file, map<string, double> &values) {
@@ -247,6 +252,9 @@ TEST_F(LDServerTest, simple_cov_test) {
     map<string, double> gold_standard;
     this->load_raremetal_covariance("chr21.test.RAND_QT.singlevar.cov.txt", gold_standard);
 
+    // Load score statistics (need sigma to multiply out)
+    auto scores = load_raremetal_scores("chr21.test.RAND_QT.singlevar.score.txt");
+
     // LD Server start
     LDServer server(100);
     LDQueryResult result(1000);
@@ -258,9 +266,11 @@ TEST_F(LDServerTest, simple_cov_test) {
     ASSERT_TRUE(result.is_last());
     for (auto&& entry : result.data) {
         string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+        double value_gold = gold_standard.find(key)->second * scores->get_sigma();
+        double value_ldserver = entry.value;
         ASSERT_NE(entry.variant1, "");
         ASSERT_NE(entry.variant2, "");
-        ASSERT_NEAR(gold_standard.find(key)->second, entry.value, 0.00000000001);
+        ASSERT_NEAR(value_gold, value_ldserver, 0.0000001);
     }
 }
 

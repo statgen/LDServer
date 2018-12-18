@@ -7,7 +7,7 @@ if(CGET_PREFIX)
 endif()
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-add_executable(testAll LDServerTest.cpp Main_TestAll.cpp)
+add_executable(testAll LDServerTest.cpp Main_TestAll.cpp RareMetal.cpp)
 target_link_libraries(testAll LDServer ${BOOST_SYSTEM_LIB} ${GTEST_LIB} ${CMAKE_THREAD_LIBS_INIT})
 
 install(TARGETS testAll COMPONENT cli RUNTIME DESTINATION test OPTIONAL)
