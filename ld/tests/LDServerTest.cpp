@@ -8,6 +8,7 @@
 #include <boost/process/system.hpp>
 #include "../src/LDServer.h"
 #include "RareMetal.h"
+#include "../src/Phenotypes.h"
 
 using namespace std;
 
@@ -877,3 +878,18 @@ TEST_F(LDServerTest, DISABLED_read_spead) {
     cout << names.size() << endl;
     cout << positions.size() << endl;
 }
+
+TEST_F(LDServerTest, read_tab) {
+    Phenotypes pheno;
+    pheno.load_tab("chr21.test.tab");
+    auto test_col = *pheno.get_column("sex");
+    auto foo = test_col.which();
+    auto blah = pheno.get_column("noexist");
+    auto yar = pheno.as_float("sex");
+    cout << "Done reading tab" << endl;
+}
+
+//TEST_F(LDServerTest, read_ped) {
+//    Phenotypes pheno;
+//    pheno.load_ped("chr21.test.ped","chr21.test.dat");
+//}
