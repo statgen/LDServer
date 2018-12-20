@@ -1,8 +1,12 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Index
+from sqlalchemy.types import Enum
 from flask.cli import with_appcontext
+from collections import Counter, OrderedDict
 import click
 import json
+import gzip
+import enum
 
 db = SQLAlchemy()
 
@@ -46,6 +50,30 @@ class Sample(db.Model):
     reference_id = db.Column(db.Integer, db.ForeignKey('reference.id'), nullable = False)
     def __repr__(self):
         return '<Sample %r %r>' % (self.subset, self.sample)
+
+class ColumnType(enum.Enum):
+    TEXT = 0
+    CATEGORICAL = 1
+    INTEGER = 2
+    FLOAT = 3
+
+class PhenotypeDataset(db.Model):
+    __tablename__ = "phenotype_datasets"
+    id = db.Column(db.Integer, primary_key = True)
+    name = db.Column(db.String, unique = False, nullable = False)
+    description = db.Column(db.String, unique = False, nullable = False)
+    filepath = db.Column(db.String, unique = False, nullable = False)
+
+    columns = db.relationship("PhenotypeColumn", back_populates = "dataset")
+
+class PhenotypeColumn(db.Model):
+    __tablename__ = "phenotype_columns"
+    id = db.Column(db.Integer, primary_key = True)
+    phenotype_id = db.Column(db.Integer, db.ForeignKey('phenotype_datasets.id'))
+    column_name = db.Column(db.String, nullable = False)
+    column_type = db.Column(Enum(ColumnType), nullable = False, name = "column_type")
+
+    dataset = db.relationship("PhenotypeDataset", back_populates = "columns")
 
 Index('reference_index_1', Reference.genome_build)
 Index('file_index', File.reference_id, File.path)
@@ -141,6 +169,105 @@ def add_reference(name, description, genome_build, samples_filename, genotype_fi
     db.session.add(r)
     db.session.commit()
 
+def guess_type(values):
+    guesses = []
+
+    for v in values:
+        try:
+            f = float(v)
+        except ValueError:
+            guesses.append(ColumnType.TEXT)
+            continue
+
+        i = int(f)
+        if f == i:
+            guesses.append(ColumnType.INTEGER)
+        else:
+            guesses.append(ColumnType.FLOAT)
+
+    return Counter(guesses).most_common(1)[0][0]
+
+def _load_phenotype_ped(ped_file, dat_file):
+    if ped_file.endswith(".gz"):
+        fp_ped = gzip.open(ped_file, "rt")
+    else:
+        fp_ped = open(ped_file)
+
+    if dat_file.endswith(".gz"):
+        fp_dat = gzip.open(dat_file, "rt")
+    else:
+        fp_dat = open(dat_file)
+
+    with fp_ped, fp_dat:
+        column_types = OrderedDict()
+
+        # We know some of the column types already in a PED file
+        column_types["IID"] = ColumnType.TEXT
+        column_types["FID"] = ColumnType.TEXT
+        column_types["PID"] = ColumnType.TEXT
+        column_types["MID"] = ColumnType.TEXT
+        column_types["SEX"] = ColumnType.CATEGORICAL
+
+        for i, line in enumerate(fp_dat):
+            ctype, pheno = line.split()
+            if ctype == "A":
+                column_types[pheno] = ColumnType.CATEGORICAL
+            elif ctype == "T":
+                column_types[pheno] = ColumnType.FLOAT
+            elif ctype == "M":
+                continue
+            else:
+                ValueError("Unrecognized DAT data type: " + ctype)
+
+    return column_types
+
+def _load_phenotype_tab(tab_file, lookahead = 1000):
+    if tab_file.endswith(".gz"):
+        fp_tab = gzip.open(tab_file, "rt")
+    else:
+        fp_tab = open(tab_file)
+
+    header = None
+    with fp_tab:
+        # First line is header
+        header = next(fp_tab).split("\t")
+        header[-1] = header[-1].rstrip()
+
+        column_values = OrderedDict()
+        for i, line in enumerate(fp_tab):
+            ls = line.split("\t")
+            ls[-1] = ls[-1].rstrip()
+
+            for j, v in enumerate(ls):
+                column_values.setdefault(header[j], []).append(v)
+
+            if i > lookahead:
+                break
+
+    column_types = OrderedDict()
+    for k, v in column_values.items():
+        column_types[k] = guess_type(v)
+    return column_types
+
+def add_phenotypes(name, description, filepath):
+    db.create_all()
+
+    if ".ped" in filepath:
+        column_types = _load_phenotype_ped(filepath, filepath.replace(".ped",".dat"))
+    elif ".dat" in filepath:
+        column_types = _load_phenotype_ped(filepath, filepath.replace(".dat",".ped"))
+    elif ".tab" in filepath:
+        column_types = _load_phenotype_tab(filepath)
+    else:
+        raise ValueError("Must specify PED+DAT or tab-delimited file")
+
+    pheno = PhenotypeDataset(name = name, description = description, filepath = filepath)
+    for col, ctype in column_types.items():
+        pheno.columns.append(PhenotypeColumn(column_name = col, column_type = ctype))
+
+    db.session.add(pheno)
+    db.session.commit()
+
 def create_subset(genome_build, reference_name, subset_name, samples_filename):
     db.create_all()
     samples = []
@@ -214,6 +341,20 @@ def add_reference_command(name, description, genome_build, samples, genotypes):
     genotypes -- Path (glob) to VCF/BCF/SAV file(s).\n
     """
     add_reference(name, description, genome_build, samples, genotypes)
+
+@click.command('add-phenotypes')
+@click.argument('name')
+@click.argument('description')
+@click.argument('filepath', type = click.Path(exists = True))
+@with_appcontext
+def add_phenotypes_command(name, description, filepath):
+    """Adds new phenotypes to the database.
+
+    name -- The short name of a phenotype dataset.\n
+    description -- The longer form description of the phenotype dataset.\n
+    filepath -- Path to PED file or TAB-delimited file containing the phenotypes and samples.\n
+    """
+    add_phenotypes(name, description, filepath)
 
 @click.command('create-population')
 @click.argument('genome_build')
