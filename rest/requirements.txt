@@ -10,4 +10,3 @@ click
 requests
 argparse
 flask_sqlalchemy
-enum34
