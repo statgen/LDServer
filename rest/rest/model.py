@@ -3,10 +3,10 @@ from sqlalchemy import Index
 from sqlalchemy.types import Enum
 from flask.cli import with_appcontext
 from collections import Counter, OrderedDict
+from ld.pywrapper import ColumnType
 import click
 import json
 import gzip
-import enum
 
 db = SQLAlchemy()
 
@@ -51,12 +51,6 @@ class Sample(db.Model):
     def __repr__(self):
         return '<Sample %r %r>' % (self.subset, self.sample)
 
-class ColumnType(enum.Enum):
-    TEXT = 0
-    CATEGORICAL = 1
-    INTEGER = 2
-    FLOAT = 3
-
 class PhenotypeDataset(db.Model):
     __tablename__ = "phenotype_datasets"
     id = db.Column(db.Integer, primary_key = True)
@@ -71,7 +65,7 @@ class PhenotypeColumn(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     phenotype_id = db.Column(db.Integer, db.ForeignKey('phenotype_datasets.id'))
     column_name = db.Column(db.String, nullable = False)
-    column_type = db.Column(Enum(ColumnType), nullable = False, name = "column_type")
+    column_type = db.Column(Enum(*tuple(ColumnType.values[i].name for i in range(len(ColumnType.values)))), nullable = False, name = "column_type")
 
     dataset = db.relationship("PhenotypeDataset", back_populates = "columns")
 
@@ -176,14 +170,14 @@ def guess_type(values):
         try:
             f = float(v)
         except ValueError:
-            guesses.append(ColumnType.TEXT)
+            guesses.append(ColumnType.TEXT.name)
             continue
 
         i = int(f)
         if f == i:
-            guesses.append(ColumnType.INTEGER)
+            guesses.append(ColumnType.INTEGER.name)
         else:
-            guesses.append(ColumnType.FLOAT)
+            guesses.append(ColumnType.FLOAT.name)
 
     return Counter(guesses).most_common(1)[0][0]
 
@@ -202,18 +196,18 @@ def _load_phenotype_ped(ped_file, dat_file):
         column_types = OrderedDict()
 
         # We know some of the column types already in a PED file
-        column_types["IID"] = ColumnType.TEXT
-        column_types["FID"] = ColumnType.TEXT
-        column_types["PID"] = ColumnType.TEXT
-        column_types["MID"] = ColumnType.TEXT
-        column_types["SEX"] = ColumnType.CATEGORICAL
+        column_types["IID"] = ColumnType.TEXT.name
+        column_types["FID"] = ColumnType.TEXT.name
+        column_types["PID"] = ColumnType.TEXT.name
+        column_types["MID"] = ColumnType.TEXT.name
+        column_types["SEX"] = ColumnType.CATEGORICAL.name
 
         for i, line in enumerate(fp_dat):
             ctype, pheno = line.split()
             if ctype == "A":
-                column_types[pheno] = ColumnType.CATEGORICAL
+                column_types[pheno] = ColumnType.CATEGORICAL.name
             elif ctype == "T":
-                column_types[pheno] = ColumnType.FLOAT
+                column_types[pheno] = ColumnType.FLOAT.name
             elif ctype == "M":
                 continue
             else:

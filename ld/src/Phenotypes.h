@@ -8,10 +8,11 @@
 
 using namespace std;
 
-enum class ColumnType {
+enum ColumnType : uint8_t {
   TEXT,
-  FLOAT,
+  CATEGORICAL,
   INTEGER,
+  FLOAT
 };
 
 template <typename T> T most_common(vector<T>& vec);

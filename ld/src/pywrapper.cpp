@@ -5,6 +5,7 @@
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <python2.7/Python.h>
 #include "LDServer.h"
+#include "Phenotypes.h"
 
 BOOST_PYTHON_MODULE(pywrapper) {
 
@@ -12,6 +13,13 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .value("ld_r", LD_R)
             .value("ld_rsquare", LD_RSQUARE)
             .value("cov", COV)
+            ;
+
+    boost::python::enum_<ColumnType>("ColumnType")
+            .value("TEXT", TEXT)
+            .value("CATEGORICAL", CATEGORICAL)
+            .value("INTEGER", INTEGER)
+            .value("FLOAT", FLOAT)
             ;
 
     boost::python::class_<VariantsPair>("VariantsPair", boost::python::init<const char*, const char*, unsigned long int, const char*, const char*, unsigned long int , double>())
