@@ -9,6 +9,8 @@
 
 using namespace std;
 
+template<typename T> shared_ptr<vector<T>> make_shared_vector(vector<T>& v) { return make_shared<vector<T>>(v); }
+
 //inline bool isInteger(const std::string & s) {
 //  if(s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+'))) return false;
 //
@@ -24,21 +26,21 @@ using namespace std;
  * @param vec
  * @return
  */
-template <typename T> T most_common(vector<T>& vec) {
-  unordered_map<T, int> counts;
-  int max = 0;
-  T most_common;
-  for (auto& v : vec) {
-    int c = counts[v]++;
-    if (c > max) {
-      max = c;
-      most_common = v;
-    }
-  }
-  return most_common;
-}
+//template <typename T> T most_common(vector<T>& vec) {
+//  unordered_map<T, int> counts;
+//  int max = 0;
+//  T most_common;
+//  for (auto& v : vec) {
+//    int c = counts[v]++;
+//    if (c > max) {
+//      max = c;
+//      most_common = v;
+//    }
+//  }
+//  return most_common;
+//}
 
-void Phenotypes::load_tab(const string &path) {
+void Phenotypes::load_tab(const string &path, const ColumnTypeMap &types) {
   ifstream input_file(path);
   string line;
   auto separator = regex("[ \t]");
@@ -48,84 +50,41 @@ void Phenotypes::load_tab(const string &path) {
   getline(input_file, line);
   copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(header));
 
-  // Do a quick iteration of the first X lines to perform some basic column type inference.
-  map<int, vector<ColumnType>> guesses;
-  uint64_t line_counter = 0;
-  while (getline(input_file, line)) {
-    // Skip commented lines.
-    if (line.substr(0,1) == "#") { continue; }
-    if (line.empty()) { continue; }
-
-    // Parse line.
-    vector<string> tokens;
-    copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
-
-    // Does the number of tokens match the number of elements in the header?
-    if (header.size() != tokens.size()) {
-      throw "Number of elements on row " + to_string(line_counter) + "did not match number in header";
-    }
-
-    for (int i = 0; i < tokens.size(); i++) {
-      double tmp_double;
-      int64_t tmp_int;
-
-      // Try converting to floating point type first.
-      try {
-        tmp_double = stod(tokens.at(i));
-      }
-      catch (...) {
-        // Can't convert to a double, so we have to leave it as a string.
-        guesses[i].emplace_back(ColumnType::TEXT);
-        continue;
-      }
-
-      // We at least know it's a number now. Could it be an integer?
-      try {
-        tmp_int = stol(tokens.at(i));
-        if (tmp_double != tmp_int) {
-          // Floating representation didn't match integer, so we can't safely store as integer.
-          guesses[i].emplace_back(ColumnType::FLOAT);
-        }
-        else {
-          guesses[i].emplace_back(ColumnType::INTEGER);
-        }
-      }
-      catch (...) {
-        guesses[i].emplace_back(ColumnType::FLOAT);
-      }
-    }
-
-    if (line_counter > Phenotypes::N_LOOKAHEAD_LINES) {
-      break;
-    }
-
-    line_counter++;
-  }
-
-  // Determine type of each column from our guesses, and create
-  // our column store.
+  // Allocate storage from column types.
   ColumnType ct;
   string col;
-  shared_ptr<VectorVariant> ptr;
-  vector<ColumnType> vec_types(guesses.size());
-  for (auto& kv : guesses) {
-    ct = most_common(kv.second);
-    col = header[kv.first];
-    column_types[col] = ct;
-    vec_types[kv.first] = ct;
+  shared_ptr<ColumnVariant> ptr;
+  for (auto& kv : types) {
+    col = kv.first;
+    ct = kv.second;
     switch (ct) {
       case ColumnType::INTEGER:
-        ptr = make_shared<VectorVariant>(vector<int64_t>());
+        ptr = make_shared<ColumnVariant>(vector<int64_t>());
         columns[col] = ptr;
         break;
       case ColumnType::FLOAT:
-        ptr = make_shared<VectorVariant>(vector<double>());
+        ptr = make_shared<ColumnVariant>(vector<double>());
         columns[col] = ptr;
         break;
       case ColumnType::TEXT:
-        ptr = make_shared<VectorVariant>(vector<string>());
+        ptr = make_shared<ColumnVariant>(vector<string>());
         columns[col] = ptr;
         break;
+      case ColumnType::CATEGORICAL:
+        ptr = make_shared<ColumnVariant>(vector<string>());
+        columns[col] = ptr;
+        break;
+    }
+  }
+
+  // Convenience to lookup column type by index.
+  vector<ColumnType> vec_types(types.size());
+  for (int i = 0; i < header.size(); i++) {
+    try {
+      vec_types[i] = types.at(header[i]);
+    }
+    catch (...) {
+      throw "Column " + header[i] + " did not exist in column type definitions";
     }
   }
 
@@ -137,7 +96,6 @@ void Phenotypes::load_tab(const string &path) {
     if (line.empty()) { continue; }
 
     // Parse line.
-    string col;
     vector<string> tokens;
     copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
     for (int i = 0; i < tokens.size(); i++) {
@@ -152,19 +110,25 @@ void Phenotypes::load_tab(const string &path) {
         case ColumnType::TEXT:
           boost::get<vector<string>>(*columns[col]).emplace_back(tokens[i]);
           break;
+        case ColumnType::CATEGORICAL:
+          boost::get<vector<string>>(*columns[col]).emplace_back(tokens[i]);
+          break;
       }
     }
   }
 
   // In a tab-delimited file, we assume the first column contains the sample IDs.
-  sample_ids = columns[header[0]];
+  sample_ids = make_shared<vector<string>>(boost::get<vector<string>>(*columns[header[0]]));
+
+  // Store a copy of the column types.
+  column_types = types;
 }
 
 void Phenotypes::load_ped(const string &ped_path, const string &dat_path) {
   throw "Not yet implemented";
 }
 
-shared_ptr<VectorVariant> Phenotypes::get_column(const string &colname) {
+shared_ptr<ColumnVariant> Phenotypes::get_column(const string &colname) {
   return columns[colname];
 }
 
@@ -172,7 +136,7 @@ ColumnType Phenotypes::get_column_type(const string& colname) {
   return column_types[colname];
 }
 
-shared_ptr<arma::vec> Phenotypes::as_float(const string &colname) {
+shared_ptr<arma::vec> Phenotypes::as_vec(const string &colname) {
   shared_ptr<arma::vec> rvec;
   arma::vec v;
   switch (get_column_type(colname)) {
@@ -192,7 +156,54 @@ shared_ptr<arma::vec> Phenotypes::as_float(const string &colname) {
       break;
     case ColumnType::TEXT:
       throw "Cannot convert text column to floating point";
+    case ColumnType::CATEGORICAL:
+      throw "Cannot convert categorical column to floating point";
   }
 
   return rvec;
+}
+
+void Phenotypes::reorder(const vector<string> &samples) {
+  size_t n_new = samples.size();
+
+  // Find indices of existing samples
+  vector<uint64_t> indices;
+  for (auto& sample : samples) {
+    // Find index of requested sample in our original list of samples.
+    auto it = find(sample_ids->begin(), sample_ids->end(), sample);
+    if (it != sample_ids->end()) {
+      auto index = distance(sample_ids->begin(), it);
+      indices.emplace_back(index);
+    }
+    else {
+      // Store a sentinel value to denote this sample didn't exist.
+      indices.emplace_back(-1);
+    }
+  }
+
+  // Reorder samples accordingly. For samples that didn't exist, we need to store a NaN in the proper location.
+  for (auto& kv : columns) {
+    decltype(kv.second) new_col;
+
+    for (auto i : indices) {
+
+    }
+
+  }
+
+  // Set samples
+  vector<string> copy_samples = samples;
+  this->sample_ids = make_shared_vector<string>(copy_samples);
+}
+
+SharedVector<string> Phenotypes::get_phenotypes() {
+  vector<string> phenos;
+  for (auto& kv : columns) {
+    phenos.emplace_back(kv.first);
+  }
+  return make_shared_vector<string>(phenos);
+}
+
+shared_ptr<ScoreResult> Phenotypes::compute_score(arma::vec genotypes, const string& phenotype) {
+
 }

@@ -881,11 +881,25 @@ TEST_F(LDServerTest, DISABLED_read_spead) {
 
 TEST_F(LDServerTest, read_tab) {
     Phenotypes pheno;
-    pheno.load_tab("chr21.test.tab");
-    auto test_col = *pheno.get_column("sex");
-    auto foo = test_col.which();
-    auto blah = pheno.get_column("noexist");
-    auto yar = pheno.as_float("sex");
+    ColumnTypeMap ctmap = {
+      {"fid", ColumnType::TEXT},
+      {"iid", ColumnType::TEXT},
+      {"patid", ColumnType::TEXT},
+      {"matid", ColumnType::TEXT},
+      {"sex", ColumnType::CATEGORICAL},
+      {"rand_binary", ColumnType::CATEGORICAL},
+      {"rand_qt", ColumnType::FLOAT},
+    };
+
+    pheno.load_tab("chr21.test.tab", ctmap);
+    auto test = pheno.as_vec("rand_qt");
+
+    auto phenos_loaded = pheno.get_phenotypes();
+
+    // Try reordering samples
+    vector<string> new_samples = {"HG00100","HG00103","HG00096","BAD_SAMPLE"};
+    pheno.reorder(new_samples);
+
     cout << "Done reading tab" << endl;
 }
 
