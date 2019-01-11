@@ -57,6 +57,8 @@ class PhenotypeDataset(db.Model):
     name = db.Column(db.String, unique = False, nullable = False)
     description = db.Column(db.String, unique = False, nullable = False)
     filepath = db.Column(db.String, unique = False, nullable = False)
+    nrows = db.Column(db.Integer, nullable = False)
+    ncols = db.Column(db.Integer, nullable = False)
 
     columns = db.relationship("PhenotypeColumn", back_populates = "dataset")
 
@@ -192,6 +194,7 @@ def _load_phenotype_ped(ped_file, dat_file):
     else:
         fp_dat = open(dat_file)
 
+    nrows = 0
     with fp_ped, fp_dat:
         column_types = OrderedDict()
 
@@ -213,15 +216,23 @@ def _load_phenotype_ped(ped_file, dat_file):
             else:
                 ValueError("Unrecognized DAT data type: " + ctype)
 
-    return column_types
+        for line in fp_ped:
+            if not line.startswith("#"):
+                nrows += 1
+                break
 
-def _load_phenotype_tab(tab_file, lookahead = 1000):
+        nrows += sum(1 for i in fp_ped)
+
+    return column_types, nrows
+
+def _load_phenotype_tab(tab_file):
     if tab_file.endswith(".gz"):
         fp_tab = gzip.open(tab_file, "rt")
     else:
         fp_tab = open(tab_file)
 
     header = None
+    nrows = 0
     with fp_tab:
         # First line is header
         header = next(fp_tab).split("\t")
@@ -235,27 +246,27 @@ def _load_phenotype_tab(tab_file, lookahead = 1000):
             for j, v in enumerate(ls):
                 column_values.setdefault(header[j], []).append(v)
 
-            if i > lookahead:
-                break
+            nrows += 1
 
     column_types = OrderedDict()
     for k, v in column_values.items():
         column_types[k] = guess_type(v)
-    return column_types
+
+    return column_types, nrows
 
 def add_phenotypes(name, description, filepath):
     db.create_all()
 
     if ".ped" in filepath:
-        column_types = _load_phenotype_ped(filepath, filepath.replace(".ped",".dat"))
+        column_types, nrows = _load_phenotype_ped(filepath, filepath.replace(".ped",".dat"))
     elif ".dat" in filepath:
-        column_types = _load_phenotype_ped(filepath, filepath.replace(".dat",".ped"))
+        column_types, nrows = _load_phenotype_ped(filepath, filepath.replace(".dat",".ped"))
     elif ".tab" in filepath:
-        column_types = _load_phenotype_tab(filepath)
+        column_types, nrows = _load_phenotype_tab(filepath)
     else:
         raise ValueError("Must specify PED+DAT or tab-delimited file")
 
-    pheno = PhenotypeDataset(name = name, description = description, filepath = filepath)
+    pheno = PhenotypeDataset(name = name, description = description, filepath = filepath, nrows = nrows, ncols = len(column_types))
     for col, ctype in column_types.items():
         pheno.columns.append(PhenotypeColumn(column_name = col, column_type = ctype))
 
