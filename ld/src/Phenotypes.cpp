@@ -6,19 +6,22 @@
 #include <fstream>
 #include <string>
 #include <unordered_map>
+#include <armadillo>
+#include <algorithm>
+#include <cstdlib>
 
 using namespace std;
 
 template<typename T> shared_ptr<vector<T>> make_shared_vector(vector<T>& v) { return make_shared<vector<T>>(v); }
 
-//inline bool isInteger(const std::string & s) {
-//  if(s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+'))) return false;
-//
-//  char *p;
-//  strtol(s.c_str(), &p, 10);
-//
-//  return (*p == 0);
-//}
+inline bool is_integer(const std::string &s) {
+  if(s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+'))) return false;
+
+  char *p;
+  strtol(s.c_str(), &p, 10);
+
+  return (*p == 0);
+}
 
 /**
  * Find the most common element in a vector.
@@ -40,7 +43,7 @@ template<typename T> shared_ptr<vector<T>> make_shared_vector(vector<T>& v) { re
 //  return most_common;
 //}
 
-void Phenotypes::load_tab(const string &path, const ColumnTypeMap &types) {
+void Phenotypes::load_tab(const string &path, const ColumnTypeMap &types, size_t nrows) {
   ifstream input_file(path);
   string line;
   auto separator = regex("[ \t]");
@@ -50,30 +53,31 @@ void Phenotypes::load_tab(const string &path, const ColumnTypeMap &types) {
   getline(input_file, line);
   copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(header));
 
-  // Allocate storage from column types.
+  // Create vectors as necessary.
   ColumnType ct;
   string col;
-  shared_ptr<ColumnVariant> ptr;
   for (auto& kv : types) {
     col = kv.first;
     ct = kv.second;
     switch (ct) {
-      case ColumnType::INTEGER:
-        ptr = make_shared<ColumnVariant>(vector<int64_t>());
-        columns[col] = ptr;
+      case ColumnType::INTEGER: {
+        // Lazily store integer variables as floating point for now, can move to other storage later
+        columns_float[col] = make_shared<arma::vec>(nrows);
         break;
-      case ColumnType::FLOAT:
-        ptr = make_shared<ColumnVariant>(vector<double>());
-        columns[col] = ptr;
+      }
+      case ColumnType::FLOAT: {
+        columns_float[col] = make_shared<arma::vec>(nrows);
         break;
-      case ColumnType::TEXT:
-        ptr = make_shared<ColumnVariant>(vector<string>());
-        columns[col] = ptr;
+      }
+      case ColumnType::TEXT: {
+        columns_text[col] = make_shared<vector<string>>();
         break;
-      case ColumnType::CATEGORICAL:
-        ptr = make_shared<ColumnVariant>(vector<string>());
-        columns[col] = ptr;
+      }
+      case ColumnType::CATEGORICAL: {
+        // Same with integers, lazily store categorical variables encoded in floating point for now, move later
+        columns_float[col] = make_shared<arma::vec>(nrows);
         break;
+      }
     }
   }
 
@@ -90,35 +94,87 @@ void Phenotypes::load_tab(const string &path, const ColumnTypeMap &types) {
 
   // Now read entire file, storing columns as we go.
   // We also now know the number of columns.
+  vector<string> tokens;
+  int i = 0;
   while (getline(input_file, line)) {
     // Skip commented lines.
     if (line.substr(0, 1) == "#") { continue; }
     if (line.empty()) { continue; }
 
     // Parse line.
-    vector<string> tokens;
     copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
-    for (int i = 0; i < tokens.size(); i++) {
-      col = header[i];
-      switch (vec_types[i]) {
+    for (int j = 0; j < tokens.size(); j++) {
+      col = header[j];
+      switch (vec_types[j]) {
         case ColumnType::INTEGER:
-          boost::get<vector<int64_t>>(*columns[col]).emplace_back(stol(tokens[i]));
+          // For now store integers as doubles (as if they were floating point).
+          // If we need space for some reason later, can make a separate storage for smaller ints.
+        case ColumnType::FLOAT: {
+          if (tokens[j] == "NA") {
+            (*columns_float[col])(i) = arma::datum::nan;
+          }
+          else {
+            (*columns_float[col])(i) = stod(tokens[j]);
+          }
           break;
-        case ColumnType::FLOAT:
-          boost::get<vector<double>>(*columns[col]).emplace_back(stod(tokens[i]));
+        }
+        case ColumnType::TEXT: {
+          columns_text[col]->emplace_back(tokens[j]);
           break;
-        case ColumnType::TEXT:
-          boost::get<vector<string>>(*columns[col]).emplace_back(tokens[i]);
+        }
+        case ColumnType::CATEGORICAL: {
+          // If it's a NA value, we can skip parsing.
+          if (tokens[j] == "NA") {
+            (*columns_float[col])(i) = arma::datum::nan;
+            continue;
+          }
+
+          // Have we seen this category before?
+          auto it = map_level[col].find(tokens[j]);
+
+          if (it != map_level[col].end()) {
+            // We've seen this category before. Get its value.
+            (*columns_float[col])(i) = it->second;
+          }
+          else {
+            // New category level found.
+            // Find the next category level.
+            double cat_level = 0;
+
+            // If the value is an integer, we'll just assume we should use their encoding.
+            if (is_integer(tokens[j])) {
+              cat_level = stod(tokens[j]);
+            }
+            else {
+              if (!map_level[col].empty()) {
+                cat_level = (*max_element(
+                  map_level[col].begin(),
+                  map_level[col].end(),
+                  [](const auto &v1, const auto &v2) {
+                    return v1.second < v2.second;
+                  }
+                )).second + 1;
+              }
+            }
+
+            // Assign next level.
+            (*columns_float[col])(i) = cat_level;
+
+            // Remember level encoding
+            map_level[col][tokens[j]] = cat_level;
+            map_cat[col][cat_level] = tokens[j];
+          }
           break;
-        case ColumnType::CATEGORICAL:
-          boost::get<vector<string>>(*columns[col]).emplace_back(tokens[i]);
-          break;
+        }
       }
     }
+
+    tokens.clear();
+    i++;
   }
 
   // In a tab-delimited file, we assume the first column contains the sample IDs.
-  sample_ids = make_shared<vector<string>>(boost::get<vector<string>>(*columns[header[0]]));
+  sample_ids = columns_text[header[0]];
 
   // Store a copy of the column types.
   column_types = types;
@@ -128,46 +184,62 @@ void Phenotypes::load_ped(const string &ped_path, const string &dat_path) {
   throw "Not yet implemented";
 }
 
-shared_ptr<ColumnVariant> Phenotypes::get_column(const string &colname) {
-  return columns[colname];
-}
-
-ColumnType Phenotypes::get_column_type(const string& colname) {
-  return column_types[colname];
-}
-
-shared_ptr<arma::vec> Phenotypes::as_vec(const string &colname) {
-  shared_ptr<arma::vec> rvec;
-  arma::vec v;
-  switch (get_column_type(colname)) {
+SharedVector<string> Phenotypes::as_text(const string &colname) {
+  SharedVector<string> vec;
+  switch (column_types[colname]) {
     case ColumnType::INTEGER:
-      {
-        auto &ref = boost::get<vector<int64_t>>(*columns[colname]);
-        vector<double> tmp(ref.begin(), ref.end());
-        v = arma::vec(tmp);
-        rvec = make_shared<arma::vec>(v);
-      }
-      break;
     case ColumnType::FLOAT:
-      {
-        v = arma::vec(boost::get<vector<double>>(*columns[colname]));
-        rvec = make_shared<arma::vec>(v);
-      }
+    case ColumnType::CATEGORICAL:
+      throw "Cannot convert column " + colname + "to text";
+    case ColumnType::TEXT:
+      vec = columns_text[colname];
+      break;
+  }
+
+  return vec;
+}
+
+SharedArmaVec Phenotypes::as_vec(const string &colname) {
+  SharedArmaVec vec;
+  switch (column_types[colname]) {
+    case ColumnType::INTEGER:
+    case ColumnType::FLOAT:
+    case ColumnType::CATEGORICAL:
+      vec = columns_float[colname];
       break;
     case ColumnType::TEXT:
       throw "Cannot convert text column to floating point";
-    case ColumnType::CATEGORICAL:
-      throw "Cannot convert categorical column to floating point";
   }
 
-  return rvec;
+  return vec;
+}
+
+/**
+ * Utility function to help reordering an arbitrary container given an ordering of indices into it.
+ * @tparam T
+ * @param container
+ * @param indices Ordered list of indices into container. An index of -1 means insert NaN.
+ * @return shared_ptr to newly created / reordered container
+ */
+template<typename T> shared_ptr<T> reorder_container(const T& container, const vector<int64_t>& indices) {
+  auto new_container = make_shared<T>(indices.size());
+
+  for (int i = 0; i < indices.size(); i++) {
+    const int64_t &ind = indices[i];
+    if (ind == -1) {
+      (*new_container)[i] = arma::datum::nan;
+    }
+    else {
+      (*new_container)[i] = container[ind];
+    }
+  }
+
+  return new_container;
 }
 
 void Phenotypes::reorder(const vector<string> &samples) {
-  size_t n_new = samples.size();
-
   // Find indices of existing samples
-  vector<uint64_t> indices;
+  vector<int64_t> indices;
   for (auto& sample : samples) {
     // Find index of requested sample in our original list of samples.
     auto it = find(sample_ids->begin(), sample_ids->end(), sample);
@@ -182,13 +254,22 @@ void Phenotypes::reorder(const vector<string> &samples) {
   }
 
   // Reorder samples accordingly. For samples that didn't exist, we need to store a NaN in the proper location.
-  for (auto& kv : columns) {
-    decltype(kv.second) new_col;
-
-    for (auto i : indices) {
-
+  for (auto& kv : column_types) {
+    switch (kv.second) {
+      case ColumnType::INTEGER:
+      case ColumnType::FLOAT: {
+        columns_float[kv.first] = reorder_container(*columns_float[kv.first], indices);
+        break;
+      }
+      case ColumnType::TEXT: {
+        columns_text[kv.first] = reorder_container(*columns_text[kv.first], indices);
+        break;
+      }
+      case ColumnType::CATEGORICAL: {
+        columns_float[kv.first] = reorder_container(*columns_float[kv.first], indices);
+        break;
+      }
     }
-
   }
 
   // Set samples
@@ -198,12 +279,45 @@ void Phenotypes::reorder(const vector<string> &samples) {
 
 SharedVector<string> Phenotypes::get_phenotypes() {
   vector<string> phenos;
-  for (auto& kv : columns) {
+  for (auto& kv : column_types) {
     phenos.emplace_back(kv.first);
   }
   return make_shared_vector<string>(phenos);
 }
 
-shared_ptr<ScoreResult> Phenotypes::compute_score(arma::vec genotypes, const string& phenotype) {
+/**
+ * Calculate score statistic and other relevant statistics.
+ * Assumes that the matrix has already been reordered according to the genotypes' samples.
+ * @param genotypes
+ * @param phenotype
+ * @return shared_ptr to ScoreResult
+ */
+shared_ptr<ScoreResult> Phenotypes::compute_score(arma::vec &genotypes, const string &phenotype) {
+  // First get vector of phenotype.
+  auto &pheno_vec = *as_vec(phenotype);
 
+  // Find the mean of the genotypes in order to center them
+  double mean = arma::mean(genotypes);
+
+  // Create mean-centered genotype vector
+  arma::vec geno_vec(genotypes - mean);
+
+  // Calculate score statistic.
+  double score_stat = arma::dot(geno_vec, pheno_vec);
+
+  // Calculate sigma2.
+  // The second parameter (1) tells arma to divide by N, not N-1.
+  double sigma2 = arma::var(pheno_vec, 1);
+
+  // Calculate p-value.
+  double t_stat = score_stat / sqrt(sigma2);
+  double pvalue = 2 * arma::normcdf(-fabs(t_stat));
+
+  // Create return object.
+  auto result = make_shared<ScoreResult>();
+  result->score_stat = score_stat;
+  result->sigma2 = sigma2;
+  result->pvalue = pvalue;
+
+  return result;
 }
