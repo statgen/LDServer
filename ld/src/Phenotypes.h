@@ -22,15 +22,18 @@ struct ScoreResult {
 };
 
 //template <typename T> T most_common(vector<T>& vec);
-typedef boost::variant<vector<int64_t>, vector<double>, vector<string>> ColumnVariant;
 typedef map<string, ColumnType> ColumnTypeMap;
-
 template<class T> using SharedVector = shared_ptr<vector<T>>;
 template<typename T> shared_ptr<vector<T>> make_shared_vector(vector<T>& v);
+using SharedArmaVec = shared_ptr<arma::vec>;
 
 class Phenotypes {
-private:
-  map<string, shared_ptr<ColumnVariant>> columns;
+protected:
+  map<string, SharedArmaVec> columns_float;
+  map<string, SharedVector<string>> columns_text;
+  map<string, map<double, string>> map_cat;
+  map<string, map<string, double>> map_level;
+
   ColumnTypeMap column_types;
   SharedVector<string> sample_ids;
 public:
@@ -48,11 +51,10 @@ public:
    * @param path
    * @param types
    */
-  void load_tab(const string &path, const ColumnTypeMap &types);
+  void load_tab(const string &path, const ColumnTypeMap &types, size_t nrows);
 
-  ColumnType get_column_type(const string& colname);
-  shared_ptr<ColumnVariant> get_column(const string &colname);
-  shared_ptr<arma::vec> as_vec(const string &colname);
+  SharedArmaVec as_vec(const string &colname);
+  SharedVector<string> as_text(const string &colname);
   SharedVector<string> get_phenotypes();
 
   /**
@@ -68,7 +70,7 @@ public:
    * @param phenotype
    * @return
    */
-  shared_ptr<ScoreResult> compute_score(arma::vec genotypes, const string &phenotype);
+  shared_ptr<ScoreResult> compute_score(arma::vec &genotypes, const string &phenotype);
 };
 
 #endif //LDSERVER_PHENOTYPES_H
