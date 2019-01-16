@@ -44,8 +44,10 @@ def get_correlations():
   response = { 'data': model.get_correlations(), 'error': None }
   return make_response(jsonify(response), 200)
 
+
 def correlation_type(correlation_name):
   return { 'r': correlation.ld_r, 'rsquare': correlation.ld_rsquare, 'cov': correlation.cov }[correlation_name]
+
 
 @bp.route("/aggregation/datasets", methods=["GET"])
 def get_metadata():
@@ -55,6 +57,7 @@ def get_metadata():
   """
 
   pass
+
 
 @bp.route('/aggregation/covariance', methods = ['GET'])
 def get_covariance(genome_build, genotype_dataset_name, sample_subset_name, phenotype):
