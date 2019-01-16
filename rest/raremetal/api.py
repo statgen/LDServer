@@ -4,7 +4,7 @@ from flask_compress import Compress
 from webargs.flaskparser import parser
 from webargs import fields, ValidationError
 from functools import partial
-from model import GenotypeDataset, File, Sample
+from .model import GenotypeDataset, File, Sample
 import model
 from ld.pywrapper import LDServer, LDQueryResult, StringVec, correlation
 import time
@@ -21,6 +21,7 @@ def handle_parsing_error(error, request, schema):
   for field, message in error.messages.iteritems():
     message = 'Error while parsing \'{}\' query parameter: {}'.format(field, message[0])
     break
+
   response = jsonify({'data': None, 'error': message })
   response.status_code = 422
   abort(response)
@@ -30,9 +31,11 @@ def validate_query(parsed_fields, all_fields):
   for key, value in request.args.iteritems():
     if key not in all_fields:
       raise ValidationError({key: ['Unknown parameter.']})
+
   if 'start' in parsed_fields and 'stop' in parsed_fields:
     if parsed_fields['stop'] <= parsed_fields['start']:
       raise ValidationError({'start': ['Start position must be greater than stop position.']})
+
   return True
 
 
