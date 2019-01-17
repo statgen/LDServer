@@ -21,12 +21,23 @@
 
 using namespace std;
 
+/**
+ * Class to represent a "cell" of a matrix of segments, where each segment is a fixed width chunk of the genome.
+ * The indexes i and j correspond to the position in that matrix. Often these indexes are linearized into a single
+ * index z by using morton codes.
+ * https://en.wikipedia.org/wiki/Z-order_curve
+ */
 class Cell {
 protected:
     bool cached;
     uint64_t i;
     uint64_t j;
 
+    /**
+     * Matrix of computed correlation values (r, r^2, or covariance, etc.)
+     * If segment i has N rows and M columns, and segment j has O rows and P columns, then
+     * raw_fmat will be a matrix of dimensions M x P.
+     */
     unique_ptr<float[]> raw_fmat;
 
 public:
@@ -40,6 +51,17 @@ public:
     uint64_t get_j() const;
     bool is_diagonal() const;
 
+    /**
+     * Functions to load/save to redis cache.
+     *
+     * The cache key is typically created from a combination of: redis database ID (reference panel ID),
+     * name of sample subset, correlation type, chromosome, and morton code.
+     *
+     * Only the raw_fmat (matrix of computed correlation values) is stored in the cache.
+     *
+     * @param redis_cache
+     * @param key
+     */
     void load(redisContext* redis_cache, const string& key);
     void save(redisContext* redis_cache, const string& key);
 
