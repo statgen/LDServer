@@ -32,6 +32,8 @@ private:
     uint64_t start_bp;
     uint64_t stop_bp;
     uint64_t n_haplotypes;
+
+    // Vector of variant IDs in EPACTS format (chr:pos_ref/alt).
     vector<string> names;
     vector<uint64_t> positions;
 
@@ -63,9 +65,6 @@ public:
     void freeze_names();
     void freeze_genotypes();
 
-    void load(redisContext* redis_cache, const string& key);
-    void save(redisContext* redis_cache, const string& key);
-
     bool is_empty() const;
     bool is_cached() const;
     bool has_names() const;
@@ -91,6 +90,21 @@ public:
     bool overlaps_region(uint64_t region_start_bp, uint64_t region_stop_bp, int& from_index, int& to_index) const;
     bool overlaps_variant(const string& name, uint64_t bp, int& index) const;
 
+    /**
+     * Load/save functions for redis.
+     * These are also overloaded below for loading/saving from serialized binary.
+     * @param redis_cache
+     * @param key
+     */
+    void load(redisContext* redis_cache, const string& key);
+    void save(redisContext* redis_cache, const string& key);
+
+    /**
+     * Load/save functions for binary format.
+     * Only the number of haplotypes, the list of variant EPACTS IDs, and their positions on the chromosome are stored.
+     * @tparam Archive
+     * @param ar
+     */
     template <class Archive>
     void load( Archive & ar )
     {

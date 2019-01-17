@@ -40,6 +40,12 @@ void LDServer::set_samples(const std::string &name, const std::vector<std::strin
     }
 }
 
+/**
+ * Enable the cache
+ * @param cache_key - this appears to be the redis database ID, and in this context ends up being the genotypes / reference panel ID
+ * @param hostname
+ * @param port
+ */
 void LDServer::enable_cache(uint32_t cache_key, const string& hostname, int port) {
     if (cache_context == nullptr) {
         this->cache_key = cache_key;
@@ -99,6 +105,17 @@ void LDServer::parse_variant(const std::string& variant, std::string& chromosome
     alt_allele = variant_name_tokens[3];
 }
 
+/**
+ * Load a segment of genotypes.
+ * @param raw
+ * @param store
+ * @param samples_name
+ * @param only_variants This corresponds to cell->is_cached(). It corresponds to "do we need to load only the variant names?"
+ * @param chromosome
+ * @param i
+ * @param segments
+ * @return
+ */
 shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, genotypes_store store, const string& samples_name, bool only_variants, const std::string& chromosome, uint64_t i, std::map<std::uint64_t, shared_ptr<Segment>>& segments) const {
 //    auto start = std::chrono::system_clock::now();
     uint64_t start_bp = i * segment_size;
@@ -112,20 +129,30 @@ shared_ptr<Segment> LDServer::load_segment(const shared_ptr<Raw>& raw, genotypes
         }
     }
     if (segment_it->second->is_cached()) {
+        // If the segment was cached, but the cell was not cached, we need to load the genotypes in order to perform
+        // the correlation calculations. When a segment is cached, only the variant names/positions are stored, not
+        // the genotypes.
         if ((!only_variants) && (!segment_it->second->has_genotypes())) {
             raw->load_genotypes(*(segment_it->second));
         }
     } else {
+        // We only need to load the variant names, because this cell (and the computed corr values) were
+        // previously cached, and so it isn't necessary to load the genotypes (no calculations will be performed.)
         if (only_variants) {
             if (!segment_it->second->has_names()) {
                 raw->load_names(*(segment_it->second));
             }
         } else {
+            // In this branch, the cell wasn't cached, and the segment was not cached either.
+            // We may need to load both variant IDs/names and genotypes.
             if (!segment_it->second->has_names() && !segment_it->second->has_genotypes()) {
+                // This loads both variant IDs / positions and also the genotypes.
                 raw->load(*(segment_it->second));
             } else if (!segment_it->second->has_names()) {
+                // Only names are loaded here, we already have the genotypes loaded.
                 raw->load_names(*(segment_it->second));
             } else if (!segment_it->second->has_genotypes()){
+                // Names were loaded from cache, we only need to load genotypes.
                 raw->load_genotypes(*(segment_it->second));
             }
         }
@@ -190,7 +217,10 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
 
     while (z <= z_max) {
         string key = make_cell_cache_key(cache_key, samples_name, correlation_type, region_chromosome, z);
+
+        // This converts from the linear index (morton code) z into coordinates i and j (and stores to them directly.)
         from_morton_code(z, i, j);
+
         shared_ptr<Cell> cell = factory.create(correlation_type, i, j);
         if (cache_enabled) {
             cell->load(cache_context, key);
