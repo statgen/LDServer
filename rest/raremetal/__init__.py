@@ -10,14 +10,15 @@ def create_app(test_config = None):
   else:
     app.config.from_mapping(test_config)
 
-  from .model import db, load_correlations, load_genotype_datasets_command, show_genotype_datasets_command, \
-    add_genotype_dataset_command, create_subset_command, show_genotypes_command, show_samples_command, \
-    add_phenotypes_command
+  from .model import db, load_correlations, load_genotypes_command, show_genotypes_command, \
+    add_genotypes_command, create_subset_command, show_genotypes_command, show_samples_command, \
+    add_phenotypes_command, add_masks_command
 
   db.init_app(app)
-  app.cli.add_command(load_genotype_datasets_command)
-  app.cli.add_command(show_genotype_datasets_command)
-  app.cli.add_command(add_genotype_dataset_command)
+  app.cli.add_command(add_masks_command)
+  app.cli.add_command(load_genotypes_command)
+  app.cli.add_command(show_genotypes_command)
+  app.cli.add_command(add_genotypes_command)
   app.cli.add_command(add_phenotypes_command)
   app.cli.add_command(create_subset_command)
   app.cli.add_command(show_genotypes_command)
