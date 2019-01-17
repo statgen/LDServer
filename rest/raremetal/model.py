@@ -21,16 +21,21 @@ class Correlation(db.Model):
     return '<Correlation %r>' % self.name
 
 class GenotypeDataset(db.Model):
-  __tablename__ = 'genotype_dataset'
+  __tablename__ = 'genotype_datasets'
   id = db.Column(db.Integer, primary_key = True)
   name = db.Column(db.String(), unique = False, nullable = False)
   genome_build = db.Column(db.String(), unique = False, nullable = False)
   description = db.Column(db.String(), unique = False, nullable = False)
-  files = db.relationship('File', backref = 'genotype_dataset', lazy = True)
-  samples = db.relationship('Sample', backref = 'genotype_dataset', lazy = True)
+
+  files = db.relationship('File', backref = 'genotype_datasets', lazy = True)
+  samples = db.relationship('Sample', backref = 'genotype_datasets', lazy = True)
+  phenotypes = db.relationship("PhenotypeDataset", secondary="genotype_phenotype", back_populates="genotypes")
+  masks = db.relationship("Mask", back_populates="genotypes")
+
   __table_args__ = (
     db.UniqueConstraint('name', 'genome_build', name = 'name_build_uc'),
   )
+
   def __repr__(self):
     return '<GenotypeDataset %r>' % self.name
 
@@ -38,7 +43,7 @@ class File(db.Model):
   __tablename__ = 'file'
   id = db.Column(db.Integer, primary_key = True)
   path = db.Column(db.String(), unique = False, nullable = False)
-  genotype_dataset_id = db.Column(db.Integer, db.ForeignKey('genotype_dataset.id'), nullable = False)
+  genotype_dataset_id = db.Column(db.Integer, db.ForeignKey('genotype_datasets.id'), nullable = False)
   def __repr__(self):
     return '<File %r>' % self.path
 
@@ -47,9 +52,14 @@ class Sample(db.Model):
   id = db.Column(db.Integer, primary_key = True)
   subset = db.Column(db.String, unique = False, nullable = False)
   sample = db.Column(db.String, unique = False, nullable = False)
-  genotype_dataset_id = db.Column(db.Integer, db.ForeignKey('genotype_dataset.id'), nullable = False)
+  genotype_dataset_id = db.Column(db.Integer, db.ForeignKey('genotype_datasets.id'), nullable = False)
   def __repr__(self):
     return '<Sample %r %r>' % (self.subset, self.sample)
+
+genotype_phenotype = db.Table("genotype_phenotype",
+  db.Column("genotype_dataset_id", db.Integer, db.ForeignKey("genotype_datasets.id"), primary_key = True),
+  db.Column("phenotype_dataset_id", db.Integer, db.ForeignKey("phenotype_datasets.id"), primary_key = True)
+)
 
 class PhenotypeDataset(db.Model):
   __tablename__ = "phenotype_datasets"
@@ -61,6 +71,7 @@ class PhenotypeDataset(db.Model):
   ncols = db.Column(db.Integer, nullable = False)
 
   columns = db.relationship("PhenotypeColumn", back_populates = "dataset")
+  genotypes = db.relationship("GenotypeDataset", secondary="genotype_phenotype", back_populates="phenotypes")
 
 class PhenotypeColumn(db.Model):
   __tablename__ = "phenotype_columns"
@@ -70,6 +81,17 @@ class PhenotypeColumn(db.Model):
   column_type = db.Column(Enum(*tuple(ColumnType.values[i].name for i in range(len(ColumnType.values)))), nullable = False, name = "column_type")
 
   dataset = db.relationship("PhenotypeDataset", back_populates = "columns")
+
+class Mask(db.Model):
+  __tablename__ = "masks"
+  id = db.Column(db.Integer, primary_key = True)
+  name = db.Column(db.String, unique = True, nullable = False)
+  genotype_dataset_id = db.Column(db.Integer, db.ForeignKey('genotype_datasets.id'))
+  description = db.Column(db.String, unique = False, nullable = False)
+  group_type = db.Column(db.String, unique = False, nullable = False)
+  identifier_type = db.Column(db.String, unique = False, nullable = False)
+
+  genotypes = db.relationship("GenotypeDataset", back_populates="masks")
 
 Index('genotype_dataset_index_1', GenotypeDataset.genome_build)
 Index('file_index', File.genotype_dataset_id, File.path)
@@ -254,7 +276,7 @@ def _load_phenotype_tab(tab_file):
 
   return column_types, nrows
 
-def add_phenotypes(name, description, filepath):
+def add_phenotypes(name, description, filepath, genotype_datasets):
   db.create_all()
 
   if ".ped" in filepath:
@@ -269,6 +291,13 @@ def add_phenotypes(name, description, filepath):
   pheno = PhenotypeDataset(name = name, description = description, filepath = filepath, nrows = nrows, ncols = len(column_types))
   for col, ctype in column_types.items():
     pheno.columns.append(PhenotypeColumn(column_name = col, column_type = ctype))
+
+  for gd in genotype_datasets:
+    genotype_dataset = GenotypeDataset.query.filter_by(name = gd).first()
+    if genotype_dataset is not None:
+      pheno.genotypes.append(genotype_dataset)
+    else:
+      raise ValueError("Genotype dataset with name {} does not exist".format(gd))
 
   db.session.add(pheno)
   db.session.commit()
@@ -313,7 +342,7 @@ def show_samples(genome_build, genotype_dataset_name, subset_name):
   for sample in samples:
     print '\t'.join([genotype_dataset.genome_build, genotype_dataset.name, sample.subset, sample.sample])
 
-@click.command('load-genotype-datasets')
+@click.command('load-genotypes')
 @click.argument('json', type = click.Path(exists = True))
 @with_appcontext
 def load_genotype_datasets_command(json):
@@ -323,13 +352,13 @@ def load_genotype_datasets_command(json):
   """
   load_genotype_datasets(json)
 
-@click.command('show-genotype-datasets')
+@click.command('show-genotypes')
 @with_appcontext
 def show_genotype_datasets_command():
   """Shows loaded genotype datasets."""
   show_genotype_datasets()
 
-@click.command('add-genotype-dataset')
+@click.command('add-genotypes')
 @click.argument('name')
 @click.argument('description')
 @click.argument('genome_build')
@@ -339,8 +368,8 @@ def show_genotype_datasets_command():
 def add_genotype_dataset_command(name, description, genome_build, samples, genotypes):
   """Adds new genotype dataset to the database. The specified genome build and genotype dataset short name will uniquely identify new genotype dataset.
 
-  name -- The short name of a genotype dataset panel.\n
-  description -- The description of a genotype dataset panel.\n
+  name -- The short name of a genotype dataset.\n
+  description -- The description of a genotype dataset.\n
   genome_build -- The genome build version.\n
   samples -- File with a list of sample names. One sample name per line.\n
   genotypes -- Path (glob) to VCF/BCF/SAV file(s).\n
@@ -351,15 +380,17 @@ def add_genotype_dataset_command(name, description, genome_build, samples, genot
 @click.argument('name')
 @click.argument('description')
 @click.argument('filepath', type = click.Path(exists = True))
+@click.argument('genotype_datasets', nargs=-1)
 @with_appcontext
-def add_phenotypes_command(name, description, filepath):
+def add_phenotypes_command(name, description, filepath, genotype_datasets):
   """Adds new phenotypes to the database.
 
   name -- The short name of a phenotype dataset.\n
   description -- The longer form description of the phenotype dataset.\n
   filepath -- Path to PED file or TAB-delimited file containing the phenotypes and samples.\n
+  genotype_datasets -- List of genotype datasets (names) that are linked to this phenotype dataset.\n
   """
-  add_phenotypes(name, description, filepath)
+  add_phenotypes(name, description, filepath, genotype_datasets)
 
 @click.command('create-sample-subset')
 @click.argument('genome_build')
