@@ -42,7 +42,8 @@ void LDServer::set_samples(const std::string &name, const std::vector<std::strin
 
 /**
  * Enable the cache
- * @param cache_key - this appears to be the redis database ID, and in this context ends up being the genotypes / reference panel ID
+ * @param cache_key - This key gets hashed together with a number of other parameters to create segment and cell cache keys.
+ *                    It is usually the reference panel (or genotype dataset) ID.
  * @param hostname
  * @param port
  */

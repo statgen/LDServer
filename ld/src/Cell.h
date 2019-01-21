@@ -54,7 +54,7 @@ public:
     /**
      * Functions to load/save to redis cache.
      *
-     * The cache key is typically created from a combination of: redis database ID (reference panel ID),
+     * The cache key is typically created from a combination of: reference panel or genotype dataset ID,
      * name of sample subset, correlation type, chromosome, and morton code.
      *
      * Only the raw_fmat (matrix of computed correlation values) is stored in the cache.
