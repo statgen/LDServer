@@ -53,7 +53,9 @@ public:
     static string make_segment_cache_key(uint32_t cache_key, const string& samples_name, const string& chromosome, uint64_t start_bp, uint64_t stop_bp);
 
     vector<string> get_chromosomes();
-    bool compute_region_ld(const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, correlation correlation_type, struct LDQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY) const;
+    uint32_t get_segment_size() const;
+
+    bool compute_region_ld(const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, correlation correlation_type, struct LDQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY, SharedSegmentVector segments_out = nullptr) const;
     bool compute_variant_ld(const string& index_variant, const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, correlation correlation_type, struct LDQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY) const;
 };
 

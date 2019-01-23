@@ -7,6 +7,7 @@
 #include <map>
 #include <boost/process/system.hpp>
 #include "../src/LDServer.h"
+#include "../src/ScoreServer.h"
 #include "RareMetal.h"
 #include "../src/Phenotypes.h"
 #include <armadillo>
@@ -1115,3 +1116,30 @@ TEST_F(LDServerTest, compute_score) {
 //    Phenotypes pheno;
 //    pheno.load_ped("chr21.test.ped","chr21.test.dat");
 //}
+
+TEST_F(LDServerTest, score_server) {
+    LDServer ld_server(100);
+    LDQueryResult ld_result(1000);
+
+    ScoreServer score_server(100);
+    ScoreStatQueryResult score_results(1000);
+    auto segments = make_shared_segment_vector();
+
+    ld_server.set_file("chr22.test.vcf.gz");
+    ld_server.compute_region_ld("22", 51241101, 51241385, correlation::COV, ld_result, "ALL", segments);
+
+    score_server.set_genotypes_file("chr22.test.vcf.gz", 1);
+
+    ColumnTypeMap ctmap = {
+      {"fid", ColumnType::TEXT},
+      {"iid", ColumnType::TEXT},
+      {"patid", ColumnType::TEXT},
+      {"matid", ColumnType::TEXT},
+      {"sex", ColumnType::CATEGORICAL},
+      {"rand_binary", ColumnType::CATEGORICAL},
+      {"rand_qt", ColumnType::FLOAT},
+    };
+    score_server.load_phenotypes_file("chr21.test.tab", ctmap, 2504, 1);
+    score_server.set_phenotype("rand_qt");
+    score_server.compute_scores(score_results, "ALL", segments);
+}

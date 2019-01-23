@@ -65,6 +65,10 @@ uint64_t Segment::get_position(int i) const {
     return positions[i];
 }
 
+genotypes_store Segment::get_store() const {
+    return store;
+}
+
 void Segment::clear() {
     clear_names();
     clear_genotypes();
@@ -100,13 +104,17 @@ void Segment::add(savvy::site_info& anno, savvy::compressed_vector<float>& allel
                 break;
             case CSC:
                 {
+                // When in CSC mode, savvy returns a vector of alleles coded 0/1/2 (additive count, or savvy:fmt:ac).
+                // So the number of haplotypes is 2 * number of elements in vector, since each element represents 2 alleles.
                 n_haplotypes *= 2;
+
                 sp_mat_colind.emplace_back(sp_mat_rowind.size());
                 auto value_data = alleles.value_data();
                 for (unsigned int i = 0u; i < n_non_zero; ++i) {
                     sp_mat_rowind.emplace_back(index_data[i]);
                     sp_mat_values.emplace_back(value_data[i]);
                 }
+                freqs.push_back(n_non_zero / (float) n_haplotypes);
                 }
                 break;
             case BITSET:
@@ -152,6 +160,7 @@ void Segment::add_genotypes(savvy::compressed_vector<float>& alleles) {
                     sp_mat_rowind.emplace_back(index_data[i]);
                     sp_mat_values.emplace_back(value_data[i]);
                 }
+                freqs.push_back(n_non_zero / (float) n_haplotypes);
                 }
                 break;
             case BITSET:
@@ -306,4 +315,36 @@ void Segment::save(redisContext *redis_cache, const string& key) {
 
 bool Segment::is_cached() const {
     return cached;
+}
+
+ScoreSegment::ScoreSegment(Segment&& other) noexcept : Segment(std::move(other)) {
+    score_results = make_shared<vector<ScoreResult>>();
+}
+
+bool ScoreSegment::has_scores() const {
+    return !score_results->empty();
+}
+
+void ScoreSegment::compute_scores(const arma::vec &phenotype) {
+    // Find the mean of all genotype columns.
+    auto genotypes = this->get_genotypes();
+    auto means = arma::mean(genotypes);
+
+    // Mean center the genotype matrix.
+    auto centered = genotypes - means;
+
+    // Calculate score statistics for all variants.
+//    auto score_stats = centered.t() * phenotype;
+//
+//    // Calculate sigma2.
+//    double sigma2 = arma::var(phenotype, 1);
+//    double sqrt_sigma = sqrt(sigma2);
+//
+//    // Calculate p-values.
+//    arma::vec pvalues(phenotype.n_elem);
+//    for (int i = 0; i < phenotype.n_elem; i++) {
+//        pvalues[i] = 2 * arma::normcdf(-fabs(score_stats[i] / sqrt_sigma));
+//    }
+
+    int a = 0;
 }
