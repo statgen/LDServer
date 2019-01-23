@@ -175,7 +175,19 @@ vector<string> LDServer::get_chromosomes() {
     return chromosomes;
 }
 
-bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, correlation correlation_type, LDQueryResult& result, const std::string& samples_name) const {
+/**
+ * Function to compute LD within a region.
+ * @param region_chromosome
+ * @param region_start_bp
+ * @param region_stop_bp
+ * @param correlation_type
+ * @param result
+ * @param samples_name
+ * @param segments_out - Pass out a list of segments if a shared_ptr to a vector of segments was provided. This allows
+ *   passing on segments to another function to be used for computations.
+ * @return
+ */
+bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, correlation correlation_type, LDQueryResult& result, const std::string& samples_name, shared_ptr<vector<shared_ptr<Segment>>> segments_out) const {
 //    auto start = std::chrono::system_clock::now();
     if (result.is_last()) {
         return false;
@@ -251,6 +263,15 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
             break;
         }
     }
+
+    // If a pointer to a container of segments was provided, write out the segments we loaded here to it.
+    // This can be used by the ScoreServer to calculate score statistics without reloading the genotypes.
+    if (segments_out != nullptr) {
+        for (auto&& kv : segments) {
+            segments_out->emplace_back(kv.second);
+        }
+    }
+
 //    auto end = std::chrono::system_clock::now();
 //    std::chrono::duration<double> elapsed = end - start;
 //    std::cout << "Page elapsed time: " << elapsed.count() << " s\n";

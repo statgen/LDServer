@@ -9,6 +9,7 @@
 #include <armadillo>
 #include <algorithm>
 #include <cstdlib>
+#include <boost/algorithm/string/predicate.hpp>
 
 using namespace std;
 
@@ -180,7 +181,7 @@ void Phenotypes::load_tab(const string &path, const ColumnTypeMap &types, size_t
   column_types = types;
 }
 
-void Phenotypes::load_ped(const string &ped_path, const string &dat_path) {
+void Phenotypes::load_ped(const string &ped_path) {
   throw "Not yet implemented";
 }
 

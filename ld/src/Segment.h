@@ -23,7 +23,7 @@ enum genotypes_store : uint8_t {
 };
 
 class Segment {
-private:
+protected:
     bool cached;
     bool names_loaded;
     bool genotypes_loaded;
@@ -84,6 +84,7 @@ public:
     const vector<float>& get_freqs() const;
     const vector<vector<bool>>& get_alleles() const;
     const vector<vector<unsigned int>>& get_alt_carriers() const;
+    genotypes_store get_store() const;
 
     static void create_pair(Segment& segment1, Segment& segment2, int index_i, int index_j, double value, vector<VariantsPair>& pairs);
 
@@ -117,5 +118,29 @@ public:
         ar( n_haplotypes, names, positions );
     }
 };
+
+class ScoreSegment : public Segment {
+protected:
+  shared_ptr<vector<ScoreResult>> score_results;
+
+public:
+  using Segment::Segment;
+
+  /**
+   * Construct a new ScoreSegment, moving the data from an instance of the base class Segment.
+   * @param other A Segment object.
+   */
+  ScoreSegment(Segment&& other) noexcept;
+  bool has_scores() const;
+  void compute_scores(const arma::vec& phenotype);
+
+  //TODO: caching functions
+  // Note that template member functions can't be virtualed, so the above code in Segment would need to be fixed
+  // to take a base class pointer to an Archive rather than using a template. That class appears to be "OutputArchive"
+  // and "InputArchive".
+};
+
+typedef shared_ptr<vector<shared_ptr<Segment>>> SharedSegmentVector;
+inline SharedSegmentVector make_shared_segment_vector() { return make_shared<vector<shared_ptr<Segment>>>(); }
 
 #endif
