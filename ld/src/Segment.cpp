@@ -345,11 +345,15 @@ void ScoreSegment::compute_scores(const arma::vec &phenotype) {
     double sqrt_sigma = sqrt(sigma2);
 
     // Calculate p-values.
-    arma::vec pvalues(genotypes.n_cols);
+    double pvalue;
     for (int i = 0; i < genotypes.n_cols; i++) {
-        pvalues[i] = 2 * arma::normcdf(-fabs(score_stats[i] / sqrt_sigma));
+        pvalue = 2 * arma::normcdf(-fabs(score_stats[i] / sqrt_sigma));
+
+        ScoreResult result;
+        result.score_stat = score_stats[i];
+        result.sigma2 = sigma2;
+        result.pvalue = pvalue;
+
+        score_results->emplace_back(result);
     }
-
-    // Store to result object.
-
 }
