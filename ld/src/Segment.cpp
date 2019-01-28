@@ -111,11 +111,13 @@ void Segment::add(savvy::site_info& anno, savvy::compressed_vector<float>& allel
 
                 sp_mat_colind.emplace_back(sp_mat_rowind.size());
                 auto value_data = alleles.value_data();
+                float allele_total = 0.0;
                 for (unsigned int i = 0u; i < n_non_zero; ++i) {
                     sp_mat_rowind.emplace_back(index_data[i]);
                     sp_mat_values.emplace_back(value_data[i]);
+                    allele_total += value_data[i];
                 }
-                freqs.push_back(n_non_zero / (float) n_haplotypes);
+                freqs.push_back(allele_total / (float) n_haplotypes);
                 }
                 break;
             case BITSET:
