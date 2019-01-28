@@ -23,6 +23,7 @@ Segment::Segment(Segment&& segment) {
     this->freqs = move(segment.freqs);
     this->alleles = move(segment.alleles);
     this->alt_carriers = move(segment.alt_carriers);
+    this->n_haplotypes = segment.n_haplotypes;
 }
 
 Segment::~Segment() {
