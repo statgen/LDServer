@@ -329,23 +329,27 @@ bool ScoreSegment::has_scores() const {
 void ScoreSegment::compute_scores(const arma::vec &phenotype) {
     // Find the mean of all genotype columns.
     auto genotypes = this->get_genotypes();
-    auto means = arma::mean(genotypes);
+    arma::fmat means(arma::mean(genotypes));
 
     // Mean center the genotype matrix.
-    auto centered = genotypes - means;
+    for (int i = 0; i < means.n_elem; i++) {
+      genotypes.col(i) -= means[i];
+    }
 
     // Calculate score statistics for all variants.
-//    auto score_stats = centered.t() * phenotype;
-//
-//    // Calculate sigma2.
-//    double sigma2 = arma::var(phenotype, 1);
-//    double sqrt_sigma = sqrt(sigma2);
-//
-//    // Calculate p-values.
-//    arma::vec pvalues(phenotype.n_elem);
-//    for (int i = 0; i < phenotype.n_elem; i++) {
-//        pvalues[i] = 2 * arma::normcdf(-fabs(score_stats[i] / sqrt_sigma));
-//    }
+    arma::fmat fpheno = arma::conv_to<arma::fmat>::from(phenotype);
+    auto score_stats = genotypes.t() * fpheno;
 
-    int a = 0;
+    // Calculate sigma2.
+    double sigma2 = arma::var(phenotype, 1);
+    double sqrt_sigma = sqrt(sigma2);
+
+    // Calculate p-values.
+    arma::vec pvalues(genotypes.n_cols);
+    for (int i = 0; i < genotypes.n_cols; i++) {
+        pvalues[i] = 2 * arma::normcdf(-fabs(score_stats[i] / sqrt_sigma));
+    }
+
+    // Store to result object.
+
 }
