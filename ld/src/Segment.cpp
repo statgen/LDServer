@@ -238,6 +238,8 @@ void Segment::create_pair(Segment& segment1, Segment& segment2, int i, int j, do
 
 bool Segment::overlaps_region(uint64_t region_start_bp, uint64_t region_stop_bp, int &segment_start_index, int &segment_stop_index) const {
     segment_start_index = 0;
+    // TODO: fix this eventually, positions are uint64_t but segment indexes are int
+    // In reality a segment index will never exceed uint64_t size
     segment_stop_index = positions.size() - 1;
     if ((region_start_bp > start_bp) && (region_start_bp <= stop_bp)) {
         segment_start_index = std::lower_bound(positions.begin(), positions.end(), region_start_bp) - positions.begin();
