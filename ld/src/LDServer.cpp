@@ -248,14 +248,29 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
                 cell->save(cache_context, key);
             }
         }
+
         cell->extract(region_start_bp, region_stop_bp, result);
+
+        // Setting last_i and last_j to -1 is the sentinel for flagging that extraction of this cell is either complete,
+        // or had to stop due to the result object becoming full.
         if ((result.last_i >= 0) && (result.last_j >= 0)) {
+            // We will need to reload this cell z next time, since we stopped in the middle of the segments somewhere.
             result.last_cell = z;
             break;
         }
+
+        // We didn't fill up the result object yet, so we can continue to another cell.
+        // This function finds the next morton code to use, with the knowledge that we only need the upper triangle
+        // of the matrix.
         z = get_next_z(segment_i, segment_j, z_min, z_max, ++z);
+
         if (result.data.size() >= result.limit) {
+            // If we reach this point, the following is true:
+            //   1. The result object is full
+            //   2. Cell extraction stopped because the cell had been parsed completely
             if (z <= z_max) {
+                // We have more cells to parse, but the current one is completely finished. Set the resume point
+                // to (0,0) of the next cell. Remember we "incremented" z above with get_next_z().
                 result.last_cell = z;
                 result.last_i = 0;
                 result.last_j = 0;

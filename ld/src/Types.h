@@ -92,6 +92,15 @@ struct VariantsPair {
     }
 };
 
+/**
+ * Struct to represent LD query result.
+ * @param limit This is a constant set in the server config for how many "results" will be returned in one page, in
+ *   this case that would be the number of variant pairs.
+ * @param last_cell Morton code of cell that should be loaded to begin filling this result object.
+ * @param last_i Index of the position to start loading at within the "i" segment of the "last_cell".
+ * @param last_j See above, replacing i with j.
+ * @param page The current page number. This is incremented by each compute_*_ld() call.
+ */
 struct LDQueryResult {
     uint32_t limit;
     uint64_t last_cell;
