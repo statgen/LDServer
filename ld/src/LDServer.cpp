@@ -190,6 +190,10 @@ vector<string> LDServer::get_chromosomes() {
 bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, correlation correlation_type, LDQueryResult& result, const std::string& samples_name, shared_ptr<vector<shared_ptr<Segment>>> segments_out) const {
 //    auto start = std::chrono::system_clock::now();
     if (result.is_last()) {
+        // It seems as though we reach this code if:
+        //   1. Extraction of the final cell completed (last_i and last_j are -1)
+        //   2. The while z <= z_max loop finished
+        //   3. We previously returned at least 1 page of data
         return false;
     }
 

@@ -136,6 +136,17 @@ struct LDQueryResult {
     bool is_last() const {
         return ((page > 0) && (last_i < 0) && (last_j < 0));
     }
+
+    /**
+     * Construct a string that represents where to begin loading from. The format is:
+     *   "last_cell:last_i:last_j:page",
+     * where last_cell is the morton code of the cell to load, and last_i/j are the
+     * segment indexes.
+     *
+     * This function is called by LDQueryResult::get_json() to provide as part of the "next URL".
+     *
+     * @return
+     */
     string get_last() const {
         if (has_next()) {
             return string(to_string(last_cell) + ":" + to_string(last_i) + ":" + to_string(last_j) + ":" + to_string(page));
