@@ -116,19 +116,13 @@ def get_covariance(genome_build, genotype_dataset_name, sample_subset_name, phen
   if current_app.config['CACHE_ENABLED']:
     ldserver.enable_cache(genotype_dataset_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
 
-  #start = time.time()
   ldserver.compute_region_ld(str(args['chrom']), args['start'], args['stop'], correlation_type(args['correlation']), result, str(sample_subset_name))
-  #print "Computed results in {} seconds.".format("%0.4f" % (time.time() - start))
-  #start = time.time()
   if current_app.config['PROXY_PASS']:
     base_url = '/'.join(x.strip('/') for x in [current_app.config['PROXY_PASS'], request.path])
   else:
     base_url = request.base_url
 
   base_url += '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))
-  #print "Jsonified result in {} seconds.".format("%0.4f" % (time.time() - start))
-  #start = time.time()
   r = make_response(result.get_json(str(base_url)), 200)
   r.mimetype = 'application/json'
-  #print "Response created in {} seconds.".format("%0.4f" % (time.time() - start))
   return r
