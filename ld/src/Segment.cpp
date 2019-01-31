@@ -357,7 +357,32 @@ void ScoreSegment::compute_scores(const arma::vec &phenotype) {
         result.score_stat = score_stats[i];
         result.sigma2 = sigma2;
         result.pvalue = pvalue;
+        result.variant = this->names[i];
+        result.alt_freq = this->freqs[i];
 
         score_results->emplace_back(result);
     }
+}
+
+void ScoreSegment::extract(uint64_t start, uint64_t end, struct ScoreStatQueryResult& result) const {
+    int i_start, i_end;
+
+    // If this segment doesn't have scores, or doesn't overlap the region requested,
+    // signal with a sentinel value of -1 that loading stopped immediately.
+    // As a side effect, overlaps_region will store the start and end index of the segment to iterate over.
+    if (!this->has_scores() || !this->overlaps_region(start, end, i_start, i_end)) {
+        result.last_i = -1;
+        return;
+    }
+
+    int64_t i = result.last_i >= 0 ? result.last_i : i_start;
+    for (; i <= i_end; i++) {
+        result.data.emplace_back((*score_results)[i]);
+        if (result.data.size() >= result.limit) {
+            result.last_i = i + 1;
+            return;
+        }
+    }
+
+    result.last_i = -1;
 }

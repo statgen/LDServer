@@ -133,6 +133,7 @@ public:
   ScoreSegment(Segment&& other) noexcept;
   bool has_scores() const;
   void compute_scores(const arma::vec& phenotype);
+  void extract(uint64_t start, uint64_t end, struct ScoreStatQueryResult& result) const;
 
   //TODO: caching functions
   // Note that template member functions can't be virtualed, so the above code in Segment would need to be fixed
