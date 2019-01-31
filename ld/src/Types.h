@@ -36,9 +36,11 @@ enum ColumnType : uint8_t {
  * Struct for storing the results of score statistic calculations.
  */
 struct ScoreResult {
+  string variant;
   double score_stat;
   double sigma2;
   double pvalue;
+  double alt_freq;
 };
 
 /**
@@ -221,43 +223,48 @@ struct LDQueryResult {
     }
 };
 
-//TODO: this needs to be fixed to work with one result per variant not pairs of variants
+/**
+ * Struct to represent results of a score stat query.
+ * @param limit The maximum number of results to be returned.
+ * @param last_i The last index returned from within a segment.
+ * @param last_seg The last segment that was in use
+ * @param page Which page are we on
+ * @param data Vector of results.
+ */
 struct ScoreStatQueryResult {
-  uint32_t limit;
-  uint64_t last_cell;
-  int last_i;
-  int last_j;
-  int page;
-  vector<VariantsPair> data;
+  uint64_t limit;
+  int64_t last_i;
+  int64_t last_seg;
+  uint64_t page;
+  vector<ScoreResult> data;
 
-  ScoreStatQueryResult(uint32_t page_limit): limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0) {
+  ScoreStatQueryResult(uint32_t page_limit): limit(page_limit), last_i(-1), last_seg(0), page(0) {
       data.reserve(page_limit);
   }
 
-  ScoreStatQueryResult(uint32_t page_limit, const string& last) : limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0) {
+  ScoreStatQueryResult(uint32_t page_limit, const string& last) : limit(page_limit), last_i(-1), last_seg(0), page(0) {
       data.reserve(page_limit);
       vector<std::string> tokens;
       auto separator = regex(":");
       copy(sregex_token_iterator(last.begin(), last.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
       if (tokens.size() > 3) {
-          last_cell = std::stoull(tokens[0]);
-          last_i = std::stoi(tokens[1]);
-          last_j = std::stoi(tokens[2]);
-          page = std::stoi(tokens[3]);
+          last_seg = std::stoll(tokens[0]);
+          last_i = std::stoll(tokens[1]);
+          page = std::stoull(tokens[2]);
       }
   }
 
   bool has_next() const {
-      return ((last_i >= 0) || (last_j >= 0));
+      return last_i >= 0;
   }
 
   bool is_last() const {
-      return ((page > 0) && (last_i < 0) && (last_j < 0));
+      return ((page > 0) && (last_i < 0));
   }
 
   string get_last() const {
       if (has_next()) {
-          return string(to_string(last_cell) + ":" + to_string(last_i) + ":" + to_string(last_j) + ":" + to_string(page));
+          return string(to_string(last_seg) + ":" + to_string(last_i) + ":" + to_string(page));
       }
       return string("");
   }
@@ -267,8 +274,8 @@ struct ScoreStatQueryResult {
   }
 
   void clear_last() {
-      last_cell = 0u;
-      last_i = last_j = -1;
+      last_seg = 0u;
+      last_i = -1;
   }
 
   void erase() {
@@ -277,6 +284,13 @@ struct ScoreStatQueryResult {
       page = 0;
   }
 
+//  struct ScoreResult {
+//    string variant;
+//    double score_stat;
+//    double sigma2;
+//    double pvalue;
+//    double alt_freq;
+//  };
   string get_json(const string& url) {
       rapidjson::Document document;
       document.SetObject();
@@ -284,40 +298,48 @@ struct ScoreStatQueryResult {
 
       rapidjson::Value data(rapidjson::kObjectType);
 
-      rapidjson::Value variant1(rapidjson::kArrayType);
-      rapidjson::Value chromosome1(rapidjson::kArrayType);
-      rapidjson::Value position1(rapidjson::kArrayType);
-      rapidjson::Value variant2(rapidjson::kArrayType);
-      rapidjson::Value chromosome2(rapidjson::kArrayType);
-      rapidjson::Value position2(rapidjson::kArrayType);
-      rapidjson::Value correlation(rapidjson::kArrayType);
+      rapidjson::Value variant(rapidjson::kArrayType);
+      rapidjson::Value alt_freq(rapidjson::kArrayType);
+      rapidjson::Value pvalue(rapidjson::kArrayType);
+      rapidjson::Value score_stat(rapidjson::kArrayType);
+      rapidjson::Value sigma2(rapidjson::kArrayType);
 
       for (auto&& p: this->data) {
-          variant1.PushBack(rapidjson::StringRef(p.variant1.c_str()), allocator);
-          chromosome1.PushBack(rapidjson::StringRef(p.chromosome1.c_str()), allocator);
-          position1.PushBack(p.position1, allocator);
-          variant2.PushBack(rapidjson::StringRef(p.variant2.c_str()), allocator);
-          chromosome2.PushBack(rapidjson::StringRef(p.chromosome2.c_str()), allocator);
-          position2.PushBack(p.position2, allocator);
+          variant.PushBack(rapidjson::StringRef(p.variant.c_str()), allocator);
+//          score_stat.PushBack(p.score_stat, allocator);
+//          sigma2.PushBack(p.sigma2, allocator);
 
-          if (std::isnan(p.value)) { // nan is not allowed by JSON, so we replace it with null
-              correlation.PushBack(rapidjson::Value(), allocator);
+          if (std::isnan(p.pvalue)) { // nan is not allowed by JSON, so we replace it with null
+              pvalue.PushBack(rapidjson::Value(), allocator);
           }
           else {
-              correlation.PushBack(p.value, allocator);
+              pvalue.PushBack(p.pvalue, allocator);
+          }
+
+          if (std::isnan(p.score_stat)) { // nan is not allowed by JSON, so we replace it with null
+              score_stat.PushBack(rapidjson::Value(), allocator);
+          }
+          else {
+              score_stat.PushBack(p.score_stat, allocator);
+          }
+
+          if (std::isnan(p.sigma2)) { // nan is not allowed by JSON, so we replace it with null
+              sigma2.PushBack(rapidjson::Value(), allocator);
+          }
+          else {
+              sigma2.PushBack(p.sigma2, allocator);
           }
       }
 
-      data.AddMember("variant1", variant1, allocator);
-      data.AddMember("chromosome1", chromosome1, allocator);
-      data.AddMember("position1", position1, allocator);
-      data.AddMember("variant2", variant2, allocator);
-      data.AddMember("chromosome2", chromosome2, allocator);
-      data.AddMember("position2", position2, allocator);
-      data.AddMember("correlation", correlation, allocator);
+      data.AddMember("variant", variant, allocator);
+      data.AddMember("alt_freq", alt_freq, allocator);
+      data.AddMember("pvalue", pvalue, allocator);
+      data.AddMember("score_stat", score_stat, allocator);
+      data.AddMember("sigma2", sigma2, allocator);
 
       document.AddMember("data", data, allocator);
       document.AddMember("error", rapidjson::Value(), allocator);
+
       if (is_last()) {
           document.AddMember("next", rapidjson::Value(), allocator);
       }

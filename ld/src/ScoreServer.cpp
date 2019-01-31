@@ -136,7 +136,7 @@ uint32_t ScoreServer::get_segment_size() const {
  * @param segments
  * @return
  */
-bool ScoreServer::compute_scores(struct ScoreStatQueryResult& result, const std::string& samples_name, SharedSegmentVector segments) const {
+bool ScoreServer::compute_scores(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct ScoreStatQueryResult& result, const std::string& samples_name, SharedSegmentVector segments) const {
     // Prepare result object
     if (result.is_last()) {
         return false;
@@ -153,7 +153,7 @@ bool ScoreServer::compute_scores(struct ScoreStatQueryResult& result, const std:
     // Assumptions:
     //   * All segments are on the same chromosome
     //   * Segments should have had names already loaded by the LDServer
-    const string& region_chromosome = (*segments)[0]->get_chromosome();
+    //const string& region_chromosome = (*segments)[0]->get_chromosome();
     for (auto&& segment : *segments) {
         if (segment->get_chromosome() != region_chromosome) {
             throw std::logic_error("All segments must be of the same chromosome");
@@ -186,12 +186,12 @@ bool ScoreServer::compute_scores(struct ScoreStatQueryResult& result, const std:
     raw_it->second->open(region_chromosome, samples_it->second, true);
 
     // Process each segment and run calculations if necessary
-    for (auto&& segment : *segments) {
+    for (int seg_i = 0; seg_i < segments->size(); seg_i++) {
         //TODO: add cache retrieval/storage
-        string segment_key = make_segment_cache_key(genotype_dataset_id, phenotype_dataset_id, phenotype, samples_name, segment->get_chromosome(), segment->get_start_bp(), segment->get_stop_bp());
+        //string segment_key = make_segment_cache_key(genotype_dataset_id, phenotype_dataset_id, phenotype, samples_name, segment->get_chromosome(), segment->get_start_bp(), segment->get_stop_bp());
 
         // Create a ScoreSegment object from a Segment, moving elements into it
-        shared_ptr<ScoreSegment> score_seg = make_shared<ScoreSegment>(std::move(*segment));
+        shared_ptr<ScoreSegment> score_seg = make_shared<ScoreSegment>(std::move(*((*segments)[seg_i])));
 
         // Load the genotypes if they're not loaded already
         if (!score_seg->has_genotypes()) {
@@ -200,6 +200,25 @@ bool ScoreServer::compute_scores(struct ScoreStatQueryResult& result, const std:
 
         // Perform score statistic calculations
         score_seg->compute_scores(*phenotypes->as_vec(this->phenotype));
+
+        // Extract into results object.
+        score_seg->extract(region_start_bp, region_stop_bp, result);
+
+        if (result.last_i >= 0) {
+            // Either the segment was only partially iterated over (due to result object limit being reached), or the
+            // result object filled up and we needed to stop.
+            result.last_seg = seg_i;
+            break;
+        }
+
+        // If we made it here, segment is done loading.
+        // The result object may be full, however.
+        if (result.data.size() >= result.limit) {
+            if (seg_i+1 < segments->size()) {
+                result.last_seg = seg_i + 1;
+            }
+            break;
+        }
     }
 
     return true;

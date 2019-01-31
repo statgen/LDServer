@@ -1141,5 +1141,41 @@ TEST_F(LDServerTest, score_server) {
     };
     score_server.load_phenotypes_file("chr21.test.tab", ctmap, 2504, 1);
     score_server.set_phenotype("rand_qt");
-    score_server.compute_scores(score_results, "ALL", segments);
+    score_server.compute_scores("22", 51241101, 51241385, score_results, "ALL", segments);
+
+    auto json = score_results.get_json("http://portaldev.sph.umich.edu/scores/");
+
+    int x = 0;
+}
+
+TEST_F(LDServerTest, score_server_paging) {
+  LDServer ld_server(100);
+  LDQueryResult ld_result(1000);
+
+  ScoreServer score_server(100);
+  ScoreStatQueryResult score_results(3);
+  auto segments = make_shared_segment_vector();
+
+  ld_server.set_file("chr22.test.vcf.gz");
+  ld_server.compute_region_ld("22", 51241101, 51241385, correlation::COV, ld_result, "ALL", segments);
+
+  score_server.set_genotypes_file("chr22.test.vcf.gz", 1);
+
+  ColumnTypeMap ctmap = {
+    {"fid", ColumnType::TEXT},
+    {"iid", ColumnType::TEXT},
+    {"patid", ColumnType::TEXT},
+    {"matid", ColumnType::TEXT},
+    {"sex", ColumnType::CATEGORICAL},
+    {"rand_binary", ColumnType::CATEGORICAL},
+    {"rand_qt", ColumnType::FLOAT},
+  };
+  score_server.load_phenotypes_file("chr21.test.tab", ctmap, 2504, 1);
+  score_server.set_phenotype("rand_qt");
+  score_server.compute_scores("22", 51241101, 51241385, score_results, "ALL", segments);
+
+  ASSERT_EQ(score_results.data.size(),3);
+  ASSERT_EQ(score_results.last_seg,1);
+  ASSERT_EQ(score_results.last_i,1);
+  ASSERT_EQ(score_results.page,1);
 }

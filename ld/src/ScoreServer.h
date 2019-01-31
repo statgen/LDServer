@@ -119,7 +119,7 @@ public:
      * @param segments
      * @return
      */
-    bool compute_scores(struct ScoreStatQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY, SharedSegmentVector segments = nullptr) const;
+    bool compute_scores(const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, struct ScoreStatQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY, SharedSegmentVector segments = nullptr) const;
 };
 
 #endif
