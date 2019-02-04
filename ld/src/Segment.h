@@ -97,8 +97,8 @@ public:
      * @param redis_cache
      * @param key
      */
-    void load(redisContext* redis_cache, const string& key);
-    void save(redisContext* redis_cache, const string& key);
+    virtual void load(redisContext* redis_cache, const string& key);
+    virtual void save(redisContext* redis_cache, const string& key);
 
     /**
      * Load/save functions for binary format.
@@ -135,10 +135,33 @@ public:
   void compute_scores(const arma::vec& phenotype);
   void extract(uint64_t start, uint64_t end, struct ScoreStatQueryResult& result) const;
 
-  //TODO: caching functions
-  // Note that template member functions can't be virtualed, so the above code in Segment would need to be fixed
-  // to take a base class pointer to an Archive rather than using a template. That class appears to be "OutputArchive"
-  // and "InputArchive".
+  /**
+ * Load/save functions for redis.
+ * These are also overloaded below for loading/saving from serialized binary.
+ * @param redis_cache
+ * @param key
+ */
+  virtual void load(redisContext* redis_cache, const string& key) override { Segment::load(redis_cache, key); }
+  virtual void save(redisContext* redis_cache, const string& key) override { Segment::save(redis_cache, key); }
+
+  /**
+   * Load/save functions for binary format.
+   * Stores the same elements as the base class Segment, and additionally score stats/pvalues/etc.
+   *
+   * Cereal's docs seem to think it's fine to hide the non-virtual method of the base class, since it can't be
+   * virtual in the first place (can't have templated virtual functions.) If there's a better way to do this,
+   * it would be nice.
+   *
+   * @tparam Archive
+   * @param ar
+   */
+  template <class Archive> void load(Archive & ar) {
+      ar(cereal::base_class<Segment>(this), score_results);
+  }
+
+  template <class Archive> void save(Archive & ar) const {
+      ar(cereal::base_class<Segment>(this), score_results);
+  }
 };
 
 typedef shared_ptr<vector<shared_ptr<Segment>>> SharedSegmentVector;

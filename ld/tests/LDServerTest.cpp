@@ -35,8 +35,11 @@ protected:
         auto env_redis = getenv("REDIS_BIN");
         string redis_bin = "../bin/redis-server"; // default path to search
         if (env_redis != nullptr) {
-          cout << "Found REDIS_BIN envvar, using it for redis-server path" << endl;
-          redis_bin = static_cast<string>(env_redis);
+            cout << "Found REDIS_BIN envvar, using it for redis-server path" << endl;
+            redis_bin = static_cast<string>(env_redis);
+        }
+        else {
+            cout << "No REDIS_BIN found, trying to use default path of ../bin/redis-server" << endl;
         }
 
         string command(redis_bin + " --port " + to_string(LDServerTest::port) + " --bind " + LDServerTest::hostname + " --daemonize no --save \"\"");
@@ -1178,4 +1181,37 @@ TEST_F(LDServerTest, score_server_paging) {
   ASSERT_EQ(score_results.last_seg,1);
   ASSERT_EQ(score_results.last_i,1);
   ASSERT_EQ(score_results.page,1);
+}
+
+TEST_F(LDServerTest, score_segment_cache) {
+    RawSAV raw("chr22.test.sav");
+    raw.open("22", raw.get_samples(), false);
+
+    string key = ScoreServer::make_segment_cache_key(1, 1, "rand_qt", "ALL", "22", 51241101, 51241385);
+
+    ScoreSegment segment1("22", 51241101, 51241385, genotypes_store::CSC);
+    ASSERT_FALSE(segment1.has_names());
+    ASSERT_FALSE(segment1.has_genotypes());
+
+    raw.load(segment1);
+    ASSERT_TRUE(segment1.has_names());
+    ASSERT_TRUE(segment1.has_genotypes());
+
+    segment1.save(redis_cache, key);
+
+    ScoreSegment segment2("22", 51241101, 51241385, genotypes_store::CSC_ALL_ONES);
+    ASSERT_FALSE(segment2.has_names());
+    ASSERT_FALSE(segment2.has_genotypes());
+    ASSERT_EQ(segment2.get_n_variants(), 0);
+    ASSERT_EQ(segment2.get_n_haplotypes(), 0);
+
+    segment2.load(redis_cache, key);
+
+    ASSERT_TRUE(segment2.has_names());
+    ASSERT_FALSE(segment2.has_genotypes());
+    ASSERT_EQ(segment2.get_n_variants(), segment1.get_n_variants());
+    for (int i = 0; i < segment2.get_n_variants(); ++i) {
+        ASSERT_EQ(segment2.get_name(i), segment1.get_name(i));
+        ASSERT_EQ(segment2.get_position(i), segment1.get_position(i));
+    }
 }
