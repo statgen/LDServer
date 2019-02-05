@@ -1142,7 +1142,7 @@ TEST_F(LDServerTest, score_server) {
       {"rand_binary", ColumnType::CATEGORICAL},
       {"rand_qt", ColumnType::FLOAT},
     };
-    score_server.load_phenotypes_file("chr21.test.tab", ctmap, 2504, 1);
+    score_server.load_phenotypes_tab("chr21.test.tab", ctmap, 2504, 1);
     score_server.set_phenotype("rand_qt");
     score_server.compute_scores("22", 51241101, 51241385, score_results, "ALL", segments);
 
@@ -1173,7 +1173,7 @@ TEST_F(LDServerTest, score_server_paging) {
     {"rand_binary", ColumnType::CATEGORICAL},
     {"rand_qt", ColumnType::FLOAT},
   };
-  score_server.load_phenotypes_file("chr21.test.tab", ctmap, 2504, 1);
+    score_server.load_phenotypes_tab("chr21.test.tab", ctmap, 2504, 1);
   score_server.set_phenotype("rand_qt");
   score_server.compute_scores("22", 51241101, 51241385, score_results, "ALL", segments);
 
