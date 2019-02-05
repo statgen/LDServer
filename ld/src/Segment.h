@@ -119,51 +119,6 @@ public:
     }
 };
 
-class ScoreSegment : public Segment {
-protected:
-  shared_ptr<vector<ScoreResult>> score_results;
-
-public:
-  using Segment::Segment;
-
-  /**
-   * Construct a new ScoreSegment, moving the data from an instance of the base class Segment.
-   * @param other A Segment object.
-   */
-  ScoreSegment(Segment&& other) noexcept;
-  bool has_scores() const;
-  void compute_scores(const arma::vec& phenotype);
-  void extract(uint64_t start, uint64_t end, struct ScoreStatQueryResult& result) const;
-
-  /**
- * Load/save functions for redis.
- * These are also overloaded below for loading/saving from serialized binary.
- * @param redis_cache
- * @param key
- */
-  virtual void load(redisContext* redis_cache, const string& key) override { Segment::load(redis_cache, key); }
-  virtual void save(redisContext* redis_cache, const string& key) override { Segment::save(redis_cache, key); }
-
-  /**
-   * Load/save functions for binary format.
-   * Stores the same elements as the base class Segment, and additionally score stats/pvalues/etc.
-   *
-   * Cereal's docs seem to think it's fine to hide the non-virtual method of the base class, since it can't be
-   * virtual in the first place (can't have templated virtual functions.) If there's a better way to do this,
-   * it would be nice.
-   *
-   * @tparam Archive
-   * @param ar
-   */
-  template <class Archive> void load(Archive & ar) {
-      ar(cereal::base_class<Segment>(this), score_results);
-  }
-
-  template <class Archive> void save(Archive & ar) const {
-      ar(cereal::base_class<Segment>(this), score_results);
-  }
-};
-
 typedef shared_ptr<vector<shared_ptr<Segment>>> SharedSegmentVector;
 inline SharedSegmentVector make_shared_segment_vector() { return make_shared<vector<shared_ptr<Segment>>>(); }
 
