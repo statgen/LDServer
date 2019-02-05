@@ -5,6 +5,7 @@
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <python2.7/Python.h>
 #include "LDServer.h"
+#include "ScoreServer.h"
 #include "Phenotypes.h"
 
 BOOST_PYTHON_MODULE(pywrapper) {
@@ -50,6 +51,16 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("get_json", &LDQueryResult::get_json)
             ;
 
+    boost::python::class_<ScoreStatQueryResult, boost::noncopyable>("ScoreStatQueryResult", boost::python::init<boost::uint32_t>())
+            .def(boost::python::init<boost::uint32_t, const string&>())
+            .def_readonly("limit", &ScoreStatQueryResult::limit)
+            .def_readonly("data", &ScoreStatQueryResult::data)
+            .def("has_next", &ScoreStatQueryResult::has_next)
+            .def("is_last", &ScoreStatQueryResult::is_last)
+            .def("get_last", &ScoreStatQueryResult::get_last)
+            .def("get_json", &ScoreStatQueryResult::get_json)
+            ;
+
     boost::python::class_<LDServer, boost::noncopyable>("LDServer", boost::python::init<boost::uint32_t>())
             .def("set_file", &LDServer::set_file)
             .def("set_samples", &LDServer::set_samples)
@@ -59,4 +70,18 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("compute_region_ld", &LDServer::compute_region_ld)
             .def("compute_variant_ld", &LDServer::compute_variant_ld)
             ;
+
+    boost::python::class_<ScoreServer, boost::noncopyable>("ScoreServer", boost::python::init<boost::uint32_t>())
+            .def("set_genotypes_file", &ScoreServer::set_genotypes_file)
+            .def("load_phenotypes_tab", &ScoreServer::load_phenotypes_tab)
+            .def("load_phenotypes_ped", &ScoreServer::load_phenotypes_ped)
+            .def("set_phenotype", &ScoreServer::set_phenotype)
+            .def("set_samples", &ScoreServer::set_samples)
+            .def("enable_cache", &ScoreServer::enable_cache)
+            .def("disable_cache", &ScoreServer::disable_cache)
+            .def("get_chromosomes", &ScoreServer::get_chromosomes)
+            .def("compute_scores", &ScoreServer::compute_scores)
+            ;
+
+    boost::python::def("make_shared_segment_vector", &make_shared_segment_vector);
 }
