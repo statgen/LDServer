@@ -910,7 +910,7 @@ TEST_F(LDServerTest, read_tab) {
     ASSERT_EQ(sex[0], 0);
     ASSERT_EQ(sex[1], 1);
 
-    auto &phenos_loaded = *pheno.get_phenotypes();
+    auto phenos_loaded = *pheno.get_phenotypes();
     ASSERT_EQ(phenos_loaded[0], "fid");
 
 //    vector<double> test_geno = {0,0,0,0,0,1,1,0,0,0,0,0,0,1,0,0,0,0,1,0,0,1,1,1,0,0,1,0,0,0,0,2,0,1,0,
