@@ -1197,9 +1197,18 @@ TEST_F(LDServerTest, score_segment_cache) {
     ASSERT_TRUE(segment1.has_names());
     ASSERT_TRUE(segment1.has_genotypes());
 
+    ScoreResult result;
+    result.variant = "22:51241101";
+    result.pvalue = 0.454;
+    result.sigma2 = 0.454;
+    result.score_stat = 0.454;
+    result.alt_freq = 0.454;
+
+    segment1.add_score(result);
+
     segment1.save(redis_cache, key);
 
-    ScoreSegment segment2("22", 51241101, 51241385, genotypes_store::CSC_ALL_ONES);
+    ScoreSegment segment2("22", 51241101, 51241385, genotypes_store::CSC);
     ASSERT_FALSE(segment2.has_names());
     ASSERT_FALSE(segment2.has_genotypes());
     ASSERT_EQ(segment2.get_n_variants(), 0);
@@ -1214,4 +1223,7 @@ TEST_F(LDServerTest, score_segment_cache) {
         ASSERT_EQ(segment2.get_name(i), segment1.get_name(i));
         ASSERT_EQ(segment2.get_position(i), segment1.get_position(i));
     }
+
+    ASSERT_TRUE(segment2.has_scores());
+    ASSERT_TRUE(segment1 == segment2);
 }

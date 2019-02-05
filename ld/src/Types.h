@@ -41,6 +41,8 @@ struct ScoreResult {
   double sigma2;
   double pvalue;
   double alt_freq;
+
+  template<class Archive> void serialize(Archive& ar) { ar(variant, score_stat, sigma2, pvalue, alt_freq); }
 };
 
 /**
