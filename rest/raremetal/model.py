@@ -3,7 +3,7 @@ from sqlalchemy import Index
 from sqlalchemy.types import Enum
 from flask.cli import with_appcontext
 from collections import Counter, OrderedDict
-from ld.pywrapper import ColumnType
+from ld.pywrapper import ColumnType, ColumnTypeMap
 import click
 import json
 import gzip
@@ -82,7 +82,7 @@ class PhenotypeDataset(db.Model):
 class PhenotypeColumn(db.Model):
   __tablename__ = "phenotype_columns"
   id = db.Column(db.Integer, primary_key = True)
-  phenotype_id = db.Column(db.Integer, db.ForeignKey('phenotype_datasets.id'))
+  phenotype_dataset_id = db.Column(db.Integer, db.ForeignKey('phenotype_datasets.id'))
   column_name = db.Column(db.String, nullable = False)
   column_type = db.Column(Enum(*tuple(ColumnType.values[i].name for i in range(len(ColumnType.values)))), nullable = False, name = "column_type")
 
@@ -95,6 +95,7 @@ class Mask(db.Model):
   name = db.Column(db.String, unique = True, nullable = False)
   filepath = db.Column(db.String, unique = True, nullable = False)
   description = db.Column(db.String, unique = False, nullable = False)
+  build = db.Column(db.String, unique = False, nullable = False)
   group_type = db.Column(db.String, unique = False, nullable = False)
   identifier_type = db.Column(db.String, unique = False, nullable = False)
   genotype_dataset_id = db.Column(db.Integer, db.ForeignKey('genotype_datasets.id'))
@@ -127,6 +128,9 @@ def get_genotype_dataset(genome_build, genotype_dataset_name):
     return { 'name': genotype_dataset.name, 'description': genotype_dataset.description, 'genome build': genotype_dataset.genome_build }
   return None
 
+def get_phenotype_dataset_id(phenotype_dataset_name):
+  return db.session.query(PhenotypeDataset.id).filter_by(name = phenotype_dataset_name).scalar()
+
 def has_sample_subset(genotype_dataset_id, subset):
   return db.session.query(Sample.subset).filter_by(genotype_dataset_id = genotype_dataset_id).filter_by(subset = subset).first() is not None
 
@@ -144,6 +148,19 @@ def get_samples(genotype_dataset_id, subset):
 
 def get_files(genotype_dataset_id):
   return [str(x) for x, in db.session.query(File.path).filter_by(genotype_dataset_id = genotype_dataset_id)]
+
+def get_phenotype_file(phenotype_dataset_id):
+  return db.session.query(PhenotypeDataset.filepath).filter_by(phenotype_dataset_id = phenotype_dataset_id)
+
+def get_column_types(phenotype_dataset_id):
+  mapping = ColumnTypeMap()
+  for row in PhenotypeDataset.query.filter_by(phenotype_dataset_id = phenotype_dataset_id):
+    mapping[row.column_name] = ColumnType.names.get(row.column_type)
+
+  return mapping
+
+def get_phenotype_nrows(phenotype_dataset_id):
+  return db.session.query(PhenotypeDataset.nrows).filter_by(id = phenotype_dataset_id).scalar()
 
 def load_correlations():
   db.create_all()
