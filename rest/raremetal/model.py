@@ -95,7 +95,7 @@ class Mask(db.Model):
   name = db.Column(db.String, unique = True, nullable = False)
   filepath = db.Column(db.String, unique = True, nullable = False)
   description = db.Column(db.String, unique = False, nullable = False)
-  build = db.Column(db.String, unique = False, nullable = False)
+  genome_build = db.Column(db.String, unique = False, nullable = False)
   group_type = db.Column(db.String, unique = False, nullable = False)
   identifier_type = db.Column(db.String, unique = False, nullable = False)
   genotype_dataset_id = db.Column(db.Integer, db.ForeignKey('genotype_datasets.id'))
@@ -127,6 +127,12 @@ def get_genotype_dataset(genome_build, genotype_dataset_name):
   if genotype_dataset is not None:
     return { 'name': genotype_dataset.name, 'description': genotype_dataset.description, 'genome build': genotype_dataset.genome_build }
   return None
+
+def has_genotype_dataset(genome_build, genotype_dataset_id):
+  return db.session.query(GenotypeDataset).filter_by(genome_build = genome_build).filter_by(id = genotype_dataset_id).first() is not None
+
+def has_phenotype_dataset(phenotype_dataset_id):
+  return db.session.query(PhenotypeDataset.id).filter_by(id = phenotype_dataset_id).first() is not None
 
 def get_phenotype_dataset_id(phenotype_dataset_name):
   return db.session.query(PhenotypeDataset.id).filter_by(name = phenotype_dataset_name).scalar()
@@ -336,11 +342,12 @@ def add_phenotypes(name, description, filepath, genotype_datasets):
   db.session.commit()
 
 
-def add_masks(name, description, filepath, genotype_dataset, group_type, identifier_type):
+def add_masks(name, description, filepath, genome_build, genotype_dataset, group_type, identifier_type):
   mask = Mask(
     name = name,
     description = description,
     filepath = filepath,
+    genome_build = genome_build,
     genotype_dataset_id = genotype_dataset,
     group_type = group_type,
     identifier_type = identifier_type
@@ -450,11 +457,12 @@ def add_phenotypes_command(name, description, filepath, genotype_datasets):
 @click.argument('name')
 @click.argument('description')
 @click.argument('filepath', type = click.Path(exists = True))
+@click.argument('genome_build')
 @click.argument('genotype_dataset')
 @click.argument('group_type')
 @click.argument('identifier_type')
 @with_appcontext
-def add_masks_command(name, description, filepath, genotype_dataset, group_type, identifier_type):
+def add_masks_command(name, description, filepath, genome_build, genotype_dataset, group_type, identifier_type):
   """Adds new masks to the database.
 
   name -- The short name of a mask.\n
@@ -464,7 +472,7 @@ def add_masks_command(name, description, filepath, genotype_dataset, group_type,
   group_type -- What are the groups? Can be "gene", or "region" for arbitrary region.
   identifier_type -- What is the identifier for each group? If genes, can be "ENSEMBL" or "NCBI".
   """
-  add_masks(name, description, filepath, genotype_dataset, group_type, identifier_type)
+  add_masks(name, description, filepath, genome_build, genotype_dataset, group_type, identifier_type)
 
 
 @click.command('create-sample-subset')

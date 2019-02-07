@@ -85,6 +85,11 @@ def get_covariance(phenotype):
     )
   )
 
+  build = args["genome_build"]
+  genotype_dataset_id = args["genotype_dataset"]
+  phenotype_dataset_id = args["phenotype_dataset"]
+  sample_subset = args["samples"]
+
   if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
     args['limit'] = current_app.config['API_MAX_PAGE_SIZE']
 
@@ -92,18 +97,16 @@ def get_covariance(phenotype):
     response = { 'data': None, 'error': 'Genome build \'{}\' was not found.'.format(args["genome_build"]) }
     return make_response(jsonify(response), 404)
 
-  genotype_dataset_id = model.get_genotype_dataset_id(args["genome_build"], genotype_dataset_name)
-  if not genotype_dataset_id:
-    response = { 'data': None, 'error': 'No genotype dataset \'{}\' available for genome build {}.'.format(genotype_dataset_name, genome_build) }
+  if not model.has_genotype_dataset(build, genotype_dataset_id):
+    response = { 'data': None, 'error': 'No genotype dataset \'{}\' available for genome build {}.'.format(genotype_dataset_id, build) }
     return make_response(jsonify(response), 404)
 
-  phenotype_dataset_id = model.get_phenotype_dataset_id(phenotype_dataset_name)
-  if not phenotype_dataset_id:
-    response = { 'data': None, 'error': 'No phenotype dataset \'{}\' available for genome build {}.'.format(phenotype_dataset_name, genome_build) }
+  if not model.has_phenotype_dataset(phenotype_dataset_id):
+    response = { 'data': None, 'error': 'No phenotype dataset \'{}\' available for genome build {}.'.format(phenotype_dataset_id, build) }
     return make_response(jsonify(response), 404)
 
   if not model.has_samples(genotype_dataset_id, args["samples"]):
-    response = { 'data': None, 'error': 'Sample subset \'{}\' was not found in {} genotype dataset.'.format(sample_subset_name, genotype_dataset_name) }
+    response = { 'data': None, 'error': 'Sample subset \'{}\' was not found in genotype dataset {}.'.format(sample_subset, genotype_dataset_id) }
     return make_response(jsonify(response), 404)
 
   ldserver = LDServer(current_app.config['SEGMENT_SIZE_BP'])
@@ -123,11 +126,11 @@ def get_covariance(phenotype):
     result = LDQueryResult(args['limit'])
     score_result = ScoreStatQueryResult(args["limit"])
 
-  if sample_subset_name != 'ALL':
+  if sample_subset != 'ALL':
     s = StringVec()
-    s.extend(model.get_samples(genotype_dataset_id, sample_subset_name))
-    ldserver.set_samples(str(sample_subset_name), s)
-    score_server.set_samples(str(sample_subset_name), s)
+    s.extend(model.get_samples(genotype_dataset_id, sample_subset))
+    ldserver.set_samples(str(sample_subset), s)
+    score_server.set_samples(str(sample_subset), s)
 
   # Load phenotypes.
   # This should be done after genotypes/samples have been loaded, because the phenotype object will need to match
@@ -143,7 +146,8 @@ def get_covariance(phenotype):
     nrows = model.get_phenotype_nrows(phenotype_dataset_id)
     score_server.load_phenotypes_tab(phenotype_file, column_types, nrows, phenotype_dataset_id)
   else:
-    raise Exception("Should not happen")
+    response = { "data": None, "error": "File format for phenotype file '{}' not supported".format()}
+    return make_response(jsonify(response), 500)
 
   # Set the phenotype to calculate score stats / p-values for.
   score_server.set_phenotype(phenotype)
@@ -153,8 +157,10 @@ def get_covariance(phenotype):
     score_server.enable_cache(current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
 
   shared_segments = make_shared_segment_vector()
-  ldserver.compute_region_ld(str(args['chrom']), args['start'], args['stop'], correlation.cov, result, str(sample_subset_name), shared_segments)
-  score_server.compute_scores(args["chrom"], args["start"], args["stop"], score_result, sample_subset_name, shared_segments)
+  ldserver.compute_region_ld(str(args['chrom']), args['start'], args['stop'], correlation.cov, result, str(sample_subset), shared_segments)
+  score_server.compute_scores(args["chrom"], args["start"], args["stop"], score_result, sample_subset, shared_segments)
+
+  raise Exception("Get flask to enter debug mode")
 
   if current_app.config['PROXY_PASS']:
     base_url = '/'.join(x.strip('/') for x in [current_app.config['PROXY_PASS'], request.path])
