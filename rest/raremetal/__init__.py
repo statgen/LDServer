@@ -24,7 +24,7 @@ def create_app(test_config = None):
   app.cli.add_command(show_genotypes_command)
   app.cli.add_command(show_samples_command)
 
-  from rest import api
+  from . import api
   app.register_blueprint(api.bp)
 
   if app.config['GZIP_COMPRESSION']:
