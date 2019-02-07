@@ -3,6 +3,7 @@
 //#include <boost/python/return_by_value/vector_indexing_suite.hpp>
 //#include <boost/python/exception_translator.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
+#include <boost/python/suite/indexing/map_indexing_suite.hpp>
 #include <python2.7/Python.h>
 #include "LDServer.h"
 #include "ScoreServer.h"
@@ -33,12 +34,24 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def_readonly("value", &VariantsPair::value)
             ;
 
+    boost::python::class_<ScoreResult>("ScoreResult")
+            .def_readonly("variant", &ScoreResult::variant)
+            .def_readonly("score_stat", &ScoreResult::score_stat)
+            .def_readonly("sigma2", &ScoreResult::sigma2)
+            .def_readonly("pvalue", &ScoreResult::pvalue)
+            .def_readonly("alt_freq", &ScoreResult::alt_freq)
+            ;
+
     boost::python::class_<std::vector<VariantsPair> >("VariantsPairLDVec")
             .def(boost::python::vector_indexing_suite<std::vector<VariantsPair>>())
             ;
 
     boost::python::class_<std::vector<std::string> >("StringVec")
             .def(boost::python::vector_indexing_suite<std::vector<std::string>>())
+            ;
+
+    boost::python::class_<std::map<std::string, ColumnType>>("ColumnTypeMap")
+            .def(boost::python::map_indexing_suite<std::map<std::string, ColumnType>>())
             ;
 
     boost::python::class_<LDQueryResult, boost::noncopyable>("LDQueryResult", boost::python::init<boost::uint32_t>())
