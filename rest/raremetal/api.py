@@ -59,7 +59,7 @@ def get_metadata():
 
 
 @bp.route('/aggregation/covariance', methods = ['POST'])
-def get_covariance(phenotype):
+def get_covariance():
   """
   This endpoint returns covariance and score statistics within a given region.
   """
@@ -85,16 +85,22 @@ def get_covariance(phenotype):
     )
   )
 
+  chrom = str(args["chrom"])
+  start = args["start"]
+  stop = args["stop"]
   build = args["genome_build"]
   genotype_dataset_id = args["genotype_dataset"]
   phenotype_dataset_id = args["phenotype_dataset"]
-  sample_subset = args["samples"]
+  sample_subset = str(args["samples"])
+  phenotype = str(args["phenotype"])
+  limit = args.get("limit")
+  last = args.get("last")
 
-  if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
-    args['limit'] = current_app.config['API_MAX_PAGE_SIZE']
+  if limit > current_app.config['API_MAX_PAGE_SIZE']:
+    limit = current_app.config['API_MAX_PAGE_SIZE']
 
-  if not model.has_genome_build(args["genome_build"]):
-    response = { 'data': None, 'error': 'Genome build \'{}\' was not found.'.format(args["genome_build"]) }
+  if not model.has_genome_build(build):
+    response = { 'data': None, 'error': 'Genome build \'{}\' was not found.'.format(build) }
     return make_response(jsonify(response), 404)
 
   if not model.has_genotype_dataset(build, genotype_dataset_id):
@@ -105,7 +111,7 @@ def get_covariance(phenotype):
     response = { 'data': None, 'error': 'No phenotype dataset \'{}\' available for genome build {}.'.format(phenotype_dataset_id, build) }
     return make_response(jsonify(response), 404)
 
-  if not model.has_samples(genotype_dataset_id, args["samples"]):
+  if not model.has_samples(genotype_dataset_id, sample_subset):
     response = { 'data': None, 'error': 'Sample subset \'{}\' was not found in genotype dataset {}.'.format(sample_subset, genotype_dataset_id) }
     return make_response(jsonify(response), 404)
 
@@ -116,15 +122,15 @@ def get_covariance(phenotype):
     score_server.set_genotypes_file(f, genotype_dataset_id)
 
   if 'last' in args:
-    if "," not in args["last"]:
+    if "," not in last:
       raise Exception("This shouldn't happen")
 
-    last_ld, last_score = args["last"].split(",")
-    result = LDQueryResult(args['limit'], last_ld)
-    score_result = ScoreStatQueryResult(args["limit"], last_score)
+    last_ld, last_score = last.split(",")
+    result = LDQueryResult(limit, last_ld)
+    score_result = ScoreStatQueryResult(limit, last_score)
   else:
-    result = LDQueryResult(args['limit'])
-    score_result = ScoreStatQueryResult(args["limit"])
+    result = LDQueryResult(limit)
+    score_result = ScoreStatQueryResult(limit)
 
   if sample_subset != 'ALL':
     s = StringVec()
@@ -146,19 +152,19 @@ def get_covariance(phenotype):
     nrows = model.get_phenotype_nrows(phenotype_dataset_id)
     score_server.load_phenotypes_tab(phenotype_file, column_types, nrows, phenotype_dataset_id)
   else:
-    response = { "data": None, "error": "File format for phenotype file '{}' not supported".format()}
+    response = { "data": None, "error": "File format for phenotype file '{}' not supported".format(phenotype_file)}
     return make_response(jsonify(response), 500)
 
   # Set the phenotype to calculate score stats / p-values for.
   score_server.set_phenotype(phenotype)
 
-  if current_app.config['CACHE_ENABLED']:
-    ldserver.enable_cache(genotype_dataset_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
-    score_server.enable_cache(current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
+  # if current_app.config['CACHE_ENABLED']:
+  #   ldserver.enable_cache(genotype_dataset_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
+  #   score_server.enable_cache(current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
 
   shared_segments = make_shared_segment_vector()
-  ldserver.compute_region_ld(str(args['chrom']), args['start'], args['stop'], correlation.cov, result, str(sample_subset), shared_segments)
-  score_server.compute_scores(args["chrom"], args["start"], args["stop"], score_result, sample_subset, shared_segments)
+  ldserver.compute_region_ld(chrom, start, stop, correlation.cov, result, sample_subset, shared_segments)
+  score_server.compute_scores(chrom, start, stop, score_result, sample_subset, shared_segments)
 
   raise Exception("Get flask to enter debug mode")
 
