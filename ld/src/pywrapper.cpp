@@ -42,6 +42,10 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def_readonly("alt_freq", &ScoreResult::alt_freq)
             ;
 
+    boost::python::class_<std::vector<ScoreResult>>("ScoreResultVector")
+            .def(boost::python::vector_indexing_suite<std::vector<ScoreResult>>())
+            ;
+
     boost::python::class_<std::vector<VariantsPair> >("VariantsPairLDVec")
             .def(boost::python::vector_indexing_suite<std::vector<VariantsPair>>())
             ;
@@ -96,5 +100,6 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("compute_scores", &ScoreServer::compute_scores)
             ;
 
+    boost::python::class_<shared_ptr<vector<shared_ptr<Segment>>>>("SharedSegmentVector");
     boost::python::def("make_shared_segment_vector", &make_shared_segment_vector);
 }
