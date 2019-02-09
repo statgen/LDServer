@@ -204,11 +204,13 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
     auto raw_it = raw.find(region_chromosome);
     if (raw_it == raw.end()) { // no such chromosome - return empty result
         result.clear_last();
+        std::cout << "Couldn't find requested chromosome: " + region_chromosome << std::endl;
         return false;
     }
     auto samples_it = this->samples.find(samples_name);
     if (samples_it == this->samples.end()) { // no such samples - return empty result
         result.clear_last();
+        std::cout << "Couldn't find sample subset named: " + samples_name << std::endl;
         return false;
     }
 
