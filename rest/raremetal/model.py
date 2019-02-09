@@ -156,12 +156,13 @@ def get_files(genotype_dataset_id):
   return [str(x) for x, in db.session.query(File.path).filter_by(genotype_dataset_id = genotype_dataset_id)]
 
 def get_phenotype_file(phenotype_dataset_id):
-  return db.session.query(PhenotypeDataset.filepath).filter_by(phenotype_dataset_id = phenotype_dataset_id)
+  p = db.session.query(PhenotypeDataset.filepath).filter_by(id = phenotype_dataset_id).scalar()
+  return str(p) if p is not None else None
 
 def get_column_types(phenotype_dataset_id):
   mapping = ColumnTypeMap()
-  for row in PhenotypeDataset.query.filter_by(phenotype_dataset_id = phenotype_dataset_id):
-    mapping[row.column_name] = ColumnType.names.get(row.column_type)
+  for row in PhenotypeColumn.query.filter_by(phenotype_dataset_id = phenotype_dataset_id):
+    mapping[str(row.column_name)] = ColumnType.names.get(row.column_type)
 
   return mapping
 
