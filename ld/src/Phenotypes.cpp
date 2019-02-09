@@ -49,6 +49,10 @@ void Phenotypes::load_tab(const string &path, const ColumnTypeMap &types, size_t
   string line;
   auto separator = regex("[ \t]");
 
+  if (!input_file.good()) {
+    throw std::invalid_argument("Cannot access file: " + path);
+  }
+
   // Get header.
   vector<string> header;
   getline(input_file, line);
