@@ -43,6 +43,9 @@ struct ScoreResult {
   double alt_freq;
 
   template<class Archive> void serialize(Archive& ar) { ar(variant, score_stat, sigma2, pvalue, alt_freq); }
+  bool operator==(const ScoreResult& result) const {
+      return variant.compare(result.variant) == 0;
+  }
 };
 
 /**
