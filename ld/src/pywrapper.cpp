@@ -66,6 +66,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("is_last", &LDQueryResult::is_last)
             .def("get_last", &LDQueryResult::get_last)
             .def("get_json", &LDQueryResult::get_json)
+            .def("sort_by_variant", &LDQueryResult::sort_by_variant)
             ;
 
     boost::python::class_<ScoreStatQueryResult, boost::noncopyable>("ScoreStatQueryResult", boost::python::init<boost::uint32_t>())
@@ -76,6 +77,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("is_last", &ScoreStatQueryResult::is_last)
             .def("get_last", &ScoreStatQueryResult::get_last)
             .def("get_json", &ScoreStatQueryResult::get_json)
+            .def("sort_by_variant", &ScoreStatQueryResult::sort_by_variant)
             ;
 
     boost::python::class_<LDServer, boost::noncopyable>("LDServer", boost::python::init<boost::uint32_t>())
