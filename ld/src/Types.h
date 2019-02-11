@@ -15,6 +15,8 @@
 
 using namespace std;
 
+const auto EPACTS_REGEX = regex("(?:chr)?(.+):(\\d+)_?(\\w+)?/?([^_]+)?_?(.*)?");
+
 enum correlation : uint8_t {
     LD_R,
     LD_RSQUARE,
@@ -61,8 +63,36 @@ struct VariantMeta {
     string ref;
     string alt;
     uint64_t position;
-    VariantMeta(const string& variant, const string& chromosome, const string& ref, const string& alt, uint64_t position):
-            variant(variant), chromosome(chromosome), ref(ref), alt(alt), position(position) {}
+    string extra;
+
+    /**
+     * Construct from an EPACTS-formatted variant. The format looks like:
+     *
+     *   chrom:pos_ref/alt_extra
+     *
+     * Where:
+     *
+     *   chrom - chromosome, can be "chr22" or "22"
+     *   pos - position on chromosome
+     *   ref - reference allele
+     *   alt - alternate allele
+     *   extra - usually rsID or sequence identifier, can be any simple string
+     *
+     * @param variant
+     */
+    VariantMeta(const string& variant) {
+        match_results<string::const_iterator> results;
+        regex_search(variant, results, EPACTS_REGEX);
+
+        this->variant = results[0];
+        this->chromosome = results[1];
+        this->position = stoull(results[2]);
+        this->ref = results[3];
+        this->alt = results[4];
+        this->extra = results[5];
+    }
+
+    VariantMeta(const string& variant, const string& chromosome, const string& ref, const string& alt, uint64_t position) : variant(variant), chromosome(chromosome), ref(ref), alt(alt), position(position) {}
     bool operator==(VariantMeta const& result) const { // needed by boost.python
         return variant.compare(result.variant) == 0;
     }
@@ -137,6 +167,24 @@ struct LDQueryResult {
             page = std::stoi(tokens[3]);
         }
     }
+
+    void sort_by_variant() {
+      std::sort(data.begin(), data.end(), [](const VariantsPair& p1, const VariantsPair& p2) {
+        // Because of how the LDServer creates VariantPairs, it is guaranteed that the first variant in the pair
+        // is always before the second variant on the chromosome.
+        if (p1.variant1 == p2.variant1) {
+            VariantMeta p1_2(p1.variant2);
+            VariantMeta p2_2(p2.variant2);
+            return p1_2.position < p2_2.position;
+        }
+        else {
+            VariantMeta p1_1(p1.variant1);
+            VariantMeta p2_1(p2.variant1);
+            return p1_1.position < p2_1.position;
+        }
+      });
+    }
+
     bool has_next() const {
         return ((last_i >= 0) || (last_j >= 0));
     }
@@ -257,6 +305,15 @@ struct ScoreStatQueryResult {
           last_i = std::stoll(tokens[1]);
           page = std::stoull(tokens[2]);
       }
+  }
+
+  void sort_by_variant() {
+      std::sort(data.begin(), data.end(), [](const ScoreResult& a, const ScoreResult& b) {
+         VariantMeta va(a.variant);
+         VariantMeta vb(b.variant);
+
+         return va.position < vb.position;
+      });
   }
 
   bool has_next() const {

@@ -1,6 +1,8 @@
 //#include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <string>
+#include <random>
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <regex>
@@ -1145,6 +1147,13 @@ TEST_F(LDServerTest, score_server) {
     score_server.load_phenotypes_tab("chr22.test.tab", ctmap, 2504, 1);
     score_server.set_phenotype("rand_qt");
     score_server.compute_scores("22", 51241101, 51241385, score_results, "ALL", segments);
+
+    // try out sorting
+    random_shuffle(score_results.data.begin(), score_results.data.end());
+    random_shuffle(ld_result.data.begin(), ld_result.data.end());
+
+    score_results.sort_by_variant();
+    ld_result.sort_by_variant();
 
     auto json = score_results.get_json("http://portaldev.sph.umich.edu/scores/");
 
