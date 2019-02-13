@@ -12,6 +12,7 @@
 #include "../src/ScoreServer.h"
 #include "RareMetal.h"
 #include "../src/Phenotypes.h"
+#include "../src/Mask.h"
 #include <armadillo>
 
 using namespace std;
@@ -1155,7 +1156,14 @@ TEST_F(LDServerTest, score_server) {
     score_results.sort_by_variant();
     ld_result.sort_by_variant();
 
-    auto json = score_results.get_json("http://portaldev.sph.umich.edu/scores/");
+    // try out mask
+    Mask mask("mask.epacts.chr22.gencode-exons-AF01.tab.gz");
+    mask.print_groups();
+
+    auto group_set = mask.get_variant_set("RNU6-409P");
+    for (auto&& v : *group_set) {
+        cout << v << endl;
+    }
 
     int x = 0;
 }
