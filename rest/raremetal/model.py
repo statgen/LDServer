@@ -169,6 +169,9 @@ def get_column_types(phenotype_dataset_id):
 def get_phenotype_nrows(phenotype_dataset_id):
   return db.session.query(PhenotypeDataset.nrows).filter_by(id = phenotype_dataset_id).scalar()
 
+def get_mask(mask_id):
+  return db.session.query(Mask).filter_by(id = mask_id).first()
+
 def load_correlations():
   db.create_all()
   correlations = [str(x) for x, in db.session.query(Correlation.name)]
