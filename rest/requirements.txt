@@ -10,3 +10,4 @@ click
 requests
 argparse
 flask_sqlalchemy
+pysam

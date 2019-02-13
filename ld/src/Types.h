@@ -185,6 +185,13 @@ struct LDQueryResult {
       });
     }
 
+    void filter_by_variants(const vector<string>& variants) {
+        vector<VariantsPair> new_data;
+//        copy_if(data.begin(), data.end(), back_inserter(new_variants), [](const VariantsPair& p) {
+//           if ()
+//        });
+    }
+
     bool has_next() const {
         return ((last_i >= 0) || (last_j >= 0));
     }

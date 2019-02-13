@@ -5,10 +5,13 @@ from webargs.flaskparser import parser
 from webargs import fields, ValidationError
 from functools import partial
 import model
+import os
 from ld.pywrapper import LDServer, LDQueryResult, StringVec, correlation, ScoreServer, ScoreStatQueryResult, \
                          ColumnType, ColumnTypeMap, make_shared_segment_vector
+from pysam import TabixFile
 
 API_VERSION = "1.0"
+MAX_UINT32 = 4294967295
 
 bp = Blueprint('api', __name__)
 CORS(bp)
@@ -57,6 +60,9 @@ def get_metadata():
 
   pass
 
+def return_error(error_message, http_code):
+  response = {"data": None, "error": error_message}
+  return make_response(jsonify(response), http_code)
 
 @bp.route('/aggregation/covariance', methods = ['POST'])
 def get_covariance():
@@ -65,16 +71,17 @@ def get_covariance():
   """
 
   args_defined = {
-    'chrom': fields.Str(required = True, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
-    'start': fields.Int(required = True, validate = lambda x: x >= 0, error_messages = {'validator_failed': 'Value must be greater than or equal to 0.'}),
-    'stop': fields.Int(required = True, validate = lambda x: x > 0, error_messages = {'validator_failed': 'Value must be greater than 0.'}),
-    'genotype_dataset': fields.Int(required = True, validate = lambda x: x > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
-    'phenotype_dataset': fields.Int(required = True, validate = lambda x: x > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
-    'phenotype': fields.Str(required = True, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
-    'samples': fields.Str(required = True, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
-    'genome_build': fields.Str(required = True, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
-    'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE'], error_messages = {'validator_failed': 'Value must be greater than 0.'}),
-    'last': fields.Str(required = False, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'})
+    'chrom': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'start': fields.Int(required=True, validate=lambda x: x >= 0, error_messages={'validator_failed': 'Value must be greater than or equal to 0.'}),
+    'stop': fields.Int(required=True, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be greater than 0.'}),
+    'genotype_dataset': fields.Int(required=True, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'phenotype_dataset': fields.Int(required=True, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'phenotype': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'samples': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'masks': fields.DelimitedList(fields.Str(), required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': "Must provide at least 1 mask ID"}),
+    'genome_build': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'limit': fields.Int(required=False, validate=lambda x: x > 0, missing=current_app.config['API_MAX_PAGE_SIZE'], error_messages={'validator_failed': 'Value must be greater than 0.'}),
+    'last': fields.Str(required=False, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'})
   }
 
   args = parser.parse(
@@ -93,6 +100,7 @@ def get_covariance():
   phenotype_dataset_id = args["phenotype_dataset"]
   sample_subset = str(args["samples"])
   phenotype = str(args["phenotype"])
+  masks = [str(x) for x in args["masks"]]
   limit = args.get("limit")
   last = args.get("last")
 
@@ -152,8 +160,7 @@ def get_covariance():
     nrows = model.get_phenotype_nrows(phenotype_dataset_id)
     score_server.load_phenotypes_tab(phenotype_file, column_types, nrows, phenotype_dataset_id)
   else:
-    response = { "data": None, "error": "File format for phenotype file '{}' not supported".format(phenotype_file)}
-    return make_response(jsonify(response), 500)
+    return_error("File format for phenotype file '{}' not supported".format(phenotype_file), 500)
 
   # Set the phenotype to calculate score stats / p-values for.
   score_server.set_phenotype(phenotype)
@@ -162,11 +169,40 @@ def get_covariance():
   #   ldserver.enable_cache(genotype_dataset_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
   #   score_server.enable_cache(current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
 
-  shared_segments = make_shared_segment_vector()
-  ldserver.compute_region_ld(chrom, start, stop, correlation.cov, result, sample_subset, shared_segments)
-  score_server.compute_scores(chrom, start, stop, score_result, sample_subset, shared_segments)
+  # Determine regions in which to compute LD/scores.
+  # This is determined by the mask file, and the overall window requested.
+  for mask_id in masks:
+    # id = db.Column(db.Integer, primary_key = True)
+    # name = db.Column(db.String, unique = True, nullable = False)
+    # filepath = db.Column(db.String, unique = True, nullable = False)
+    # description = db.Column(db.String, unique = False, nullable = False)
+    # genome_build = db.Column(db.String, unique = False, nullable = False)
+    # group_type = db.Column(db.String, unique = False, nullable = False)
+    # identifier_type = db.Column(db.String, unique = False, nullable = False)
+    # genotype_dataset_id = db.Column(db.Integer, db.ForeignKey('genotype_datasets.id'))
 
-  raise Exception("Get flask to enter debug mode")
+    mask = model.get_mask(mask_id)
+
+    if not os.path.isfile(mask.filepath):
+      return_error("Could not find mask file on server for ID {}".format(mask_id),500)
+
+    tb = TabixFile(mask.filepath)
+    window = "{}:{}-{}".format(chrom, start, stop)
+    for row in tb.fetch(window):
+      row = row.split("\t")
+      row_group, row_chrom, row_start, row_end = row[0:4]
+      row_variants = row[4:]
+
+      # Tell the score server and LD server to compute results.
+      ld_result = LDQueryResult(MAX_UINT32)
+      score_result = ScoreStatQueryResult(MAX_UINT32)
+      shared_segments = make_shared_segment_vector()
+      ldserver.compute_region_ld(chrom, row_start, row_end, correlation.cov, ld_result, sample_subset, shared_segments)
+      score_server.compute_scores(chrom, row_start, row_end, score_result, sample_subset, shared_segments)
+
+      # We need to sort the results to make sure they come back in order, and matched up.
+      ld_result.sort_by_variant()
+      score_result.sort_by_variant()
 
   if current_app.config['PROXY_PASS']:
     base_url = '/'.join(x.strip('/') for x in [current_app.config['PROXY_PASS'], request.path])
