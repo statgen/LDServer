@@ -1165,6 +1165,10 @@ TEST_F(LDServerTest, score_server) {
         cout << v << endl;
     }
 
+    // try filtering
+    score_results.filter_by_variants({"22:51241101_A/T","22:51241102_T/C","22:51241285_T/G"});
+    ld_result.filter_by_variants({"22:51241101_A/T","22:51241102_T/C","22:51241285_T/G"});
+
     int x = 0;
 }
 

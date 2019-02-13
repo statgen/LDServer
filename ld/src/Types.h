@@ -185,11 +185,24 @@ struct LDQueryResult {
       });
     }
 
-    void filter_by_variants(const vector<string>& variants) {
+    /**
+     * Restrict this result object down to only variants given in the set.
+     * @param variants Set of variants.
+     */
+    void filter_by_variants(const set<string>& variants) {
         vector<VariantsPair> new_data;
-//        copy_if(data.begin(), data.end(), back_inserter(new_variants), [](const VariantsPair& p) {
-//           if ()
-//        });
+        copy_if(data.begin(), data.end(), back_inserter(new_data), [&](const VariantsPair& p) -> bool {
+           if (variants.find(p.variant1) == variants.end()) {
+             return false;
+           }
+           else if (variants.find(p.variant2) == variants.end()) {
+             return false;
+           }
+           else {
+             return true;
+           }
+        });
+        data = new_data;
     }
 
     bool has_next() const {
@@ -321,6 +334,23 @@ struct ScoreStatQueryResult {
 
          return va.position < vb.position;
       });
+  }
+
+  /**
+   * Restrict this result object down to only variants given in the set.
+   * @param variants Set of variants.
+   */
+  void filter_by_variants(const set<string>& variants) {
+    vector<ScoreResult> new_data;
+    copy_if(data.begin(), data.end(), back_inserter(new_data), [&](const ScoreResult& p) -> bool {
+      if (variants.find(p.variant) == variants.end()) {
+        return false;
+      }
+      else {
+        return true;
+      }
+    });
+    data = new_data;
   }
 
   bool has_next() const {
