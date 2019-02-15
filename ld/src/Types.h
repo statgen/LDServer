@@ -43,6 +43,8 @@ struct ScoreResult {
   double sigma2;
   double pvalue;
   double alt_freq;
+  uint64_t position;
+  string chrom;
 
   template<class Archive> void serialize(Archive& ar) { ar(variant, score_stat, sigma2, pvalue, alt_freq); }
   bool operator==(const ScoreResult& result) const {
@@ -173,14 +175,10 @@ struct LDQueryResult {
         // Because of how the LDServer creates VariantPairs, it is guaranteed that the first variant in the pair
         // is always before the second variant on the chromosome.
         if (p1.variant1 == p2.variant1) {
-            VariantMeta p1_2(p1.variant2);
-            VariantMeta p2_2(p2.variant2);
-            return p1_2.position < p2_2.position;
+            return p1.position2 < p2.position2;
         }
         else {
-            VariantMeta p1_1(p1.variant1);
-            VariantMeta p2_1(p2.variant1);
-            return p1_1.position < p2_1.position;
+            return p1.position1 < p2.position1;
         }
       });
     }
@@ -329,10 +327,7 @@ struct ScoreStatQueryResult {
 
   void sort_by_variant() {
       std::sort(data.begin(), data.end(), [](const ScoreResult& a, const ScoreResult& b) {
-         VariantMeta va(a.variant);
-         VariantMeta vb(b.variant);
-
-         return va.position < vb.position;
+          return a.position < b.position;
       });
   }
 

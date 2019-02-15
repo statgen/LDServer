@@ -93,6 +93,8 @@ void ScoreSegment::compute_scores(const arma::vec &phenotype) {
     result.pvalue = pvalue;
     result.variant = this->names[i];
     result.alt_freq = this->freqs[i];
+    result.position = this->positions[i];
+    result.chrom = this->chromosome;
 
     score_results->emplace_back(result);
   }
