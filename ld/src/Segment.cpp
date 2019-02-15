@@ -89,6 +89,13 @@ void Segment::clear_genotypes() {
 
 void Segment::add(savvy::site_info& anno, savvy::compressed_vector<float>& alleles) {
     n_haplotypes = alleles.size();
+
+    // When in CSC mode, savvy returns a vector of alleles coded 0/1/2 (additive count, or savvy:fmt:ac).
+    // So the number of haplotypes is 2 * number of elements in vector, since each element represents 2 alleles.
+    if (store == genotypes_store::CSC) {
+        n_haplotypes *= 2;
+    }
+
     unsigned int n_non_zero = alleles.non_zero_size();
     if (n_non_zero > 0) {
         std::stringstream ss("");
@@ -105,10 +112,6 @@ void Segment::add(savvy::site_info& anno, savvy::compressed_vector<float>& allel
                 break;
             case CSC:
                 {
-                // When in CSC mode, savvy returns a vector of alleles coded 0/1/2 (additive count, or savvy:fmt:ac).
-                // So the number of haplotypes is 2 * number of elements in vector, since each element represents 2 alleles.
-                n_haplotypes *= 2;
-
                 sp_mat_colind.emplace_back(sp_mat_rowind.size());
                 auto value_data = alleles.value_data();
                 float allele_total = 0.0;
@@ -144,6 +147,13 @@ void Segment::add_name(savvy::site_info& anno, savvy::compressed_vector<float>& 
 
 void Segment::add_genotypes(savvy::compressed_vector<float>& alleles) {
     n_haplotypes = alleles.size();
+
+    // When in CSC mode, savvy returns a vector of alleles coded 0/1/2 (additive count, or savvy:fmt:ac).
+    // So the number of haplotypes is 2 * number of elements in vector, since each element represents 2 alleles.
+    if (store == genotypes_store::CSC) {
+        n_haplotypes *= 2;
+    }
+
     unsigned int n_non_zero = alleles.non_zero_size();
     if (n_non_zero > 0) {
         auto index_data = alleles.index_data();
@@ -156,7 +166,6 @@ void Segment::add_genotypes(savvy::compressed_vector<float>& alleles) {
                 break;
             case CSC:
                 {
-                n_haplotypes *= 2;
                 sp_mat_colind.emplace_back(sp_mat_rowind.size());
                 auto value_data = alleles.value_data();
                 for (unsigned int i = 0u; i < n_non_zero; ++i) {

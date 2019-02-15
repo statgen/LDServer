@@ -60,6 +60,11 @@ bool ScoreSegment::has_scores() const {
 }
 
 void ScoreSegment::compute_scores(const arma::vec &phenotype) {
+  // If the segment has no genotypes, we can't calculate anything.
+  if (n_haplotypes == 0) {
+    return;
+  }
+
   // Find the mean of all genotype columns.
   auto genotypes = this->get_genotypes();
   arma::fmat means(arma::mean(genotypes));
