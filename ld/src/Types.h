@@ -187,18 +187,11 @@ struct LDQueryResult {
      * Restrict this result object down to only variants given in the set.
      * @param variants Set of variants.
      */
-    void filter_by_variants(const set<string>& variants) {
+    template<template <typename...> class C>
+    void filter_by_variants(const C<string>& variants) {
         vector<VariantsPair> new_data;
         copy_if(data.begin(), data.end(), back_inserter(new_data), [&](const VariantsPair& p) -> bool {
-           if (variants.find(p.variant1) == variants.end()) {
-             return false;
-           }
-           else if (variants.find(p.variant2) == variants.end()) {
-             return false;
-           }
-           else {
-             return true;
-           }
+          return (variants.find(p.variant1) != variants.end()) && (variants.find(p.variant2) != variants.end());
         });
         data = new_data;
     }
@@ -335,15 +328,11 @@ struct ScoreStatQueryResult {
    * Restrict this result object down to only variants given in the set.
    * @param variants Set of variants.
    */
-  void filter_by_variants(const set<string>& variants) {
+  template<template <typename...> class C>
+  void filter_by_variants(const C<string>& variants) {
     vector<ScoreResult> new_data;
     copy_if(data.begin(), data.end(), back_inserter(new_data), [&](const ScoreResult& p) -> bool {
-      if (variants.find(p.variant) == variants.end()) {
-        return false;
-      }
-      else {
-        return true;
-      }
+      return variants.find(p.variant) != variants.end();
     });
     data = new_data;
   }
