@@ -8,6 +8,7 @@
 #include "LDServer.h"
 #include "ScoreServer.h"
 #include "Phenotypes.h"
+#include "Mask.h"
 
 BOOST_PYTHON_MODULE(pywrapper) {
 
@@ -67,6 +68,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("get_last", &LDQueryResult::get_last)
             .def("get_json", &LDQueryResult::get_json)
             .def("sort_by_variant", &LDQueryResult::sort_by_variant)
+            .def("filter_by_variants", &LDQueryResult::filter_by_variants)
             ;
 
     boost::python::class_<ScoreStatQueryResult, boost::noncopyable>("ScoreStatQueryResult", boost::python::init<boost::uint32_t>())
@@ -78,6 +80,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("get_last", &ScoreStatQueryResult::get_last)
             .def("get_json", &ScoreStatQueryResult::get_json)
             .def("sort_by_variant", &ScoreStatQueryResult::sort_by_variant)
+            .def("filter_by_variants", &ScoreStatQueryResult::filter_by_variants)
             ;
 
     boost::python::class_<LDServer, boost::noncopyable>("LDServer", boost::python::init<boost::uint32_t>())
@@ -102,6 +105,14 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("compute_scores", &ScoreServer::compute_scores)
             ;
 
+    boost::python::class_<Mask, shared_ptr<Mask>, boost::noncopyable>("Mask", boost::python::init<const std::string&>())
+            .def(boost::python::init<const std::string&, const std::string&, uint64_t&, uint64_t&>())
+            .def("get_variant_set", &Mask::get_variant_set)
+            .def("get_group_names", &Mask::get_group_names)
+            .def("get_group", &Mask::get_group)
+            ;
+
     boost::python::class_<shared_ptr<vector<shared_ptr<Segment>>>>("SharedSegmentVector");
     boost::python::def("make_shared_segment_vector", &make_shared_segment_vector);
+    boost::python::class_<std::set<std::string>, shared_ptr<std::set<std::string>>>("StringSet");
 }
