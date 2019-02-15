@@ -95,8 +95,13 @@ struct VariantMeta {
     }
 
     VariantMeta(const string& variant, const string& chromosome, const string& ref, const string& alt, uint64_t position) : variant(variant), chromosome(chromosome), ref(ref), alt(alt), position(position) {}
+
     bool operator==(VariantMeta const& result) const { // needed by boost.python
-        return variant.compare(result.variant) == 0;
+        return variant == result.variant;
+    }
+
+    bool operator<(VariantMeta const& other) const {
+        return position < other.position;
     }
 };
 
