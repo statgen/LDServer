@@ -50,12 +50,26 @@ public:
   void reorder(const vector<string> &samples);
 
   /**
-   * Calculate score statistic, phenotypic variance, and p-value given a vector of genotypes.
+   * Calculate score statistic, and p-value given a vector of genotypes.
    * @param genotypes
    * @param phenotype
    * @return
    */
   shared_ptr<ScoreResult> compute_score(arma::vec &genotypes, const string &phenotype);
+
+  /**
+   * Calculate phenotypic variance.
+   * @param phenotype
+   * @return
+   */
+  double compute_sigma2(const string &phenotype);
+
+  /**
+   * Get number of non-missing observations for phenotype.
+   * @param phenotype
+   * @return
+   */
+  uint64_t get_nsamples(const string &phenotype);
 };
 
 #endif //LDSERVER_PHENOTYPES_H

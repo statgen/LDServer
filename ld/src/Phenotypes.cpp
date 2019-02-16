@@ -204,6 +204,7 @@ SharedVector<string> Phenotypes::as_text(const string &colname) {
   return vec;
 }
 
+// shared_ptr<arma::vec>
 SharedArmaVec Phenotypes::as_vec(const string &colname) {
   SharedArmaVec vec;
   switch (column_types[colname]) {
@@ -321,8 +322,19 @@ shared_ptr<ScoreResult> Phenotypes::compute_score(arma::vec &genotypes, const st
   // Create return object.
   auto result = make_shared<ScoreResult>();
   result->score_stat = score_stat;
-  result->sigma2 = sigma2;
   result->pvalue = pvalue;
 
   return result;
+}
+
+double Phenotypes::compute_sigma2(const string &phenotype) {
+  auto &pheno_vec = *as_vec(phenotype);
+  double sigma2 = arma::var(pheno_vec, 1);
+  return sigma2;
+}
+
+uint64_t Phenotypes::get_nsamples(const string &phenotype) {
+  auto &pheno_vec = *as_vec(phenotype);
+  arma::uvec non_finite = arma::find_nonfinite(pheno_vec);
+  return non_finite.n_elem;
 }

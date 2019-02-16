@@ -40,15 +40,18 @@ enum ColumnType : uint8_t {
 struct ScoreResult {
   string variant;
   double score_stat;
-  double sigma2;
   double pvalue;
   double alt_freq;
   uint64_t position;
   string chrom;
 
-  template<class Archive> void serialize(Archive& ar) { ar(variant, score_stat, sigma2, pvalue, alt_freq); }
+  template<class Archive> void serialize(Archive& ar) { ar(variant, score_stat, pvalue, alt_freq); }
   bool operator==(const ScoreResult& result) const {
-      return variant.compare(result.variant) == 0;
+      return variant == result.variant;
+  }
+
+  bool operator<(const ScoreResult& result) const {
+      return position < result.position;
   }
 };
 
@@ -306,6 +309,8 @@ struct ScoreStatQueryResult {
   int64_t last_seg;
   uint64_t page;
   vector<ScoreResult> data;
+  double sigma2; // assume all score stats calculated against the same phenotype
+  double nsamples;
 
   ScoreStatQueryResult(uint32_t page_limit): limit(page_limit), last_i(-1), last_seg(0), page(0) {
       data.reserve(page_limit);
@@ -359,6 +364,8 @@ struct ScoreStatQueryResult {
 
   void clear_data() {
       data.clear();
+      sigma2 = numeric_limits<double>::quiet_NaN();
+      nsamples = numeric_limits<double>::quiet_NaN();
   }
 
   void clear_last() {
@@ -369,6 +376,8 @@ struct ScoreStatQueryResult {
   void erase() {
       clear_data();
       clear_last();
+      sigma2 = numeric_limits<double>::quiet_NaN();
+      nsamples = numeric_limits<double>::quiet_NaN();
       page = 0;
   }
 
@@ -390,7 +399,6 @@ struct ScoreStatQueryResult {
       rapidjson::Value alt_freq(rapidjson::kArrayType);
       rapidjson::Value pvalue(rapidjson::kArrayType);
       rapidjson::Value score_stat(rapidjson::kArrayType);
-      rapidjson::Value sigma2(rapidjson::kArrayType);
 
       for (auto&& p: this->data) {
           variant.PushBack(rapidjson::StringRef(p.variant.c_str()), allocator);
@@ -410,20 +418,26 @@ struct ScoreStatQueryResult {
           else {
               score_stat.PushBack(p.score_stat, allocator);
           }
-
-          if (std::isnan(p.sigma2)) { // nan is not allowed by JSON, so we replace it with null
-              sigma2.PushBack(rapidjson::Value(), allocator);
-          }
-          else {
-              sigma2.PushBack(p.sigma2, allocator);
-          }
       }
 
       data.AddMember("variant", variant, allocator);
       data.AddMember("alt_freq", alt_freq, allocator);
       data.AddMember("pvalue", pvalue, allocator);
       data.AddMember("score_stat", score_stat, allocator);
-      data.AddMember("sigma2", sigma2, allocator);
+
+      if (std::isnan(sigma2)) { // nan is not allowed by JSON, so we replace it with null
+        data.AddMember("sigma2", rapidjson::Value(), allocator);
+      }
+      else {
+        data.AddMember("sigma2", sigma2, allocator);
+      }
+
+      if (std::isnan(nsamples)) { // nan is not allowed by JSON, so we replace it with null
+        data.AddMember("n_samples", rapidjson::Value(), allocator);
+      }
+      else {
+        data.AddMember("n_samples", nsamples, allocator);
+      }
 
       document.AddMember("data", data, allocator);
       document.AddMember("error", rapidjson::Value(), allocator);
