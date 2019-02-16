@@ -1,7 +1,7 @@
 #include "Mask.h"
 using namespace std;
 
-shared_ptr<set<string>> MaskGroup::get_variants() const {
+shared_ptr<set<string>> VariantGroup::get_variants() const {
   auto vs = make_shared<set<string>>();
   transform(
     variants.begin(),
@@ -30,7 +30,7 @@ void Mask::load_file(const string &filepath, const string &chrom, uint64_t start
     copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
 
     // Create group object
-    MaskGroup group;
+    VariantGroup group;
     group.name = tokens[0];
     group.chrom = tokens[1];
     group.start = stoull(tokens[2]);
@@ -55,11 +55,15 @@ void Mask::load_file(const string &filepath, const string &chrom, uint64_t start
   }
 }
 
-Mask::Mask(const string& filepath) {
+Mask::Mask(const string& filepath, const std::string& name, VariantGroupType group_type) {
+  this->name = name;
+  this->group_type = group_type;
   load_file(filepath);
 }
 
-Mask::Mask(const string &filepath, const string &chrom, uint64_t start, uint64_t stop) {
+Mask::Mask(const string &filepath, const std::string& name, VariantGroupType group_type, const string &chrom, uint64_t start, uint64_t stop) {
+  this->name = name;
+  this->group_type = group_type;
   load_file(filepath, chrom, start, stop);
 }
 
@@ -103,13 +107,13 @@ shared_ptr<vector<string>> Mask::get_group_names() const {
   return group_names;
 }
 
-shared_ptr<MaskGroup> Mask::get_group(const string& group) const {
+shared_ptr<VariantGroup> Mask::get_group(const string& group) const {
   auto iter = groups.find(group);
   if (iter == groups.end()) {
     throw out_of_range("Group " + group + "not found in mask file");
   }
 
-  auto ptr = make_shared<MaskGroup>(iter->second);
+  auto ptr = make_shared<VariantGroup>(iter->second);
   return ptr;
 }
 

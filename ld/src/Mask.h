@@ -21,9 +21,15 @@ struct VariantSort {
   }
 };
 
+// Enum for type of variant group (gene, region, other?)
+enum VariantGroupType : uint8_t {
+  GENE,
+  REGION
+};
+
 typedef std::set<VariantMeta, VariantSort<VariantMeta>> SortedVariantSet;
 
-struct MaskGroup {
+struct VariantGroup {
   std::string name;
   std::string chrom;
   uint64_t start;
@@ -34,14 +40,14 @@ struct MaskGroup {
 };
 
 class Mask {
-  using group_iterator = std::map<std::string, MaskGroup>::const_iterator;
+  using group_iterator = std::map<std::string, VariantGroup>::const_iterator;
 
 public:
   /**
    * Default constructor that loads the entire mask.
    * @param filepath
    */
-  Mask(const std::string &filepath);
+  Mask(const std::string &filepath, const std::string& name, VariantGroupType group_type);
 
   /**
    * Constructor to load only a subset of the mask, using only regions of variants that overlap the given start/stop.
@@ -50,7 +56,7 @@ public:
    * @param start
    * @param stop
    */
-  Mask(const std::string &filepath, const std::string &chrom, uint64_t start, uint64_t stop);
+  Mask(const std::string &filepath, const std::string& name, VariantGroupType group_type, const std::string &chrom, uint64_t start, uint64_t stop);
 
   /**
    * Print out each group and its variants, mainly for debugging purposes.
@@ -65,7 +71,7 @@ public:
   /**
    * Retrieve a group.
    */
-  std::shared_ptr<MaskGroup> get_group(const std::string& group) const;
+  std::shared_ptr<VariantGroup> get_group(const std::string& group) const;
 
   /**
    * Functions for retrieving the variants in a group.
@@ -81,15 +87,21 @@ public:
   group_iterator begin() const;
   group_iterator end() const;
 
+  /**
+   * Accessors
+   */
+  inline std::string get_name() const { return name; };
+  inline VariantGroupType get_group_type() const { return group_type; };
+
 protected:
   std::string name;
-  uint64_t id;
   std::string description;
+  VariantGroupType group_type;
 
   /**
    * Store map from group name --> vector of variants.
    */
-  std::map<std::string, MaskGroup> groups;
+  std::map<std::string, VariantGroup> groups;
 
   /**
    * Loader for mask files. Expects the file to be tabixed and bgzipped.
