@@ -13,6 +13,7 @@
 #include "RareMetal.h"
 #include "../src/Phenotypes.h"
 #include "../src/Mask.h"
+#include "../src/RareMetalRunner.h"
 #include <armadillo>
 
 using namespace std;
@@ -1132,7 +1133,6 @@ TEST_F(LDServerTest, score_server) {
     auto segments = make_shared_segment_vector();
 
     ld_server.set_file("chr22.test.vcf.gz");
-    ld_server.compute_region_ld("22", 51241101, 51241385, correlation::COV, ld_result, "ALL", segments);
 
     score_server.set_genotypes_file("chr22.test.vcf.gz", 1);
 
@@ -1147,27 +1147,21 @@ TEST_F(LDServerTest, score_server) {
     };
     score_server.load_phenotypes_tab("chr22.test.tab", ctmap, 2504, 1);
     score_server.set_phenotype("rand_qt");
-    score_server.compute_scores("22", 51241101, 51241385, score_results, "ALL", segments);
-
-    // try out sorting
-    random_shuffle(score_results.data.begin(), score_results.data.end());
-    random_shuffle(ld_result.data.begin(), ld_result.data.end());
-
-    score_results.sort_by_variant();
-    ld_result.sort_by_variant();
 
     // try out mask
-    Mask mask("mask.epacts.chr22.gencode-exons-AF01.tab.gz");
-    mask.print_groups();
+    Mask mask("mask.epacts.chr22.gencode-exons-AF01.tab.gz", "PTV + AF < 0.01", VariantGroupType::GENE, "22", 50276998ul, 50357719ul);
 
-    auto group_set = mask.get_variant_set("RNU6-409P");
-    for (auto&& v : *group_set) {
-        cout << v << endl;
-    }
+    // try out runner
+    vector<Mask> masks;
+    masks.emplace_back(mask);
 
-    // try filtering
-    score_results.filter_by_variants({"22:51241101_A/T","22:51241102_T/C","22:51241285_T/G"});
-    ld_result.filter_by_variants({"22:51241101_A/T","22:51241102_T/C","22:51241285_T/G"});
+    RareMetalRunner runner;
+    runner(
+      masks,
+      "ALL",
+      score_server,
+      ld_server
+    );
 
     int x = 0;
 }

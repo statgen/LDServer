@@ -14,11 +14,11 @@ if(CGET_PREFIX)
 endif()
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-set(SOURCE_FILES LDServer.cpp LDServer.h ScoreServer.cpp ScoreServer.h Raw.h Raw.cpp Segment.cpp Segment.h ScoreSegment.cpp ScoreSegment.h Cell.cpp Cell.h Types.h Morton.cpp Morton.h Phenotypes.h Phenotypes.cpp Mask.cpp Mask.h)
+set(SOURCE_FILES LDServer.cpp LDServer.h ScoreServer.cpp ScoreServer.h Raw.h Raw.cpp Segment.cpp Segment.h ScoreSegment.cpp ScoreSegment.h Cell.cpp Cell.h Types.h Morton.cpp Morton.h Phenotypes.h Phenotypes.cpp Mask.cpp Mask.h RareMetalRunner.cpp RareMetalRunner.h)
 add_library(LDServer ${SOURCE_FILES})
 target_link_libraries(LDServer ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${TABIXPP_LIB})
 
-add_library(pywrapper SHARED pywrapper.cpp LDServer.cpp ScoreServer.cpp Raw.cpp Segment.cpp Segment.h ScoreSegment.cpp ScoreSegment.h Cell.cpp Cell.h Types.h Morton.cpp Morton.h Phenotypes.h Phenotypes.cpp Mask.cpp Mask.h)
+add_library(pywrapper SHARED pywrapper.cpp LDServer.cpp ScoreServer.cpp Raw.cpp Segment.cpp Segment.h ScoreSegment.cpp ScoreSegment.h Cell.cpp Cell.h Types.h Morton.cpp Morton.h Phenotypes.h Phenotypes.cpp Mask.cpp Mask.h RareMetalRunner.cpp RareMetalRunner.h)
 set_target_properties(pywrapper PROPERTIES SUFFIX ".so")
 set_target_properties(pywrapper PROPERTIES PREFIX "")
 target_include_directories(pywrapper PUBLIC ${PYTHON_INCLUDE_DIRS})
