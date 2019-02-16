@@ -89,7 +89,6 @@ void ScoreSegment::compute_scores(const arma::vec &phenotype) {
 
     ScoreResult result;
     result.score_stat = score_stats[i];
-    result.sigma2 = sigma2;
     result.pvalue = pvalue;
     result.variant = this->names[i];
     result.alt_freq = this->freqs[i];

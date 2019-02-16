@@ -186,6 +186,10 @@ bool ScoreServer::compute_scores(const std::string& region_chromosome, std::uint
     // when doing covariance/scores.
     raw_it->second->open(region_chromosome, samples_it->second, true);
 
+    // Calculate phenotypic variance
+    result.sigma2 = phenotypes->compute_sigma2(this->phenotype);
+    result.nsamples = phenotypes->get_nsamples(this->phenotype);
+
     // Process each segment and run calculations if necessary
     for (int seg_i = 0; seg_i < segments->size(); seg_i++) {
         //TODO: add cache retrieval/storage
