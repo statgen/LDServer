@@ -38,7 +38,6 @@ BOOST_PYTHON_MODULE(pywrapper) {
     boost::python::class_<ScoreResult>("ScoreResult")
             .def_readonly("variant", &ScoreResult::variant)
             .def_readonly("score_stat", &ScoreResult::score_stat)
-            .def_readonly("sigma2", &ScoreResult::sigma2)
             .def_readonly("pvalue", &ScoreResult::pvalue)
             .def_readonly("alt_freq", &ScoreResult::alt_freq)
             ;
