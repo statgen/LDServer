@@ -1115,7 +1115,7 @@ TEST_F(LDServerTest, compute_score) {
     arma::vec geno_vec(test_geno);
     auto result = pheno.compute_score(geno_vec, "rand_qt");
     ASSERT_NEAR(result->score_stat, 0.37527933, 0.000001);
-    ASSERT_NEAR(result->sigma2, 0.08188312, 0.000001);
+    ASSERT_NEAR(pheno.compute_sigma2("rand_qt"), 0.08188312, 0.000001);
     ASSERT_NEAR(result->pvalue, 0.18969995, 0.000001);
 }
 
@@ -1162,6 +1162,9 @@ TEST_F(LDServerTest, score_server) {
       score_server,
       ld_server
     );
+
+    string json = runner.getPrettyJSON();
+    cout << json << endl;
 
     int x = 0;
 }
@@ -1215,7 +1218,6 @@ TEST_F(LDServerTest, score_segment_cache) {
     ScoreResult result;
     result.variant = "22:51241101";
     result.pvalue = 0.454;
-    result.sigma2 = 0.454;
     result.score_stat = 0.454;
     result.alt_freq = 0.454;
 
