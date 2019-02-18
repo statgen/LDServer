@@ -25,6 +25,11 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .value("FLOAT", FLOAT)
             ;
 
+    boost::python::enum_<VariantGroupType>("VariantGroupType")
+            .value("GENE", GENE)
+            .value("REGION", REGION)
+            ;
+
     boost::python::class_<VariantsPair>("VariantsPair", boost::python::init<const char*, const char*, unsigned long int, const char*, const char*, unsigned long int , double>())
             .def_readonly("variant1", &VariantsPair::variant1)
             .def_readonly("chromosome1", &VariantsPair::chromosome1)
@@ -100,11 +105,17 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("compute_scores", &ScoreServer::compute_scores)
             ;
 
-    boost::python::class_<Mask, shared_ptr<Mask>, boost::noncopyable>("Mask", boost::python::init<const std::string&>())
-            .def(boost::python::init<const std::string&, const std::string&, uint64_t&, uint64_t&>())
+    boost::python::class_<Mask, shared_ptr<Mask>, boost::noncopyable>("Mask", boost::python::init<const std::string&, const std::string&, VariantGroupType>())
+            .def(boost::python::init<const std::string&, const std::string&, VariantGroupType, const std::string&, uint64_t&, uint64_t&>())
             .def("get_variant_set", &Mask::get_variant_set)
             .def("get_group_names", &Mask::get_group_names)
             .def("get_group", &Mask::get_group)
+            .def("set_name", &Mask::set_name)
+            .def("set_group_type", &Mask::set_group_type)
+            ;
+
+    boost::python::class_<std::vector<Mask> >("MaskVec")
+            .def(boost::python::vector_indexing_suite<std::vector<Mask>>())
             ;
 
     boost::python::class_<shared_ptr<vector<shared_ptr<Segment>>>>("SharedSegmentVector");

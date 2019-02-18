@@ -21,10 +21,17 @@ struct VariantSort {
   }
 };
 
+// TODO: could we just refer to these types by string, instead of having to define each one as a hardcoded enum?
+
 // Enum for type of variant group (gene, region, other?)
 enum VariantGroupType : uint8_t {
   GENE,
   REGION
+};
+
+// Enum for type of identifier for each group
+enum GroupIdentifierType : uint8_t {
+  ENSEMBL
 };
 
 typedef std::set<VariantMeta, VariantSort<VariantMeta>> SortedVariantSet;
@@ -88,10 +95,12 @@ public:
   group_iterator end() const;
 
   /**
-   * Accessors
+   * Getters/setters
    */
   inline std::string get_name() const { return name; };
+  inline void set_name(std::string& name) { this->name = name; }
   inline VariantGroupType get_group_type() const { return group_type; };
+  inline void set_group_type(VariantGroupType group_type) { this->group_type = group_type; }
 
 protected:
   std::string name;

@@ -13,7 +13,7 @@
 #include "RareMetal.h"
 #include "../src/Phenotypes.h"
 #include "../src/Mask.h"
-#include "../src/RareMetalRunner.h"
+#include "../src/ScoreCovarianceRunner.h"
 #include <armadillo>
 
 using namespace std;
@@ -1155,7 +1155,7 @@ TEST_F(LDServerTest, score_server) {
     vector<Mask> masks;
     masks.emplace_back(mask);
 
-    RareMetalRunner runner;
+    ScoreCovarianceRunner runner;
     runner(
       masks,
       "ALL",
@@ -1164,7 +1164,11 @@ TEST_F(LDServerTest, score_server) {
     );
 
     string json = runner.getPrettyJSON();
-    cout << json << endl;
+    //cout << json << endl;
+
+    ofstream out("json.txt");
+    out << json;
+    out.close();
 
     int x = 0;
 }

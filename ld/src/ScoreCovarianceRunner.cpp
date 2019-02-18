@@ -1,11 +1,42 @@
-#include "RareMetalRunner.h"
+#include "ScoreCovarianceRunner.h"
 using namespace std;
 using namespace rapidjson;
 
 const uint32_t MAX_UINT32 = numeric_limits<uint32_t>::max();
 
+ScoreCovarianceRunner::ScoreCovarianceRunner(const ScoreCovarianceConfig& config) {
+  this->config = shared_ptr(config);
+}
+
 // TODO: fix copies below, make shared_ptr
-void RareMetalRunner::operator()(const vector<Mask>& masks, const string& sample_subset, const ScoreServer& score_server, const LDServer& ld_server) {
+void ScoreCovarianceRunner::run(const ScoreCovarianceConfig& config) {
+  LDServer ld_server(config.segment_size);
+  ScoreServer score_server(config.segment_size);
+
+  for (auto&& genotype_file : config.genotype_files) {
+    ld_server.set_file(genotype_file);
+    score_server.set_genotypes_file(genotype_file, config.genotype_dataset_id);
+  }
+
+  if (config.sample_subset != "ALL") {
+    ld_server.set_samples(config.samples);
+    score_server.set_samples(config.samples);
+  }
+
+  if (config.phenotype_file.find(".ped") != string::npos) {
+    score_server.load_phenotypes_ped(config.phenotype_file, config.phenotype_dataset_id);
+  }
+  else if (config.phenotype_file.find(".tab") != string::npos) {
+    score_server.load_phenotypes_tab(config.phenotype_file, config.column_types, config.nrows, config.phenotype_dataset_id);
+  }
+
+  score_server.set_phenotype(config.phenotype);
+
+  if (!config.redis_hostname.empty()) {
+    ld_server.enable_cache(config.genotype_dataset_id, config.redis_hostname, config.redis_port);
+    score_server.enable_cache(config.redis_hostname, config.redis_port);
+  }
+
   document = make_shared<Document>();
   document->SetObject();
   Document::AllocatorType& alloc = document->GetAllocator();
@@ -17,7 +48,7 @@ void RareMetalRunner::operator()(const vector<Mask>& masks, const string& sample
   set<string> seen_variants;
   LDQueryResult ld_res(MAX_UINT32);
   ScoreStatQueryResult score_res(MAX_UINT32);
-  for (auto&& mask : masks) {
+  for (auto&& mask : config.masks) {
     for (auto&& group_item : mask) {
       // Clear result objects
       ld_res.erase();
@@ -33,7 +64,7 @@ void RareMetalRunner::operator()(const vector<Mask>& masks, const string& sample
         group.stop,
         correlation::COV,
         ld_res,
-        sample_subset,
+        config.sample_subset,
         segments
       );
 
@@ -42,7 +73,7 @@ void RareMetalRunner::operator()(const vector<Mask>& masks, const string& sample
         group.start,
         group.stop,
         score_res,
-        sample_subset,
+        config.sample_subset,
         segments
       );
 
@@ -110,7 +141,7 @@ void RareMetalRunner::operator()(const vector<Mask>& masks, const string& sample
   document->AddMember("data", data, alloc);
 }
 
-string RareMetalRunner::getJSON() const {
+string ScoreCovarianceRunner::getJSON() const {
   StringBuffer strbuf;
   Writer<StringBuffer> writer(strbuf);
   if (!document->Accept(writer)) {
@@ -120,7 +151,7 @@ string RareMetalRunner::getJSON() const {
   return strbuf.GetString();
 }
 
-string RareMetalRunner::getPrettyJSON() const {
+string ScoreCovarianceRunner::getPrettyJSON() const {
   StringBuffer strbuf;
   PrettyWriter<StringBuffer> writer(strbuf);
   if (!document->Accept(writer)) {

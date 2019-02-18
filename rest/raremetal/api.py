@@ -6,9 +6,8 @@ from webargs import fields, ValidationError
 from functools import partial
 import model
 import os
-from ld.pywrapper import LDServer, LDQueryResult, StringVec, correlation, ScoreServer, ScoreStatQueryResult, \
-                         ColumnType, ColumnTypeMap, make_shared_segment_vector
-from pysam import TabixFile
+from ld.pywrapper import StringVec, ColumnType, ColumnTypeMap, Mask, MaskVec, VariantGroupType \
+                         ScoreCovarianceRunner, ScoreCovarianceConfig
 
 API_VERSION = "1.0"
 MAX_UINT32 = 4294967295
@@ -47,10 +46,6 @@ def get_correlations():
   return make_response(jsonify(response), 200)
 
 
-def correlation_type(correlation_name):
-  return { 'r': correlation.ld_r, 'rsquare': correlation.ld_rsquare, 'cov': correlation.cov }[correlation_name]
-
-
 @bp.route("/aggregation/datasets", methods=["GET"])
 def get_metadata():
   """
@@ -60,9 +55,11 @@ def get_metadata():
 
   pass
 
+
 def return_error(error_message, http_code):
   response = {"data": None, "error": error_message}
   return make_response(jsonify(response), http_code)
+
 
 @bp.route('/aggregation/covariance', methods = ['POST'])
 def get_covariance():
@@ -80,17 +77,18 @@ def get_covariance():
     'samples': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'masks': fields.DelimitedList(fields.Str(), required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': "Must provide at least 1 mask ID"}),
     'genome_build': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
-    'limit': fields.Int(required=False, validate=lambda x: x > 0, missing=current_app.config['API_MAX_PAGE_SIZE'], error_messages={'validator_failed': 'Value must be greater than 0.'}),
-    'last': fields.Str(required=False, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'})
   }
 
   args = parser.parse(
     args_defined,
     validate = partial(
       validate_query,
-      all_fields = ['chrom', 'start', 'stop', 'limit', 'last']
+      all_fields = ['chrom', 'start', 'stop']
     )
   )
+
+  config = ScoreCovarianceConfig()
+  config.segment_size = current_app.config["SEGMENT_SIZE_BP"]
 
   chrom = str(args["chrom"])
   start = args["start"]
@@ -101,11 +99,11 @@ def get_covariance():
   sample_subset = str(args["samples"])
   phenotype = str(args["phenotype"])
   masks = [str(x) for x in args["masks"]]
-  limit = args.get("limit")
-  last = args.get("last")
 
-  if limit > current_app.config['API_MAX_PAGE_SIZE']:
-    limit = current_app.config['API_MAX_PAGE_SIZE']
+  config.chrom = chrom
+  config.start = start
+  config.stop = stop
+  config.sample_subset = str(args["samples"])
 
   if not model.has_genome_build(build):
     response = { 'data': None, 'error': 'Genome build \'{}\' was not found.'.format(build) }
@@ -123,93 +121,56 @@ def get_covariance():
     response = { 'data': None, 'error': 'Sample subset \'{}\' was not found in genotype dataset {}.'.format(sample_subset, genotype_dataset_id) }
     return make_response(jsonify(response), 404)
 
-  ldserver = LDServer(current_app.config['SEGMENT_SIZE_BP'])
-  score_server = ScoreServer(current_app.config["SEGMENT_SIZE_BP"])
-  for f in model.get_files(genotype_dataset_id):
-    ldserver.set_file(f)
-    score_server.set_genotypes_file(f, genotype_dataset_id)
-
-  if 'last' in args:
-    if "," not in last:
-      raise Exception("This shouldn't happen")
-
-    last_ld, last_score = last.split(",")
-    result = LDQueryResult(limit, last_ld)
-    score_result = ScoreStatQueryResult(limit, last_score)
-  else:
-    result = LDQueryResult(limit)
-    score_result = ScoreStatQueryResult(limit)
+  genotype_files = StringVec()
+  genotype_files.extend(model.get_files(genotype_dataset_id))
+  config.genotype_files = genotype_files
+  config.genotype_dataset_id = genotype_dataset_id
 
   if sample_subset != 'ALL':
     s = StringVec()
     s.extend(model.get_samples(genotype_dataset_id, sample_subset))
-    ldserver.set_samples(str(sample_subset), s)
-    score_server.set_samples(str(sample_subset), s)
+    config.samples = s
 
-  # Load phenotypes.
-  # This should be done after genotypes/samples have been loaded, because the phenotype object will need to match
-  # those samples.
   phenotype_file = model.get_phenotype_file(phenotype_dataset_id)
-  if phenotype_file.endswith(".ped"):
-    # PED files specify everything we need in the DAT file, so we don't need column types / nrows like we do below
-    # for tab files.
-    score_server.load_phenotypes_ped(phenotype_file, phenotype_dataset_id)
-  elif phenotype_file.endswith(".tab"):
+  if phenotype_file.endswith(".tab") or phenotype_file.endswith(".tab.gz"):
     # Get the other information necessary for parsing the tab file.
-    column_types = model.get_column_types(phenotype_dataset_id)
-    nrows = model.get_phenotype_nrows(phenotype_dataset_id)
-    score_server.load_phenotypes_tab(phenotype_file, column_types, nrows, phenotype_dataset_id)
+    config.column_types = model.get_column_types(phenotype_dataset_id)
+    config.nrows = model.get_phenotype_nrows(phenotype_dataset_id)
+  elif phenotype_file.endswith(".ped") or phenotype_file.endswith(".ped.gz"):
+    pass
   else:
     return_error("File format for phenotype file '{}' not supported".format(phenotype_file), 500)
 
-  # Set the phenotype to calculate score stats / p-values for.
-  score_server.set_phenotype(phenotype)
+  config.phenotype_dataset_id = phenotype_dataset_id
+  config.phenotype_file = phenotype_file
+  config.phenotype = phenotype
 
-  # if current_app.config['CACHE_ENABLED']:
-  #   ldserver.enable_cache(genotype_dataset_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
-  #   score_server.enable_cache(current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
+  if current_app.config["CACHE_ENABLED"]:
+    config.redis_hostname = current_app.config["CACHE_REDIS_HOSTNAME"]
+    config.redis_port = current_app.config["CACHE_REDIS_PORT"]
 
   # Determine regions in which to compute LD/scores.
   # This is determined by the mask file, and the overall window requested.
+  # TODO: fix this to be MaskVec() or something
+  # TODO: check mask is valid for genome build
+  # TODO: check mask is valid for genotype dataset ID
+  # TODO: pass through identifier type
+  mask_vec = MaskVec()
   for mask_id in masks:
-    # id = db.Column(db.Integer, primary_key = True)
-    # name = db.Column(db.String, unique = True, nullable = False)
-    # filepath = db.Column(db.String, unique = True, nullable = False)
-    # description = db.Column(db.String, unique = False, nullable = False)
-    # genome_build = db.Column(db.String, unique = False, nullable = False)
-    # group_type = db.Column(db.String, unique = False, nullable = False)
-    # identifier_type = db.Column(db.String, unique = False, nullable = False)
-    # genotype_dataset_id = db.Column(db.Integer, db.ForeignKey('genotype_datasets.id'))
-
     mask = model.get_mask(mask_id)
 
     if not os.path.isfile(mask.filepath):
       return_error("Could not find mask file on server for ID {}".format(mask_id),500)
 
-    tb = TabixFile(mask.filepath)
-    window = "{}:{}-{}".format(chrom, start, stop)
-    for row in tb.fetch(window):
-      row = row.split("\t")
-      row_group, row_chrom, row_start, row_end = row[0:4]
-      row_variants = row[4:]
+    tb = Mask(mask.filepath, mask.name, chrom, start, stop)
+    tb.set_group_type(mask.group_type)
+    mask_vec.append(tb)
 
-      # Tell the score server and LD server to compute results.
-      ld_result = LDQueryResult(MAX_UINT32)
-      score_result = ScoreStatQueryResult(MAX_UINT32)
-      shared_segments = make_shared_segment_vector()
-      ldserver.compute_region_ld(chrom, row_start, row_end, correlation.cov, ld_result, sample_subset, shared_segments)
-      score_server.compute_scores(chrom, row_start, row_end, score_result, sample_subset, shared_segments)
+  runner = ScoreCovarianceRunner(config)
+  runner.run()
+  json = runner.getJSON()
 
-      # We need to sort the results to make sure they come back in order, and matched up.
-      ld_result.sort_by_variant()
-      score_result.sort_by_variant()
+  resp = jsonify(json)
+  resp.status_code = 200
 
-  if current_app.config['PROXY_PASS']:
-    base_url = '/'.join(x.strip('/') for x in [current_app.config['PROXY_PASS'], request.path])
-  else:
-    base_url = request.base_url
-
-  base_url += '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))
-  r = make_response(result.get_json(str(base_url)), 200)
-  r.mimetype = 'application/json'
-  return r
+  return resp
