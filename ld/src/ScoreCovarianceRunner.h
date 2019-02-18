@@ -35,12 +35,14 @@ public:
   uint16_t redis_port;
 };
 
+shared_ptr<ScoreCovarianceConfig> make_score_covariance_config();
+
 class ScoreCovarianceRunner {
 protected:
   std::shared_ptr<rapidjson::Document> document;
   std::shared_ptr<ScoreCovarianceConfig> config;
 public:
-  ScoreCovarianceRunner(const ScoreCovarianceConfig& config);
+  ScoreCovarianceRunner(std::shared_ptr<ScoreCovarianceConfig> config);
   void run();
   std::string getJSON() const;
   std::string getPrettyJSON() const;

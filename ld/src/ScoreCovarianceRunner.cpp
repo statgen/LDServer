@@ -4,37 +4,39 @@ using namespace rapidjson;
 
 const uint32_t MAX_UINT32 = numeric_limits<uint32_t>::max();
 
-ScoreCovarianceRunner::ScoreCovarianceRunner(const ScoreCovarianceConfig& config) {
-  this->config = shared_ptr(config);
+shared_ptr<ScoreCovarianceConfig> make_score_covariance_config() {
+  return make_shared<ScoreCovarianceConfig>();
 }
 
+ScoreCovarianceRunner::ScoreCovarianceRunner(std::shared_ptr<ScoreCovarianceConfig> config) : config(config) {}
+
 // TODO: fix copies below, make shared_ptr
-void ScoreCovarianceRunner::run(const ScoreCovarianceConfig& config) {
-  LDServer ld_server(config.segment_size);
-  ScoreServer score_server(config.segment_size);
+void ScoreCovarianceRunner::run() {
+  LDServer ld_server(config->segment_size);
+  ScoreServer score_server(config->segment_size);
 
-  for (auto&& genotype_file : config.genotype_files) {
+  for (auto&& genotype_file : config->genotype_files) {
     ld_server.set_file(genotype_file);
-    score_server.set_genotypes_file(genotype_file, config.genotype_dataset_id);
+    score_server.set_genotypes_file(genotype_file, config->genotype_dataset_id);
   }
 
-  if (config.sample_subset != "ALL") {
-    ld_server.set_samples(config.samples);
-    score_server.set_samples(config.samples);
+  if (config->sample_subset != "ALL") {
+    ld_server.set_samples(config->sample_subset, config->samples);
+    score_server.set_samples(config->sample_subset, config->samples);
   }
 
-  if (config.phenotype_file.find(".ped") != string::npos) {
-    score_server.load_phenotypes_ped(config.phenotype_file, config.phenotype_dataset_id);
+  if (config->phenotype_file.find(".ped") != string::npos) {
+    score_server.load_phenotypes_ped(config->phenotype_file, config->phenotype_dataset_id);
   }
-  else if (config.phenotype_file.find(".tab") != string::npos) {
-    score_server.load_phenotypes_tab(config.phenotype_file, config.column_types, config.nrows, config.phenotype_dataset_id);
+  else if (config->phenotype_file.find(".tab") != string::npos) {
+    score_server.load_phenotypes_tab(config->phenotype_file, config->column_types, config->nrows, config->phenotype_dataset_id);
   }
 
-  score_server.set_phenotype(config.phenotype);
+  score_server.set_phenotype(config->phenotype);
 
-  if (!config.redis_hostname.empty()) {
-    ld_server.enable_cache(config.genotype_dataset_id, config.redis_hostname, config.redis_port);
-    score_server.enable_cache(config.redis_hostname, config.redis_port);
+  if (!config->redis_hostname.empty()) {
+    ld_server.enable_cache(config->genotype_dataset_id, config->redis_hostname, config->redis_port);
+    score_server.enable_cache(config->redis_hostname, config->redis_port);
   }
 
   document = make_shared<Document>();
@@ -48,7 +50,7 @@ void ScoreCovarianceRunner::run(const ScoreCovarianceConfig& config) {
   set<string> seen_variants;
   LDQueryResult ld_res(MAX_UINT32);
   ScoreStatQueryResult score_res(MAX_UINT32);
-  for (auto&& mask : config.masks) {
+  for (auto&& mask : config->masks) {
     for (auto&& group_item : mask) {
       // Clear result objects
       ld_res.erase();
@@ -64,7 +66,7 @@ void ScoreCovarianceRunner::run(const ScoreCovarianceConfig& config) {
         group.stop,
         correlation::COV,
         ld_res,
-        config.sample_subset,
+        config->sample_subset,
         segments
       );
 
@@ -73,7 +75,7 @@ void ScoreCovarianceRunner::run(const ScoreCovarianceConfig& config) {
         group.start,
         group.stop,
         score_res,
-        config.sample_subset,
+        config->sample_subset,
         segments
       );
 
@@ -100,7 +102,7 @@ void ScoreCovarianceRunner::run(const ScoreCovarianceConfig& config) {
       }
 
       Value this_group(kObjectType);
-      this_group.AddMember("mask", Value(mask.get_name().c_str(), alloc), alloc);
+      this_group.AddMember("mask", Value(mask.get_id().c_str(), alloc), alloc);
 
       switch (mask.get_group_type()) {
         case VariantGroupType::GENE:

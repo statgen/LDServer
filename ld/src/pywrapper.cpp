@@ -9,6 +9,7 @@
 #include "ScoreServer.h"
 #include "Phenotypes.h"
 #include "Mask.h"
+#include "ScoreCovarianceRunner.h"
 
 BOOST_PYTHON_MODULE(pywrapper) {
 
@@ -28,6 +29,10 @@ BOOST_PYTHON_MODULE(pywrapper) {
     boost::python::enum_<VariantGroupType>("VariantGroupType")
             .value("GENE", GENE)
             .value("REGION", REGION)
+            ;
+
+    boost::python::enum_<GroupIdentifierType>("GroupIdentifierType")
+            .value("ENSEMBL", ENSEMBL)
             ;
 
     boost::python::class_<VariantsPair>("VariantsPair", boost::python::init<const char*, const char*, unsigned long int, const char*, const char*, unsigned long int , double>())
@@ -105,13 +110,16 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("compute_scores", &ScoreServer::compute_scores)
             ;
 
-    boost::python::class_<Mask, shared_ptr<Mask>, boost::noncopyable>("Mask", boost::python::init<const std::string&, const std::string&, VariantGroupType>())
-            .def(boost::python::init<const std::string&, const std::string&, VariantGroupType, const std::string&, uint64_t&, uint64_t&>())
+    boost::python::class_<Mask, shared_ptr<Mask>, boost::noncopyable>("Mask", boost::python::init<const std::string&, const std::string&, VariantGroupType, GroupIdentifierType>())
+            .def(boost::python::init<const std::string&, const std::string&, VariantGroupType, GroupIdentifierType, const std::string&, uint64_t&, uint64_t&>())
             .def("get_variant_set", &Mask::get_variant_set)
             .def("get_group_names", &Mask::get_group_names)
             .def("get_group", &Mask::get_group)
-            .def("set_name", &Mask::set_name)
+            .def("get_id", &Mask::get_id)
+            .def("get_group_type", &Mask::get_group_type)
             .def("set_group_type", &Mask::set_group_type)
+            .def("get_identifier_type", &Mask::get_identifier_type)
+            .def("set_identifier_type", &Mask::set_identifier_type)
             ;
 
     boost::python::class_<std::vector<Mask> >("MaskVec")
@@ -121,4 +129,13 @@ BOOST_PYTHON_MODULE(pywrapper) {
     boost::python::class_<shared_ptr<vector<shared_ptr<Segment>>>>("SharedSegmentVector");
     boost::python::def("make_shared_segment_vector", &make_shared_segment_vector);
     boost::python::class_<std::set<std::string>, shared_ptr<std::set<std::string>>>("StringSet");
+
+    boost::python::class_<ScoreCovarianceConfig, shared_ptr<ScoreCovarianceConfig>, boost::noncopyable>("ScoreCovarianceConfig");
+    boost::python::class_<ScoreCovarianceRunner, shared_ptr<ScoreCovarianceRunner>, boost::noncopyable>("ScoreCovarianceRunner", boost::python::init<std::shared_ptr<ScoreCovarianceConfig>>())
+            .def("run", &ScoreCovarianceRunner::run)
+            .def("getJSON", &ScoreCovarianceRunner::getJSON)
+            .def("getPrettyJSON", &ScoreCovarianceRunner::getPrettyJSON)
+            ;
+
+    boost::python::def("make_score_covariance_config", &make_score_covariance_config);
 }

@@ -55,15 +55,17 @@ void Mask::load_file(const string &filepath, const string &chrom, uint64_t start
   }
 }
 
-Mask::Mask(const string& filepath, const std::string& name, VariantGroupType group_type) {
-  this->name = name;
+Mask::Mask(const string& filepath, const std::string& name, VariantGroupType group_type, GroupIdentifierType ident_type) {
+  this->id = name;
   this->group_type = group_type;
+  this->identifier_type = ident_type;
   load_file(filepath);
 }
 
-Mask::Mask(const string &filepath, const std::string& name, VariantGroupType group_type, const string &chrom, uint64_t start, uint64_t stop) {
-  this->name = name;
+Mask::Mask(const string &filepath, const std::string& name, VariantGroupType group_type, GroupIdentifierType ident_type, const string &chrom, uint64_t start, uint64_t stop) {
+  this->id = name;
   this->group_type = group_type;
+  this->identifier_type = ident_type;
   load_file(filepath, chrom, start, stop);
 }
 
@@ -123,4 +125,8 @@ Mask::group_iterator Mask::begin() const {
 
 Mask::group_iterator Mask::end() const {
   return groups.end();
+}
+
+bool Mask::operator==(const Mask& other) const {
+  return id == other.id;
 }

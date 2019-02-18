@@ -151,7 +151,6 @@ def get_covariance():
 
   # Determine regions in which to compute LD/scores.
   # This is determined by the mask file, and the overall window requested.
-  # TODO: fix this to be MaskVec() or something
   # TODO: check mask is valid for genome build
   # TODO: check mask is valid for genotype dataset ID
   # TODO: pass through identifier type

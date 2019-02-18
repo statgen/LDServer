@@ -1149,19 +1149,30 @@ TEST_F(LDServerTest, score_server) {
     score_server.set_phenotype("rand_qt");
 
     // try out mask
-    Mask mask("mask.epacts.chr22.gencode-exons-AF01.tab.gz", "PTV + AF < 0.01", VariantGroupType::GENE, "22", 50276998ul, 50357719ul);
+    Mask mask("mask.epacts.chr22.gencode-exons-AF01.tab.gz", "PTV + AF < 0.01", VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, "22", 50276998ul, 50357719ul);
 
     // try out runner
     vector<Mask> masks;
     masks.emplace_back(mask);
 
-    ScoreCovarianceRunner runner;
-    runner(
-      masks,
-      "ALL",
-      score_server,
-      ld_server
-    );
+    auto config = make_score_covariance_config();
+
+    config->segment_size = 1000;
+    config->chrom = "22";
+    config->start = 50276998ul;
+    config->stop = 50357719ul;
+    config->masks = masks;
+    config->sample_subset = "ALL";
+    config->genotype_files = {"chr22.test.vcf.gz"};
+    config->genotype_dataset_id = 1;
+    config->phenotype_file = "chr22.test.tab";
+    config->column_types = ctmap;
+    config->phenotype_dataset_id = 1;
+    config->phenotype = "rand_qt";
+    config->nrows = 2504;
+
+    ScoreCovarianceRunner runner(config);
+    runner.run();
 
     string json = runner.getPrettyJSON();
     //cout << json << endl;
