@@ -15,13 +15,35 @@
 #include "Segment.h"
 #include "Types.h"
 
-class RareMetalRunner {
+class ScoreCovarianceConfig {
+public:
+  std::string chrom;
+  uint64_t start;
+  uint64_t stop;
+  std::vector<std::string> genotype_files;
+  uint32_t genotype_dataset_id;
+  std::string phenotype_file;
+  uint32_t phenotype_dataset_id;
+  std::string phenotype;
+  ColumnTypeMap column_types;
+  uint64_t nrows;
+  std::vector<Mask> masks;
+  std::string sample_subset;
+  std::vector<std::string> samples;
+  uint32_t segment_size;
+  std::string redis_hostname;
+  uint16_t redis_port;
+};
+
+class ScoreCovarianceRunner {
 protected:
   std::shared_ptr<rapidjson::Document> document;
+  std::shared_ptr<ScoreCovarianceConfig> config;
 public:
-  void operator()(const std::vector<Mask>& masks, const std::string& sample_subset, const ScoreServer& score_server, const LDServer& ld_server);
-  string getJSON() const;
-  string getPrettyJSON() const;
+  ScoreCovarianceRunner(const ScoreCovarianceConfig& config);
+  void run();
+  std::string getJSON() const;
+  std::string getPrettyJSON() const;
 };
 
 #endif //LDSERVER_RAREMETALRUNNER_H
