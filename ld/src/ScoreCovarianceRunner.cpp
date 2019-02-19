@@ -156,6 +156,7 @@ string ScoreCovarianceRunner::getJSON() const {
 string ScoreCovarianceRunner::getPrettyJSON() const {
   StringBuffer strbuf;
   PrettyWriter<StringBuffer> writer(strbuf);
+  writer.SetIndent(' ', 2);
   if (!document->Accept(writer)) {
     throw runtime_error("Error while saving to JSON");
   }
