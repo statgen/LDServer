@@ -6,7 +6,7 @@ from webargs import fields, ValidationError
 from functools import partial
 import model
 import os
-from ld.pywrapper import StringVec, ColumnType, ColumnTypeMap, Mask, MaskVec, VariantGroupType \
+from ld.pywrapper import StringVec, ColumnType, ColumnTypeMap, Mask, MaskVec, VariantGroupType, \
                          ScoreCovarianceRunner, ScoreCovarianceConfig
 
 API_VERSION = "1.0"

@@ -3,7 +3,7 @@ from sqlalchemy import Index
 from sqlalchemy.types import Enum
 from flask.cli import with_appcontext
 from collections import Counter, OrderedDict
-from ld.pywrapper import ColumnType, ColumnTypeMap
+from ld.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType
 import click
 import json
 import gzip
@@ -96,7 +96,7 @@ class Mask(db.Model):
   filepath = db.Column(db.String, unique = True, nullable = False)
   description = db.Column(db.String, unique = False, nullable = False)
   genome_build = db.Column(db.String, unique = False, nullable = False)
-  group_type = db.Column(db.String, unique = False, nullable = False)
+  group_type = db.Column(Enum(*tuple(VariantGroupType.values[i].name for i in range(len(VariantGroupType.values)))), nullable = False, name = "group_type")
   identifier_type = db.Column(db.String, unique = False, nullable = False)
   genotype_dataset_id = db.Column(db.Integer, db.ForeignKey('genotype_datasets.id'))
 
@@ -462,7 +462,7 @@ def add_phenotypes_command(name, description, filepath, genotype_datasets):
 @click.argument('description')
 @click.argument('filepath', type = click.Path(exists = True))
 @click.argument('genome_build')
-@click.argument('genotype_dataset')
+@click.argument('genotype_dataset', type = int)
 @click.argument('group_type')
 @click.argument('identifier_type')
 @with_appcontext
