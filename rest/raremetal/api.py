@@ -7,7 +7,7 @@ from functools import partial
 import model
 import os
 from ld.pywrapper import StringVec, ColumnType, ColumnTypeMap, Mask, MaskVec, VariantGroupType, \
-                         ScoreCovarianceRunner, ScoreCovarianceConfig
+                         ScoreCovarianceRunner, ScoreCovarianceConfig, GroupIdentifierType
 
 API_VERSION = "1.0"
 MAX_UINT32 = 4294967295
@@ -153,23 +153,26 @@ def get_covariance():
   # This is determined by the mask file, and the overall window requested.
   # TODO: check mask is valid for genome build
   # TODO: check mask is valid for genotype dataset ID
-  # TODO: pass through identifier type
   mask_vec = MaskVec()
-  for mask_id in masks:
-    mask = model.get_mask(mask_id)
+  for mask_name in masks:
+    mask = model.get_mask_by_name(mask_name, genotype_dataset_id)
 
-    if not os.path.isfile(mask.filepath):
-      return_error("Could not find mask file on server for ID {}".format(mask_id),500)
+    if not os.path.isfile(mask["filepath"]):
+      return_error(
+        "Could not find mask file on server for mask {} with genotype dataset ID {}".format(mask_name, genotype_dataset_id),
+        500
+      )
 
-    tb = Mask(mask.filepath, mask.name, chrom, start, stop)
-    tb.set_group_type(mask.group_type)
+    tb = Mask(str(mask["filepath"]), str(mask["name"]), mask["group_type"], mask["identifier_type"], chrom, start, stop)
     mask_vec.append(tb)
+
+  config.masks = mask_vec
 
   runner = ScoreCovarianceRunner(config)
   runner.run()
   json = runner.getJSON()
 
-  resp = jsonify(json)
-  resp.status_code = 200
+  resp = make_response(json, 200)
+  resp.mimetype = 'application/json'
 
   return resp
