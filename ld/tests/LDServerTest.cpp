@@ -1149,7 +1149,7 @@ TEST_F(LDServerTest, score_server) {
     score_server.set_phenotype("rand_qt");
 
     // try out mask
-    Mask mask("mask.epacts.chr22.gencode-exons-AF01.tab.gz", "PTV + AF < 0.01", VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, "22", 50276998ul, 50357719ul);
+    Mask mask("mask.epacts.chr22.gencode-exons-AF01.tab.gz", "AF < 0.01", VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, "22", 50276998ul, 50357719ul);
 
     // try out runner
     vector<Mask> masks;
@@ -1170,6 +1170,8 @@ TEST_F(LDServerTest, score_server) {
     config->phenotype_dataset_id = 1;
     config->phenotype = "rand_qt";
     config->nrows = 2504;
+
+    config->pprint();
 
     ScoreCovarianceRunner runner(config);
     runner.run();
