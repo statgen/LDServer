@@ -1,9 +1,9 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Index
+from sqlalchemy import Index, inspect
 from sqlalchemy.types import Enum
 from flask.cli import with_appcontext
 from collections import Counter, OrderedDict
-from ld.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType
+from ld.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType, GroupIdentifierType
 import click
 import json
 import gzip
@@ -169,8 +169,13 @@ def get_column_types(phenotype_dataset_id):
 def get_phenotype_nrows(phenotype_dataset_id):
   return db.session.query(PhenotypeDataset.nrows).filter_by(id = phenotype_dataset_id).scalar()
 
-def get_mask(mask_id):
-  return db.session.query(Mask).filter_by(id = mask_id).first()
+def get_mask_by_name(mask_name, genotype_dataset_id):
+  result = db.session.query(Mask).filter_by(name = mask_name, genotype_dataset_id = genotype_dataset_id).scalar()
+  as_dict = {c.key: getattr(result, c.key) for c in inspect(result).mapper.column_attrs}
+
+  as_dict["group_type"] = VariantGroupType.names.get(result.group_type)
+  as_dict["identifier_type"] = GroupIdentifierType.names.get(result.identifier_type)
+  return as_dict
 
 def load_correlations():
   db.create_all()
