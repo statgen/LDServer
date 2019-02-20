@@ -34,10 +34,10 @@ void ScoreCovarianceRunner::run() {
 
   score_server.set_phenotype(config->phenotype);
 
-  if (!config->redis_hostname.empty()) {
-    ld_server.enable_cache(config->genotype_dataset_id, config->redis_hostname, config->redis_port);
-    score_server.enable_cache(config->redis_hostname, config->redis_port);
-  }
+//  if (!config->redis_hostname.empty()) {
+//    ld_server.enable_cache(config->genotype_dataset_id, config->redis_hostname, config->redis_port);
+//    score_server.enable_cache(config->redis_hostname, config->redis_port);
+//  }
 
   document = make_shared<Document>();
   document->SetObject();
