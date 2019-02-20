@@ -111,7 +111,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
             ;
 
     boost::python::class_<Mask, shared_ptr<Mask>, boost::noncopyable>("Mask", boost::python::init<const std::string&, const std::string&, VariantGroupType, GroupIdentifierType>())
-            .def(boost::python::init<const std::string&, const std::string&, VariantGroupType, GroupIdentifierType, const std::string&, uint64_t&, uint64_t&>())
+            .def(boost::python::init<const std::string&, const std::string&, VariantGroupType, GroupIdentifierType, const std::string&, uint64_t, uint64_t>())
             .def("get_variant_set", &Mask::get_variant_set)
             .def("get_group_names", &Mask::get_group_names)
             .def("get_group", &Mask::get_group)
@@ -130,7 +130,26 @@ BOOST_PYTHON_MODULE(pywrapper) {
     boost::python::def("make_shared_segment_vector", &make_shared_segment_vector);
     boost::python::class_<std::set<std::string>, shared_ptr<std::set<std::string>>>("StringSet");
 
-    boost::python::class_<ScoreCovarianceConfig, shared_ptr<ScoreCovarianceConfig>, boost::noncopyable>("ScoreCovarianceConfig");
+    boost::python::class_<ScoreCovarianceConfig, shared_ptr<ScoreCovarianceConfig>, boost::noncopyable>("ScoreCovarianceConfig")
+            .def("pprint", &ScoreCovarianceConfig::pprint)
+            .def_readwrite("chrom", &ScoreCovarianceConfig::chrom)
+            .def_readwrite("start", &ScoreCovarianceConfig::start)
+            .def_readwrite("stop", &ScoreCovarianceConfig::stop)
+            .def_readwrite("genotype_files", &ScoreCovarianceConfig::genotype_files)
+            .def_readwrite("genotype_dataset_id", &ScoreCovarianceConfig::genotype_dataset_id)
+            .def_readwrite("phenotype_file", &ScoreCovarianceConfig::phenotype_file)
+            .def_readwrite("phenotype_dataset_id", &ScoreCovarianceConfig::phenotype_dataset_id)
+            .def_readwrite("phenotype", &ScoreCovarianceConfig::phenotype)
+            .def_readwrite("column_types", &ScoreCovarianceConfig::column_types)
+            .def_readwrite("nrows", &ScoreCovarianceConfig::nrows)
+            .def_readwrite("masks", &ScoreCovarianceConfig::masks)
+            .def_readwrite("sample_subset", &ScoreCovarianceConfig::sample_subset)
+            .def_readwrite("samples", &ScoreCovarianceConfig::samples)
+            .def_readwrite("segment_size", &ScoreCovarianceConfig::segment_size)
+            .def_readwrite("redis_hostname", &ScoreCovarianceConfig::redis_hostname)
+            .def_readwrite("redis_port", &ScoreCovarianceConfig::redis_port)
+            ;
+
     boost::python::class_<ScoreCovarianceRunner, shared_ptr<ScoreCovarianceRunner>, boost::noncopyable>("ScoreCovarianceRunner", boost::python::init<std::shared_ptr<ScoreCovarianceConfig>>())
             .def("run", &ScoreCovarianceRunner::run)
             .def("getJSON", &ScoreCovarianceRunner::getJSON)
