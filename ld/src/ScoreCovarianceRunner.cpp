@@ -43,10 +43,22 @@ shared_ptr<ScoreCovarianceConfig> make_score_covariance_config() {
   return make_shared<ScoreCovarianceConfig>();
 }
 
-ScoreCovarianceRunner::ScoreCovarianceRunner(std::shared_ptr<ScoreCovarianceConfig> config) : config(config) {}
+ScoreCovarianceRunner::ScoreCovarianceRunner(std::shared_ptr<ScoreCovarianceConfig> config) : config(config) {
+  // Perform some basic checking of the configuration object to make sure we can actually complete this run.
+  if (config->chrom.empty()) { throw std::invalid_argument("Must provide chromosome"); }
+  if (config->start <= 0) { throw std::invalid_argument("Invalid starting position " + to_string(config->start)); }
+  if (config->phenotype_file.empty()) { throw std::invalid_argument("Must provide phenotype file"); }
+  if (config->genotype_files.empty()) { throw std::invalid_argument("Must provide genotype file"); }
+  if (config->segment_size <= 0) { throw std::invalid_argument("Segment size must be non-zero"); }
+}
 
 // TODO: fix copies below, make shared_ptr
 void ScoreCovarianceRunner::run() {
+  #ifndef NDEBUG
+  cout << "Beginning run for configuration -- " << endl;
+  config->pprint();
+  #endif
+
   LDServer ld_server(config->segment_size);
   ScoreServer score_server(config->segment_size);
 
@@ -86,7 +98,14 @@ void ScoreCovarianceRunner::run() {
   LDQueryResult ld_res(MAX_UINT32);
   ScoreStatQueryResult score_res(MAX_UINT32);
   for (auto&& mask : config->masks) {
+    #ifndef NDEBUG
+    cout << "Working on: " << mask.get_id() << endl;
+    #endif
     for (auto&& group_item : mask) {
+      #ifndef NDEBUG
+      cout << ".. group: " << group_item.first << endl;
+      #endif
+
       // Clear result objects
       ld_res.erase();
       score_res.erase();
