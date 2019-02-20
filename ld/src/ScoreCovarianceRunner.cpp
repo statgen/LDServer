@@ -4,6 +4,41 @@ using namespace rapidjson;
 
 const uint32_t MAX_UINT32 = numeric_limits<uint32_t>::max();
 
+void ScoreCovarianceConfig::pprint() const {
+  cout << boost::format("Region: %s:%i-%i") % chrom % start % stop << endl;
+  cout << "Genotype dataset ID: " << genotype_dataset_id << endl;
+  cout << "Genotype files: " << endl;
+  if (genotype_files.empty()) {
+    cout << ".. ** NO GENOTYPE FILES FOUND **" << endl;
+  }
+  else {
+    for (auto &&f : genotype_files) {
+      cout << ".. " << f << endl;
+    }
+  }
+  cout << "Phenotype dataset ID: " << phenotype_dataset_id << endl;
+  cout << "Phenotype file: " << phenotype_file << endl;
+  cout << "Phenotype: " << phenotype << endl;
+  for (auto&& kv : column_types) {
+    cout << ".. " << "column " << kv.first << " of type " << kv.second << endl;
+  }
+  cout << "# rows: " << nrows << endl;
+  cout << "Sample subset key: " << sample_subset << endl;
+  cout << "Samples provided? " << !samples.empty() << endl;
+  cout << "Masks: " << endl;
+  if (masks.empty()) {
+    cout << ".. ** NO MASKS FOUND **" << endl;
+  }
+  else {
+    for (auto&& m : masks) {
+      cout << ".. " << m.get_id() << endl;
+    }
+  }
+  cout << "Segment size: " << segment_size << endl;
+  cout << "Redis hostname: " << redis_hostname << endl;
+  cout << "Redis port: " << redis_port << endl;
+}
+
 shared_ptr<ScoreCovarianceConfig> make_score_covariance_config() {
   return make_shared<ScoreCovarianceConfig>();
 }

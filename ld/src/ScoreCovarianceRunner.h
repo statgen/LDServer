@@ -1,6 +1,8 @@
 #ifndef LDSERVER_RAREMETALRUNNER_H
 #define LDSERVER_RAREMETALRUNNER_H
 
+#include <iostream>
+#include <boost/format.hpp>
 #include <memory>
 #include <string>
 #include <vector>
@@ -33,6 +35,8 @@ public:
   uint32_t segment_size;
   std::string redis_hostname;
   uint16_t redis_port;
+
+  void pprint() const;
 };
 
 shared_ptr<ScoreCovarianceConfig> make_score_covariance_config();
