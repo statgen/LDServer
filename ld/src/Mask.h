@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <iterator>
 #include <tabixpp.hpp>
+#include <boost/format.hpp>
 #include "Types.h"
 
 // TODO: move to Types.h

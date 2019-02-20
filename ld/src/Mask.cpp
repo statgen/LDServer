@@ -15,6 +15,9 @@ shared_ptr<set<string>> VariantGroup::get_variants() const {
 }
 
 void Mask::load_file(const string &filepath, const string &chrom, uint64_t start, uint64_t stop) {
+  if (start <= 0) { throw std::invalid_argument("Mask starting position was < 0"); }
+  if (stop <= 0) { throw std::invalid_argument("Mask stop position was < 0"); }
+
   Tabix tbfile(const_cast<string&>(filepath));
   string region = chrom + ":" + to_string(start) + "-" + to_string(stop);
 
@@ -25,6 +28,7 @@ void Mask::load_file(const string &filepath, const string &chrom, uint64_t start
     tbfile.setRegion(region);
   }
 
+  uint64_t groups_added = 0;
   while (tbfile.getNextLine(line)) {
     auto separator = regex("[ \t]");
     copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
@@ -50,8 +54,15 @@ void Mask::load_file(const string &filepath, const string &chrom, uint64_t start
 
     // Store group to map
     groups.emplace(make_pair(tokens[0], group));
+    groups_added++;
 
     tokens.clear();
+  }
+
+  if (groups_added == 0) {
+    throw std::range_error(
+      boost::str(boost::format("No groups loaded within genomic region %s:%i-%i for mask %s") % chrom % start % stop % id)
+    );
   }
 }
 
