@@ -24,4 +24,7 @@ set_target_properties(pywrapper PROPERTIES PREFIX "")
 target_include_directories(pywrapper PUBLIC ${PYTHON_INCLUDE_DIRS})
 target_link_libraries(pywrapper ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${TABIXPP_LIB} ${BOOST_PYTHON_LIB} ${PYTHON_LIB})
 
+add_executable(sandbox Sandbox.cpp ${SOURCE_FILES})
+target_link_libraries(sandbox ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${TABIXPP_LIB} ${BOOST_PYTHON_LIB} ${PYTHON_LIB})
+
 install(TARGETS pywrapper DESTINATION ${PROJECT_SOURCE_DIR}/../rest/ld)
