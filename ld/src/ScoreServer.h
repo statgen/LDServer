@@ -71,8 +71,7 @@ public:
      * @param pedpath
      * @param phenotype_dataset_id (see genotype_dataset_id above)
      */
-    void load_phenotypes_ped(const string &pedpath, const uint32_t &phenotype_dataset_id);
-    void load_phenotypes_tab(const string &path, const ColumnTypeMap &types, size_t nrows, const uint32_t &phenotype_dataset_id);
+    void load_phenotypes_file(const string &path, const ColumnTypeMap &types, size_t nrows, const uint32_t &phenotype_dataset_id);
 
     /**
      * Set the phenotype that will be used for score/p-value calculations.

@@ -72,13 +72,7 @@ void ScoreCovarianceRunner::run() {
     score_server.set_samples(config->sample_subset, config->samples);
   }
 
-  if (config->phenotype_file.find(".ped") != string::npos) {
-    score_server.load_phenotypes_ped(config->phenotype_file, config->phenotype_dataset_id);
-  }
-  else if (config->phenotype_file.find(".tab") != string::npos) {
-    score_server.load_phenotypes_tab(config->phenotype_file, config->column_types, config->nrows, config->phenotype_dataset_id);
-  }
-
+  score_server.load_phenotypes_file(config->phenotype_file, config->column_types, config->nrows, config->phenotype_dataset_id);
   score_server.set_phenotype(config->phenotype);
 
 //  if (!config->redis_hostname.empty()) {

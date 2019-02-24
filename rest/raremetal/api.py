@@ -131,18 +131,12 @@ def get_covariance():
     s.extend(model.get_samples(genotype_dataset_id, sample_subset))
     config.samples = s
 
-  phenotype_file = model.get_phenotype_file(phenotype_dataset_id)
-  if phenotype_file.endswith(".tab") or phenotype_file.endswith(".tab.gz"):
-    # Get the other information necessary for parsing the tab file.
-    config.column_types = model.get_column_types(phenotype_dataset_id)
-    config.nrows = model.get_phenotype_nrows(phenotype_dataset_id)
-  elif phenotype_file.endswith(".ped") or phenotype_file.endswith(".ped.gz"):
-    pass
-  else:
-    return_error("File format for phenotype file '{}' not supported".format(phenotype_file), 500)
+  config.phenotype_file = model.get_phenotype_file(phenotype_dataset_id)
+  config.column_types = model.get_column_types(phenotype_dataset_id)
+  config.nrows = model.get_phenotype_nrows(phenotype_dataset_id)
+  config.columns = model.get_phenotype_columns(phenotype_dataset_id)
 
   config.phenotype_dataset_id = phenotype_dataset_id
-  config.phenotype_file = phenotype_file
   config.phenotype = phenotype
 
   if current_app.config["CACHE_ENABLED"]:
