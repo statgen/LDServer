@@ -64,8 +64,8 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def(boost::python::vector_indexing_suite<std::vector<std::string>>())
             ;
 
-    boost::python::class_<std::map<std::string, ColumnType>>("ColumnTypeMap")
-            .def(boost::python::map_indexing_suite<std::map<std::string, ColumnType>>())
+    boost::python::class_<ColumnTypeMap, std::shared_ptr<ColumnTypeMap>>("ColumnTypeMap")
+            .def("add", &ColumnTypeMap::add)
             ;
 
     boost::python::class_<LDQueryResult, boost::noncopyable>("LDQueryResult", boost::python::init<boost::uint32_t>())
@@ -100,8 +100,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
 
     boost::python::class_<ScoreServer, boost::noncopyable>("ScoreServer", boost::python::init<boost::uint32_t>())
             .def("set_genotypes_file", &ScoreServer::set_genotypes_file)
-            .def("load_phenotypes_tab", &ScoreServer::load_phenotypes_tab)
-            .def("load_phenotypes_ped", &ScoreServer::load_phenotypes_ped)
+            .def("load_phenotypes_file", &ScoreServer::load_phenotypes_file)
             .def("set_phenotype", &ScoreServer::set_phenotype)
             .def("set_samples", &ScoreServer::set_samples)
             .def("enable_cache", &ScoreServer::enable_cache)

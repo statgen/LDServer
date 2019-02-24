@@ -44,7 +44,7 @@ inline bool is_integer(const std::string &s) {
 //  return most_common;
 //}
 
-void Phenotypes::load_tab(const string &path, const ColumnTypeMap &types, size_t nrows) {
+void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_t nrows) {
   ifstream input_file(path);
   string line;
   auto separator = regex("[ \t]");
@@ -53,10 +53,16 @@ void Phenotypes::load_tab(const string &path, const ColumnTypeMap &types, size_t
     throw std::invalid_argument("Cannot access file: " + path);
   }
 
-  // Get header.
+  // Do we need to read a header?
+  bool is_ped = path.find(".ped") != string::npos;
+  bool is_tab = !is_ped;
+  if (is_tab) {
+    // We need to read through the header line.
+    getline(input_file, line);
+  }
+
   vector<string> header;
-  getline(input_file, line);
-  copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(header));
+  transform(types.begin(), types.end(), back_inserter(header), [](const auto& p) { return p.first; });
 
   // Create vectors as necessary.
   ColumnType ct;
@@ -87,15 +93,8 @@ void Phenotypes::load_tab(const string &path, const ColumnTypeMap &types, size_t
   }
 
   // Convenience to lookup column type by index.
-  vector<ColumnType> vec_types(types.size());
-  for (int i = 0; i < header.size(); i++) {
-    try {
-      vec_types[i] = types.at(header[i]);
-    }
-    catch (...) {
-      throw "Column " + header[i] + " did not exist in column type definitions";
-    }
-  }
+  vector<ColumnType> vec_types;
+  transform(types.begin(), types.end(), back_inserter(vec_types), [](const auto& p) { return p.second; });
 
   // Now read entire file, storing columns as we go.
   // We also now know the number of columns.
@@ -115,7 +114,7 @@ void Phenotypes::load_tab(const string &path, const ColumnTypeMap &types, size_t
           // For now store integers as doubles (as if they were floating point).
           // If we need space for some reason later, can make a separate storage for smaller ints.
         case ColumnType::FLOAT: {
-          if (tokens[j] == "NA") {
+          if ((tokens[j] == "NA") || (tokens[j] == ".") || (tokens[j] == "")) {
             (*columns_float[col])(i) = arma::datum::nan;
           }
           else {
@@ -129,7 +128,12 @@ void Phenotypes::load_tab(const string &path, const ColumnTypeMap &types, size_t
         }
         case ColumnType::CATEGORICAL: {
           // If it's a NA value, we can skip parsing.
-          if (tokens[j] == "NA") {
+          if ((tokens[j] == "NA") || (tokens[j] == ".") || (tokens[j] == "")) {
+            (*columns_float[col])(i) = arma::datum::nan;
+            continue;
+          }
+          else if (is_ped && ((tokens[j] == "0") || (tokens[j] == "-9"))) {
+            // Binary traits in PED format specify 0 or -9 as missing value.
             (*columns_float[col])(i) = arma::datum::nan;
             continue;
           }
@@ -146,9 +150,23 @@ void Phenotypes::load_tab(const string &path, const ColumnTypeMap &types, size_t
             // Find the next category level.
             double cat_level = 0;
 
-            // If the value is an integer, we'll just assume we should use their encoding.
             if (is_integer(tokens[j])) {
-              cat_level = stod(tokens[j]);
+              if (is_ped) {
+                auto tmp = stoull(tokens[j]);
+                if (tmp > 2) {
+                  throw std::range_error(
+                    "Categorical variables in PED files are expected to be coded 0=missing,1=unaffected,2=affected, found value: " +
+                    tokens[j]);
+                } else if (tmp == 1) {
+                  cat_level = 0;
+                } else if (tmp == 2) {
+                  cat_level = 1;
+                }
+              }
+              else {
+                // If the value is an integer, we'll just assume we should use their encoding.
+                cat_level = stod(tokens[j]);
+              }
             }
             else {
               if (!map_level[col].empty()) {
@@ -185,13 +203,10 @@ void Phenotypes::load_tab(const string &path, const ColumnTypeMap &types, size_t
   column_types = types;
 }
 
-void Phenotypes::load_ped(const string &ped_path) {
-  throw "Not yet implemented";
-}
-
 SharedVector<string> Phenotypes::as_text(const string &colname) {
   SharedVector<string> vec;
-  switch (column_types[colname]) {
+  auto type = column_types.get_type(colname);
+  switch (type) {
     case ColumnType::INTEGER:
     case ColumnType::FLOAT:
     case ColumnType::CATEGORICAL:
@@ -207,7 +222,8 @@ SharedVector<string> Phenotypes::as_text(const string &colname) {
 // shared_ptr<arma::vec>
 SharedArmaVec Phenotypes::as_vec(const string &colname) {
   SharedArmaVec vec;
-  switch (column_types[colname]) {
+  auto type = column_types.get_type(colname);
+  switch (type) {
     case ColumnType::INTEGER:
     case ColumnType::FLOAT:
     case ColumnType::CATEGORICAL:

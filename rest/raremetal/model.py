@@ -162,12 +162,15 @@ def get_phenotype_file(phenotype_dataset_id):
 def get_column_types(phenotype_dataset_id):
   mapping = ColumnTypeMap()
   for row in PhenotypeColumn.query.filter_by(phenotype_dataset_id = phenotype_dataset_id):
-    mapping[str(row.column_name)] = ColumnType.names.get(row.column_type)
+    mapping.add(str(row.column_name), ColumnType.names.get(row.column_type))
 
   return mapping
 
 def get_phenotype_nrows(phenotype_dataset_id):
   return db.session.query(PhenotypeDataset.nrows).filter_by(id = phenotype_dataset_id).scalar()
+
+def get_phenotype_columns(phenotype_dataset_id):
+  return [str(x) for x in db.session.query(PhenotypeColumn.column_name).filter_by(id = phenotype_dataset_id).order_by(PhenotypeColumn.id)]
 
 def get_mask_by_name(mask_name, genotype_dataset_id):
   result = db.session.query(Mask).filter_by(name = mask_name, genotype_dataset_id = genotype_dataset_id).scalar()

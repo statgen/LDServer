@@ -888,19 +888,18 @@ TEST_F(LDServerTest, DISABLED_read_spead) {
     cout << positions.size() << endl;
 }
 
-TEST_F(LDServerTest, read_tab) {
+TEST_F(LDServerTest, pheno_read_tab) {
     Phenotypes pheno;
-    ColumnTypeMap ctmap = {
-      {"fid", ColumnType::TEXT},
-      {"iid", ColumnType::TEXT},
-      {"patid", ColumnType::TEXT},
-      {"matid", ColumnType::TEXT},
-      {"sex", ColumnType::CATEGORICAL},
-      {"rand_binary", ColumnType::CATEGORICAL},
-      {"rand_qt", ColumnType::FLOAT},
-    };
+    ColumnTypeMap ctmap;
+    ctmap.add("fid", ColumnType::TEXT);
+    ctmap.add("iid", ColumnType::TEXT);
+    ctmap.add("patid", ColumnType::TEXT);
+    ctmap.add("matid", ColumnType::TEXT);
+    ctmap.add("sex", ColumnType::CATEGORICAL);
+    ctmap.add("rand_binary", ColumnType::CATEGORICAL);
+    ctmap.add("rand_qt", ColumnType::FLOAT);
 
-    pheno.load_tab("chr21.test.tab", ctmap, 2504);
+    pheno.load_file("chr21.test.tab", ctmap, 2504);
 
     auto &rand_qt = *pheno.as_vec("rand_qt");
     ASSERT_NEAR(rand_qt[0], 0.283211535632, 0.000001);
@@ -916,99 +915,49 @@ TEST_F(LDServerTest, read_tab) {
 
     auto phenos_loaded = *pheno.get_phenotypes();
     ASSERT_EQ(phenos_loaded[0], "fid");
+}
 
-//    vector<double> test_geno = {0,0,0,0,0,1,1,0,0,0,0,0,0,1,0,0,0,0,1,0,0,1,1,1,0,0,1,0,0,0,0,2,0,1,0,
-//                           1,0,0,0,1,1,1,0,1,0,0,1,1,1,0,1,0,1,0,0,0,0,1,0,0,1,0,0,2,1,2,1,0,0,0,
-//                           0,1,1,1,1,0,0,1,1,0,0,1,0,0,1,0,0,0,0,1,2,1,0,0,0,0,1,0,1,0,1,0,0,0,0,
-//                           1,0,1,0,1,1,1,0,1,0,1,0,0,1,0,0,2,0,0,1,0,1,0,0,1,0,1,0,1,1,0,1,1,0,1,
-//                           1,0,0,0,0,2,0,0,1,1,1,0,1,0,1,0,0,1,1,2,0,1,1,1,0,1,1,0,1,0,0,0,0,0,1,
-//                           0,0,1,0,0,0,0,0,1,1,0,0,2,1,0,1,1,0,1,1,0,0,0,0,0,1,1,1,0,1,0,2,1,1,1,
-//                           1,1,0,0,1,1,0,1,1,1,2,1,1,0,1,0,0,2,0,0,1,0,0,1,1,0,0,0,1,0,0,1,0,1,1,
-//                           2,0,2,0,0,1,0,0,0,1,1,1,1,0,1,1,1,2,1,0,0,0,1,0,0,0,1,1,0,0,0,0,0,1,0,
-//                           0,1,0,0,0,0,1,1,0,1,1,1,0,1,0,0,0,0,0,1,0,0,0,0,0,0,2,0,1,0,0,0,0,1,0,
-//                           0,1,1,1,0,2,1,1,0,1,0,0,0,0,0,0,1,0,1,2,0,2,1,0,0,0,0,0,0,1,1,1,0,1,0,
-//                           2,0,0,2,0,0,0,0,1,2,0,0,1,0,1,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,2,1,0,1,
-//                           0,0,0,1,1,0,0,0,0,1,0,1,0,0,1,0,2,0,1,0,0,0,0,1,1,1,1,0,0,0,1,1,1,0,0,
-//                           1,0,1,0,0,0,1,0,0,1,1,0,2,0,0,0,1,0,1,1,0,1,0,0,1,1,1,1,0,0,0,0,0,1,0,
-//                           0,0,1,1,0,1,0,0,0,0,0,1,0,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,0,2,0,0,1,2,1,
-//                           0,0,0,1,1,0,2,0,0,1,1,1,1,0,1,0,1,0,0,0,0,0,1,0,1,0,1,0,0,1,0,1,1,0,0,
-//                           1,1,0,0,1,0,0,0,1,0,0,0,0,0,0,2,2,0,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,1,1,
-//                           1,0,0,0,0,0,0,0,1,1,1,0,1,1,0,0,1,1,0,1,1,0,0,0,1,0,0,1,0,1,0,0,0,0,2,
-//                           0,0,0,1,1,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,2,1,1,1,0,0,0,0,0,0,0,
-//                           0,1,1,1,2,0,0,1,1,2,0,0,0,1,0,1,1,0,0,0,0,1,0,1,0,1,0,0,1,1,0,1,0,1,2,
-//                           1,0,2,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,1,1,2,0,1,0,0,1,1,1,0,0,1,1,1,1,
-//                           2,1,0,0,0,1,1,0,0,0,2,1,1,0,0,0,1,0,0,1,1,1,1,0,1,0,0,1,1,1,0,1,0,0,0,
-//                           0,0,1,1,1,0,1,1,0,1,0,0,1,1,1,1,2,1,0,0,1,0,2,1,0,1,2,1,0,0,2,0,0,1,1,
-//                           1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,1,2,1,1,1,2,0,0,0,0,0,0,0,0,2,1,0,1,1,
-//                           0,0,1,0,1,0,2,0,0,0,1,0,1,0,0,1,1,0,1,1,0,0,1,2,0,0,0,0,0,0,0,1,0,0,1,
-//                           0,1,1,1,0,0,1,0,0,0,2,0,0,0,0,0,0,0,0,0,0,2,1,1,0,0,0,1,2,0,0,0,1,1,0,
-//                           1,0,0,0,0,1,1,0,0,0,1,1,1,0,0,1,0,0,0,0,1,0,0,1,1,0,0,0,0,1,0,1,0,0,0,
-//                           1,0,0,0,0,0,0,1,0,0,0,0,2,1,1,1,1,1,1,1,0,0,2,0,1,0,1,1,1,0,0,0,1,1,0,
-//                           1,0,0,0,1,1,1,0,1,1,1,1,0,0,0,1,0,1,0,0,0,2,0,1,0,0,0,1,1,0,0,0,1,1,2,
-//                           2,2,0,0,0,2,1,1,0,0,0,1,1,0,1,1,0,1,1,1,1,0,2,2,1,1,0,1,1,2,1,1,0,1,0,
-//                           1,0,1,0,1,0,1,0,0,1,1,0,0,1,0,0,0,1,2,0,1,0,1,0,1,1,1,0,1,1,0,0,0,0,0,
-//                           1,1,0,0,1,0,0,1,1,0,0,1,1,1,1,0,0,0,1,0,1,1,0,0,0,0,0,0,0,2,0,1,0,0,1,
-//                           0,1,0,0,0,0,1,1,0,1,0,1,2,0,0,0,0,0,2,0,0,0,1,2,0,0,0,1,1,0,1,1,0,1,1,
-//                           0,0,1,0,1,1,0,1,1,1,0,0,0,0,0,0,1,0,1,1,0,0,0,1,0,0,1,0,0,1,0,0,1,1,2,
-//                           1,1,0,1,1,0,1,1,1,1,0,0,1,0,1,1,1,0,0,0,0,1,0,0,1,1,1,1,1,0,1,0,0,1,0,
-//                           0,1,1,0,0,1,0,2,0,0,0,1,0,0,0,0,2,1,1,1,0,0,0,2,0,1,0,0,2,0,0,1,0,0,2,
-//                           0,1,1,1,0,1,0,0,0,0,0,2,1,0,1,0,1,1,0,0,0,0,2,1,2,1,1,0,1,1,0,2,0,0,2,
-//                           0,0,0,0,0,1,0,0,0,0,2,0,0,0,0,1,0,0,0,1,0,0,1,1,1,0,1,2,0,2,1,1,0,1,2,
-//                           0,0,0,1,0,0,1,1,0,1,0,0,0,1,0,1,1,1,0,1,1,0,1,1,0,0,0,1,1,0,0,1,0,2,1,
-//                           1,1,1,0,1,1,0,0,1,1,0,2,1,1,0,0,2,1,0,1,0,0,0,0,1,1,0,1,1,1,0,1,0,1,1,
-//                           0,0,1,1,1,1,1,2,0,2,1,0,0,0,2,1,0,1,1,1,1,0,1,0,0,0,1,0,0,0,1,0,0,0,1,
-//                           0,0,0,0,0,1,0,0,0,0,2,0,1,0,0,2,0,1,0,1,0,1,0,1,0,0,2,0,0,1,0,1,0,0,0,
-//                           1,0,2,0,0,0,1,0,1,0,2,0,0,0,2,1,0,0,0,2,1,1,0,0,1,1,0,0,2,1,0,0,0,1,1,
-//                           0,0,0,0,0,0,1,0,1,1,0,1,0,0,0,1,2,1,0,1,0,0,0,0,2,0,1,1,1,2,2,1,1,0,1,
-//                           0,1,1,1,1,1,1,2,1,0,1,1,0,0,0,1,0,1,1,2,2,0,1,1,0,0,0,0,1,0,1,1,0,0,0,
-//                           0,0,0,1,0,1,0,0,0,1,1,1,1,0,0,0,0,1,1,0,1,0,0,1,0,1,1,0,0,0,1,0,1,1,0,
-//                           0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,0,1,0,0,1,1,0,0,0,1,1,1,1,0,0,1,1,
-//                           0,0,0,1,2,0,0,1,0,1,2,0,0,2,1,0,0,0,0,0,0,1,1,1,1,0,1,0,1,0,0,0,2,1,0,
-//                           1,0,0,0,0,0,1,1,1,0,0,2,0,0,1,0,1,1,0,0,0,1,1,0,1,0,1,0,1,0,2,0,0,0,1,
-//                           1,0,1,0,0,1,0,1,0,1,1,0,0,1,0,1,1,1,0,1,0,1,1,1,1,1,0,1,0,0,0,2,0,1,0,
-//                           0,1,1,0,0,1,0,0,1,0,1,0,1,1,0,0,0,0,0,1,2,0,0,1,0,0,1,0,0,1,1,1,0,1,1,
-//                           1,0,1,1,0,1,1,1,1,0,0,0,0,0,0,1,0,1,1,1,0,0,0,1,0,1,1,0,0,1,0,0,1,1,1,
-//                           0,1,0,1,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,1,1,1,0,2,1,2,1,0,0,2,0,0,0,
-//                           0,0,0,1,0,0,1,0,1,0,0,0,0,0,0,1,1,1,1,1,0,1,1,0,0,0,0,0,0,0,0,2,0,2,1,
-//                           1,0,2,1,0,0,1,1,0,0,0,0,1,1,0,0,1,0,1,0,1,0,0,0,1,1,0,2,0,2,0,0,0,0,1,
-//                           0,0,1,0,0,2,1,1,0,1,1,1,0,2,0,1,0,0,0,1,0,0,1,0,1,0,1,0,1,0,1,1,1,2,0,
-//                           0,0,2,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,1,1,0,1,1,0,1,1,1,
-//                           0,0,0,1,0,1,1,1,2,2,1,1,1,0,1,1,0,1,1,0,0,0,1,1,0,0,0,2,0,0,0,0,1,0,1,
-//                           0,1,0,0,1,0,2,0,0,1,0,1,1,1,1,0,0,0,0,0,0,1,1,0,0,0,1,1,1,0,1,0,0,0,1,
-//                           0,0,0,0,1,0,1,0,0,1,1,1,2,0,0,0,2,1,1,2,0,1,0,2,0,0,1,0,1,1,1,0,0,1,2,
-//                           0,1,0,0,0,1,1,0,0,1,1,0,1,1,0,1,0,0,0,0,0,0,0,1,0,0,0,1,1,1,0,2,2,1,1,
-//                           0,0,0,0,1,1,0,0,0,2,1,0,0,0,0,0,1,0,0,0,0,0,1,1,1,0,2,1,0,0,1,1,1,0,1,
-//                           0,1,0,0,0,0,1,1,1,0,1,0,0,0,1,0,0,1,0,0,1,1,0,1,0,1,0,1,0,0,0,0,0,0,2,
-//                           2,0,0,1,0,0,0,0,1,0,0,1,0,0,1,0,1,0,1,1,0,0,1,0,1,0,0,0,0,0,0,1,0,2,1,
-//                           1,0,1,0,0,2,2,0,0,0,0,1,0,1,0,2,1,0,1,1,1,0,1,1,0,1,0,1,0,1,0,2,1,0,0,
-//                           1,1,0,1,1,0,0,0,0,0,0,1,0,1,1,1,0,1,1,0,0,1,0,1,0,0,0,2,0,1,0,0,0,1,0,
-//                           0,2,1,1,0,1,1,0,0,0,0,0,1,0,2,0,0,0,0,2,0,0,1,0,0,0,1,1,0,0,1,0,0,0,1,
-//                           0,0,1,1,0,1,1,0,1,0,2,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,0,1,0,0,1,0,1,0,0,
-//                           0,0,1,1,1,0,1,1,0,0,0,1,0,0,0,0,0,1,1,0,0,1,0,0,1,0,1,0,1,0,2,0,0,0,1,
-//                           0,0,0,0,1,0,1,0,1,0,0,0,0,1,1,0,0,1,0,2,0,1,2,0,1,1,1,1,1,0,0,1,1,1,0,
-//                           0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,0,0,1,0,0,0,1,0,1,0,1,2,1,0,1,1,2,0,0,0,
-//                           1,0,1,1,0,0,2,0,1,1,1,0,0,0,0,0,0,0,1,0,0,1,0,0,1,1,0,0,0,2,1,1,0,0,1,
-//                           0,0,0,0,0,0,1,1,0,0,0,1,0,0,2,1,1,0,0};
-//
-//    arma::vec geno_vec(test_geno);
-//    auto result = pheno.compute_score(geno_vec, "rand_qt");
-//
-//    cout << "Done reading tab " << endl;
+TEST_F(LDServerTest, pheno_read_ped) {
+    Phenotypes pheno;
+    ColumnTypeMap ctmap;
+    ctmap.add("fid", ColumnType::TEXT);
+    ctmap.add("iid", ColumnType::TEXT);
+    ctmap.add("patid", ColumnType::TEXT);
+    ctmap.add("matid", ColumnType::TEXT);
+    ctmap.add("sex", ColumnType::CATEGORICAL);
+    ctmap.add("rand_binary", ColumnType::CATEGORICAL);
+    ctmap.add("rand_qt", ColumnType::FLOAT);
+
+    pheno.load_file("chr21.test.ped", ctmap, 2504);
+
+    auto &rand_qt = *pheno.as_vec("rand_qt");
+    ASSERT_NEAR(rand_qt[0], 0.283211535632, 0.000001);
+
+    auto &rand_binary = *pheno.as_vec("rand_binary");
+    ASSERT_TRUE(isnan(rand_binary[0]));
+    ASSERT_EQ(rand_binary[1], 1);
+    ASSERT_EQ(rand_binary[2], 0);
+
+    auto &sex = *pheno.as_vec("sex");
+    ASSERT_EQ(sex[0], 1);
+    ASSERT_EQ(sex[1], 0);
+
+    auto phenos_loaded = *pheno.get_phenotypes();
+    ASSERT_EQ(phenos_loaded[0], "fid");
 }
 
 TEST_F(LDServerTest, pheno_reorder) {
     Phenotypes pheno;
-    ColumnTypeMap ctmap = {
-      {"fid", ColumnType::TEXT},
-      {"iid", ColumnType::TEXT},
-      {"patid", ColumnType::TEXT},
-      {"matid", ColumnType::TEXT},
-      {"sex", ColumnType::CATEGORICAL},
-      {"rand_binary", ColumnType::CATEGORICAL},
-      {"rand_qt", ColumnType::FLOAT},
-    };
+    ColumnTypeMap ctmap;
+    ctmap.add("fid", ColumnType::TEXT);
+    ctmap.add("iid", ColumnType::TEXT);
+    ctmap.add("patid", ColumnType::TEXT);
+    ctmap.add("matid", ColumnType::TEXT);
+    ctmap.add("sex", ColumnType::CATEGORICAL);
+    ctmap.add("rand_binary", ColumnType::CATEGORICAL);
+    ctmap.add("rand_qt", ColumnType::FLOAT);
 
-    pheno.load_tab("chr21.test.tab", ctmap, 2504);
+    pheno.load_file("chr21.test.tab", ctmap, 2504);
 
     // Reorder samples
     vector<string> new_samples = {"HG00100","HG00103","HG00096","BAD_SAMPLE"};
@@ -1025,19 +974,18 @@ TEST_F(LDServerTest, pheno_reorder) {
 /**
  * Currently this is just a quick regression test, not verified for correctness.¡
  */
-TEST_F(LDServerTest, compute_score) {
+TEST_F(LDServerTest, pheno_compute_score) {
     Phenotypes pheno;
-    ColumnTypeMap ctmap = {
-      {"fid", ColumnType::TEXT},
-      {"iid", ColumnType::TEXT},
-      {"patid", ColumnType::TEXT},
-      {"matid", ColumnType::TEXT},
-      {"sex", ColumnType::CATEGORICAL},
-      {"rand_binary", ColumnType::CATEGORICAL},
-      {"rand_qt", ColumnType::FLOAT},
-    };
+    ColumnTypeMap ctmap;
+    ctmap.add("fid", ColumnType::TEXT);
+    ctmap.add("iid", ColumnType::TEXT);
+    ctmap.add("patid", ColumnType::TEXT);
+    ctmap.add("matid", ColumnType::TEXT);
+    ctmap.add("sex", ColumnType::CATEGORICAL);
+    ctmap.add("rand_binary", ColumnType::CATEGORICAL);
+    ctmap.add("rand_qt", ColumnType::FLOAT);
 
-    pheno.load_tab("chr21.test.tab", ctmap, 2504);
+    pheno.load_file("chr21.test.tab", ctmap, 2504);
 
     vector<double> test_geno = {0,0,0,0,0,1,1,0,0,0,0,0,0,1,0,0,0,0,1,0,0,1,1,1,0,0,1,0,0,0,0,2,0,1,0,
                                1,0,0,0,1,1,1,0,1,0,0,1,1,1,0,1,0,1,0,0,0,0,1,0,0,1,0,0,2,1,2,1,0,0,0,
@@ -1136,16 +1084,15 @@ TEST_F(LDServerTest, score_server) {
 
     score_server.set_genotypes_file("chr22.test.vcf.gz", 1);
 
-    ColumnTypeMap ctmap = {
-      {"fid", ColumnType::TEXT},
-      {"iid", ColumnType::TEXT},
-      {"patid", ColumnType::TEXT},
-      {"matid", ColumnType::TEXT},
-      {"sex", ColumnType::CATEGORICAL},
-      {"rand_binary", ColumnType::CATEGORICAL},
-      {"rand_qt", ColumnType::FLOAT},
-    };
-    score_server.load_phenotypes_tab("chr22.test.tab", ctmap, 2504, 1);
+    ColumnTypeMap ctmap;
+    ctmap.add("fid", ColumnType::TEXT);
+    ctmap.add("iid", ColumnType::TEXT);
+    ctmap.add("patid", ColumnType::TEXT);
+    ctmap.add("matid", ColumnType::TEXT);
+    ctmap.add("sex", ColumnType::CATEGORICAL);
+    ctmap.add("rand_binary", ColumnType::CATEGORICAL);
+    ctmap.add("rand_qt", ColumnType::FLOAT);
+    score_server.load_phenotypes_file("chr22.test.tab", ctmap, 2504, 1);
     score_server.set_phenotype("rand_qt");
 
     // try out mask
@@ -1199,16 +1146,15 @@ TEST_F(LDServerTest, score_server_paging) {
 
   score_server.set_genotypes_file("chr22.test.vcf.gz", 1);
 
-  ColumnTypeMap ctmap = {
-    {"fid", ColumnType::TEXT},
-    {"iid", ColumnType::TEXT},
-    {"patid", ColumnType::TEXT},
-    {"matid", ColumnType::TEXT},
-    {"sex", ColumnType::CATEGORICAL},
-    {"rand_binary", ColumnType::CATEGORICAL},
-    {"rand_qt", ColumnType::FLOAT},
-  };
-    score_server.load_phenotypes_tab("chr21.test.tab", ctmap, 2504, 1);
+  ColumnTypeMap ctmap;
+  ctmap.add("fid", ColumnType::TEXT);
+  ctmap.add("iid", ColumnType::TEXT);
+  ctmap.add("patid", ColumnType::TEXT);
+  ctmap.add("matid", ColumnType::TEXT);
+  ctmap.add("sex", ColumnType::CATEGORICAL);
+  ctmap.add("rand_binary", ColumnType::CATEGORICAL);
+  ctmap.add("rand_qt", ColumnType::FLOAT);
+  score_server.load_phenotypes_file("chr21.test.tab", ctmap, 2504, 1);
   score_server.set_phenotype("rand_qt");
   score_server.compute_scores("22", 51241101, 51241385, score_results, "ALL", segments);
 
