@@ -8,6 +8,7 @@ find_library(PYTHON_LIB python2.7 HINT ${CGET_PREFIX}/lib)
 find_library(HIREDIS_LIB hiredis HINT ${CGET_PREFIX}/lib)
 find_library(ARMADILLO_LIB armadillo HINT ${CGET_PREFIX}/lib)
 find_package(PythonLibs 2.7 REQUIRED)
+find_package(Threads REQUIRED)
 
 if(CGET_PREFIX)
     include_directories(${CGET_PREFIX}/include)
@@ -25,6 +26,6 @@ target_include_directories(pywrapper PUBLIC ${PYTHON_INCLUDE_DIRS})
 target_link_libraries(pywrapper ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${TABIXPP_LIB} ${BOOST_PYTHON_LIB} ${PYTHON_LIB})
 
 add_executable(sandbox Sandbox.cpp ${SOURCE_FILES})
-target_link_libraries(sandbox ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${TABIXPP_LIB} ${BOOST_PYTHON_LIB} ${PYTHON_LIB})
+target_link_libraries(sandbox Threads::Threads ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${TABIXPP_LIB} ${BOOST_PYTHON_LIB} ${PYTHON_LIB})
 
 install(TARGETS pywrapper DESTINATION ${PROJECT_SOURCE_DIR}/../rest/ld)
