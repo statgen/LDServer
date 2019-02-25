@@ -46,15 +46,22 @@ def get_correlations():
   return make_response(jsonify(response), 200)
 
 
-@bp.route("/aggregation/datasets", methods=["GET"])
+@bp.route("/aggregation/metadata", methods=["GET"])
 def get_metadata():
   """
   Endpoint to describe all available datasets on which covariance may be computed.
   :return:
   """
 
-  pass
+  outer = {"data": model.get_full_genotype_datasets()}
+  for gd in outer["data"]:
+    gd["masks"] = model.get_masks_for_genotypes(gd["genotypeDataset"])
+    gd["phenotypeDatasets"] = model.get_phenotypes_for_genotypes(gd["genotypeDataset"])
 
+  resp = make_response(jsonify(outer), 200)
+  resp.mimetype = 'application/json'
+
+  return resp
 
 def return_error(error_message, http_code):
   response = {"data": None, "error": error_message}
