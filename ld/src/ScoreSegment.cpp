@@ -76,19 +76,33 @@ void ScoreSegment::compute_scores(const arma::vec &phenotype) {
 
   // Calculate score statistics for all variants.
   arma::fmat fpheno = arma::conv_to<arma::fmat>::from(phenotype);
-  auto score_stats = genotypes.t() * fpheno;
+  auto genotypesT = genotypes.t();
+  auto score_stats = genotypesT * fpheno;
 
   // Calculate sigma2.
   double sigma2 = arma::var(phenotype, 1);
-  double sqrt_sigma = sqrt(sigma2);
+
+  // Calculate denominator
+  arma::vec denom(genotypes.n_cols);
+  for (int j = 0; j < genotypes.n_cols; j++) {
+    double d = 0.0;
+    for (int i = 0; i < genotypes.n_rows; i++) {
+      d += genotypes.at(i, j) * genotypes.at(i, j);
+    }
+    denom[j] = d * sigma2;
+  }
 
   // Calculate p-values.
   double pvalue;
+  double u, v, t;
   for (int i = 0; i < genotypes.n_cols; i++) {
-    pvalue = 2 * arma::normcdf(-fabs(score_stats[i] / sqrt_sigma));
+    u = score_stats[i];
+    v = sqrt(denom[i]);
+    t = (u / v);
+    pvalue = 2 * arma::normcdf(-fabs(t));
 
     ScoreResult result;
-    result.score_stat = score_stats[i];
+    result.score_stat = score_stats[i] / sigma2; // match RAREMETAL convention
     result.pvalue = pvalue;
     result.variant = this->names[i];
     result.alt_freq = this->freqs[i];

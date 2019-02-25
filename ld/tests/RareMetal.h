@@ -31,14 +31,14 @@ struct RareMetalRecord {
 class RareMetalScores {
 protected:
   uint64_t nsamples;
-  double sigma; // sigma_e2_hat from RAREMETAL
+  double sigma2; // sigma_e2_hat from RAREMETAL
   string trait_name;
   vector<shared_ptr<RareMetalRecord>> records;
   map<string, shared_ptr<RareMetalRecord>> index;
 public:
   RareMetalScores(const string &file);
   void load(const string &file);
-  double get_sigma();
+  double get_sigma2();
   double get_nsamples();
   shared_ptr<RareMetalRecord> get_record(const string &i);
 };

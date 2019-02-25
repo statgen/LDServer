@@ -262,7 +262,7 @@ TEST_F(LDServerTest, simple_cov_test) {
     map<string, double> gold_standard;
     this->load_raremetal_covariance("chr21.test.RAND_QT.singlevar.cov.txt", gold_standard);
 
-    // Load score statistics (need sigma to multiply out)
+    // Load score statistics (need sigma2 to multiply out)
     auto scores = load_raremetal_scores("chr21.test.RAND_QT.singlevar.score.txt");
 
     // LD Server start
@@ -276,11 +276,52 @@ TEST_F(LDServerTest, simple_cov_test) {
     ASSERT_TRUE(result.is_last());
     for (auto&& entry : result.data) {
         string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-        double value_gold = gold_standard.find(key)->second * scores->get_sigma();
+        double value_gold = gold_standard.find(key)->second * scores->get_sigma2();
         double value_ldserver = entry.value;
         ASSERT_NE(entry.variant1, "");
         ASSERT_NE(entry.variant2, "");
         ASSERT_NEAR(value_gold, value_ldserver, 0.0000001);
+    }
+}
+
+TEST_F(LDServerTest, score_server) {
+    // Load score statistics
+    auto goldstd = load_raremetal_scores("chr21.test.RAND_QT.singlevar.score.txt");
+
+    // LD server
+    const uint32_t MAX_UINT32 = numeric_limits<uint32_t>::max();
+    LDServer ld_server(100);
+    LDQueryResult ld_result(MAX_UINT32);
+
+    ld_server.set_file("chr21.test.vcf.gz");
+
+    // Score server
+    ScoreServer score_server(100);
+    ScoreStatQueryResult score_result(MAX_UINT32);
+    score_server.set_genotypes_file("chr21.test.vcf.gz", 1);
+
+    ColumnTypeMap ctmap;
+    ctmap.add("fid", ColumnType::TEXT);
+    ctmap.add("iid", ColumnType::TEXT);
+    ctmap.add("patid", ColumnType::TEXT);
+    ctmap.add("matid", ColumnType::TEXT);
+    ctmap.add("sex", ColumnType::CATEGORICAL);
+    ctmap.add("rand_binary", ColumnType::CATEGORICAL);
+    ctmap.add("rand_qt", ColumnType::FLOAT);
+
+    string phenotype_file = "chr21.test.tab";
+    score_server.load_phenotypes_file(phenotype_file, ctmap, 2504, 1);
+    score_server.set_phenotype("rand_qt");
+
+    auto segments = make_shared_segment_vector();
+
+    ASSERT_TRUE(ld_server.compute_region_ld("21", 9411239, 9411793, correlation::COV, ld_result, "ALL", segments));
+    ASSERT_TRUE(score_server.compute_scores("21", 9411239, 9411793, score_result, "ALL", segments));
+    ASSERT_NEAR(goldstd->get_sigma2(), score_result.sigma2, 0.001);
+    for (auto&& score_res : score_result.data) {
+        auto gold = goldstd->get_record(score_res.variant);
+        ASSERT_NEAR(gold->u_stat, score_res.score_stat, 0.001);
+        ASSERT_NEAR(gold->pvalue, score_res.pvalue, 0.001);
     }
 }
 
