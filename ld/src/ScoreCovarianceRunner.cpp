@@ -3,6 +3,7 @@ using namespace std;
 using namespace rapidjson;
 
 const uint32_t MAX_UINT32 = numeric_limits<uint32_t>::max();
+const uint32_t INITIAL_RESULT_SIZE = 100000000;
 
 void ScoreCovarianceConfig::pprint() const {
   cout << boost::format("Region: %s:%i-%i") % chrom % start % stop << endl;
@@ -89,8 +90,10 @@ void ScoreCovarianceRunner::run() {
   Value groups(kArrayType);
 
   set<string> seen_variants;
-  LDQueryResult ld_res(MAX_UINT32);
-  ScoreStatQueryResult score_res(MAX_UINT32);
+  LDQueryResult ld_res(INITIAL_RESULT_SIZE);
+  ld_res.limit = MAX_UINT32;
+  ScoreStatQueryResult score_res(INITIAL_RESULT_SIZE);
+  score_res.limit = MAX_UINT32;
   for (auto&& mask : config->masks) {
     #ifndef NDEBUG
     cout << "Working on: " << mask.get_id() << endl;
