@@ -26,7 +26,7 @@ void RareMetalScores::load(const string &file) {
         this->nsamples = stoul(match.str(1));
       }
       else if (regex_search(line, match, regex_sigma) && match.size() > 1) {
-        this->sigma = stod(match.str(1));
+        this->sigma2 = stod(match.str(1));
       }
       else if (regex_search(line, match, regex_trait_sum)) {
         parse_trait = true;
@@ -64,7 +64,7 @@ void RareMetalScores::load(const string &file) {
       rec->n_ref = stoul(tokens.at(10));
       rec->n_het = stoul(tokens.at(11));
       rec->n_alt = stoul(tokens.at(12));
-      rec->u_stat = stoul(tokens.at(13));
+      rec->u_stat = stod(tokens.at(13));
       rec->sqrt_vstat = stod(tokens.at(14));
       rec->alt_effsize = stod(tokens.at(15));
       rec->pvalue = stod(tokens.at(16));
@@ -89,8 +89,8 @@ double RareMetalScores::get_nsamples() {
   return nsamples;
 }
 
-double RareMetalScores::get_sigma() {
-  return sigma;
+double RareMetalScores::get_sigma2() {
+  return sigma2;
 }
 
 shared_ptr<RareMetalRecord> RareMetalScores::get_record(const string &i) {
