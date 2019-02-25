@@ -128,6 +128,18 @@ def get_genotype_dataset(genome_build, genotype_dataset_name):
     return { 'name': genotype_dataset.name, 'description': genotype_dataset.description, 'genome build': genotype_dataset.genome_build }
   return None
 
+def get_full_genotype_datasets():
+  datasets = []
+  for row in db.session.query(GenotypeDataset).all():
+    as_dict = {c.key: getattr(row, c.key) for c in inspect(row).mapper.column_attrs}
+    as_dict["genotypeDataset"] = as_dict["id"]
+    as_dict["genomeBuild"] = as_dict["genome_build"]
+    del as_dict["genome_build"]
+    del as_dict["id"]
+    datasets.append(as_dict)
+
+  return datasets
+
 def has_genotype_dataset(genome_build, genotype_dataset_id):
   return db.session.query(GenotypeDataset).filter_by(genome_build = genome_build).filter_by(id = genotype_dataset_id).first() is not None
 
@@ -171,6 +183,36 @@ def get_phenotype_nrows(phenotype_dataset_id):
 
 def get_phenotype_columns(phenotype_dataset_id):
   return [str(x) for x in db.session.query(PhenotypeColumn.column_name).filter_by(id = phenotype_dataset_id).order_by(PhenotypeColumn.id)]
+
+def get_phenotypes_for_genotypes(genotype_dataset_id):
+  result = []
+  for row in db.session.query(GenotypeDataset).filter_by(id = genotype_dataset_id).scalar().phenotypes:
+    as_dict = {c.key: getattr(row, c.key) for c in inspect(row).mapper.column_attrs}
+    as_dict["phenotypeDataset"] = as_dict["id"]
+    del as_dict["id"]
+    del as_dict["nrows"]
+    del as_dict["ncols"]
+    del as_dict["filepath"]
+    as_dict["phenotypes"] = [x.column_name for x in row.columns]
+
+    result.append(as_dict)
+
+  return result
+
+def get_masks_for_genotypes(genotype_dataset_id):
+  masks = []
+  for row in db.session.query(Mask).filter_by(genotype_dataset_id = genotype_dataset_id):
+    as_dict = {c.key: getattr(row, c.key) for c in inspect(row).mapper.column_attrs}
+    as_dict["id"] = as_dict.pop("name")
+    as_dict["groupType"] = as_dict.pop("group_type")
+    as_dict["genomeBuild"] = as_dict.pop("genome_build")
+    as_dict["identifierType"] = as_dict.pop("identifier_type")
+
+    del as_dict["genotype_dataset_id"]
+    del as_dict["filepath"]
+    masks.append(as_dict)
+
+  return masks
 
 def get_mask_by_name(mask_name, genotype_dataset_id):
   result = db.session.query(Mask).filter_by(name = mask_name, genotype_dataset_id = genotype_dataset_id).scalar()
