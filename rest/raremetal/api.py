@@ -71,12 +71,12 @@ def get_covariance():
     'chrom': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'start': fields.Int(required=True, validate=lambda x: x >= 0, error_messages={'validator_failed': 'Value must be greater than or equal to 0.'}),
     'stop': fields.Int(required=True, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be greater than 0.'}),
-    'genotype_dataset': fields.Int(required=True, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
-    'phenotype_dataset': fields.Int(required=True, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'genotypeDataset': fields.Int(required=True, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'phenotypeDataset': fields.Int(required=True, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'phenotype': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'samples': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'masks': fields.DelimitedList(fields.Str(), required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': "Must provide at least 1 mask ID"}),
-    'genome_build': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'genomeBuild': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
   }
 
   args = parser.parse(
@@ -93,9 +93,9 @@ def get_covariance():
   chrom = str(args["chrom"])
   start = args["start"]
   stop = args["stop"]
-  build = args["genome_build"]
-  genotype_dataset_id = args["genotype_dataset"]
-  phenotype_dataset_id = args["phenotype_dataset"]
+  build = args["genomeBuild"]
+  genotype_dataset_id = args["genotypeDataset"]
+  phenotype_dataset_id = args["phenotypeDataset"]
   sample_subset = str(args["samples"])
   phenotype = str(args["phenotype"])
   masks = [str(x) for x in args["masks"]]
