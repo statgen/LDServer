@@ -164,7 +164,7 @@ void ScoreCovarianceRunner::run() {
       Value group_covar(kArrayType);
       set<string> seen_group_variants;
       for (auto&& pair : ld_res.data) {
-        group_covar.PushBack(pair.value, alloc);
+        group_covar.PushBack(pair.value / score_res.sigma2, alloc);
 
         if (seen_group_variants.find(pair.variant1) == seen_group_variants.end()) {
           group_variants.PushBack(Value(pair.variant1.c_str(), alloc), alloc);
