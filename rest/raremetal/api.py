@@ -19,14 +19,12 @@ CORS(bp)
 compress = Compress()
 
 @parser.error_handler
-def handle_parsing_error(error, request, schema):
+def handle_parsing_error(error, request, schema, status_code=None, headers=None):
   for field, message in error.messages.iteritems():
     message = 'Error while parsing \'{}\' query parameter: {}'.format(field, message[0])
     break
 
-  response = jsonify({'data': None, 'error': message })
-  response.status_code = 422
-  abort(response)
+  raise FlaskException(message, 422)
 
 
 def validate_query(parsed_fields, all_fields):
@@ -152,7 +150,16 @@ def get_covariance():
     if not os.path.isfile(mask["filepath"]):
       raise FlaskException("Could not find mask file on server for mask {} with genotype dataset ID {}".format(mask_name, genotype_dataset_id), 500)
 
-    tb = Mask(str(mask["filepath"]), str(mask["name"]), mask["group_type"], mask["identifier_type"], chrom, start, stop)
+    try:
+      tb = Mask(str(mask["filepath"]), str(mask["name"]), mask["group_type"], mask["identifier_type"], chrom, start, stop)
+    except RuntimeError as e:
+      msg = str(e)
+      if msg.startswith("No groups loaded within genomic region"):
+        raise FlaskException(msg, 500)
+      else:
+        # Re-raising exception leads to general error message that does not contain a risk of leaking server-side details
+        raise
+
     mask_vec.append(tb)
 
   config.masks = mask_vec

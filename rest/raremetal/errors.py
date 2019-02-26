@@ -16,7 +16,8 @@ class FlaskException(Exception):
 
   def to_dict(self):
     rv = dict(self.payload or ())
-    rv['message'] = self.message
+    rv['data'] = {}
+    rv['error'] = self.message
     return rv
 
 def handle_all(error):
@@ -57,7 +58,8 @@ def handle_all(error):
       full_url = full_url.replace("/" + api_version,"/" + api_name + "/" + api_version)
 
   response = jsonify({
-    "message": message,
+    "data": {},
+    "error": message,
     "request": full_url
   })
   response.status_code = code
