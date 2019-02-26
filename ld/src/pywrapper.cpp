@@ -11,6 +11,12 @@
 #include "Mask.h"
 #include "ScoreCovarianceRunner.h"
 
+// This means generate a thin set of wrappers for versions of this function with or without default arguments
+// 2nd to last argument is minimum number of arguments the function should accept
+// last argument is the maximum number of arguments the function should accept
+// compute_region_ld()'s last argument has a default argument of nullptr
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(compute_region_ld_overloads, compute_region_ld, 6, 7)
+
 BOOST_PYTHON_MODULE(pywrapper) {
 
     boost::python::enum_<correlation>("correlation")
@@ -94,7 +100,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("enable_cache", &LDServer::enable_cache)
             .def("disable_cache", &LDServer::disable_cache)
             .def("get_chromosomes", &LDServer::get_chromosomes)
-            .def("compute_region_ld", &LDServer::compute_region_ld)
+            .def("compute_region_ld", &LDServer::compute_region_ld, compute_region_ld_overloads())
             .def("compute_variant_ld", &LDServer::compute_variant_ld)
             ;
 
