@@ -8,3 +8,5 @@ CACHE_REDIS_HOSTNAME = '127.0.0.1'
 CACHE_REDIS_PORT = 6379
 GZIP_COMPRESSION = True # enable build-in response compression if for any reason it was not possible to enable it through Apache
 API_BASE_URL = 'http://127.0.0.1:5000' # specify the base URL address of the LD server. It is used by the Playground.
+SENTRY_DSN = None # include your Sentry DSN for error reporting to your own Sentry instance
+SENTRY_ENV = None # name of your deployment - usually 'production' or 'staging' or 'travis'
