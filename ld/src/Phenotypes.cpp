@@ -352,5 +352,5 @@ double Phenotypes::compute_sigma2(const string &phenotype) {
 uint64_t Phenotypes::get_nsamples(const string &phenotype) {
   auto &pheno_vec = *as_vec(phenotype);
   arma::uvec non_finite = arma::find_nonfinite(pheno_vec);
-  return non_finite.n_elem;
+  return pheno_vec.n_elem - non_finite.n_elem;
 }
