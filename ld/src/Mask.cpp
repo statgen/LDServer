@@ -21,6 +21,11 @@ void Mask::load_file(const string &filepath, const string &chrom, uint64_t start
   Tabix tbfile(const_cast<string&>(filepath));
   string region = chrom + ":" + to_string(start) + "-" + to_string(stop);
 
+  bool has_chrom = find(tbfile.chroms.begin(), tbfile.chroms.end(), chrom) != tbfile.chroms.end();
+  if (!has_chrom) {
+    throw std::range_error("Chromosome " + chrom + " not found within mask file");
+  }
+
   string line;
   vector<string> tokens;
 

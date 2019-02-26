@@ -37,8 +37,12 @@ int main() {
   score_server.load_phenotypes_file(phenotype_file, ctmap, 2504, 1);
   score_server.set_phenotype("rand_qt");
 
+  string chrom = "22";
+  auto start = 50276998ul;
+  auto end = 50357719ul;
+
   // try out mask
-  Mask mask("../../../data/mask.epacts.chr22.gencode-exons-AF01.tab.gz", "AF < 0.01", VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, "22", 50276998ul, 50357719ul);
+  Mask mask("../../../data/mask.epacts.chr22.gencode-exons-AF01.tab.gz", "AF < 0.01", VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, chrom, start, end);
 
   // try out runner
   vector<Mask> masks;
@@ -47,9 +51,6 @@ int main() {
   auto config = make_score_covariance_config();
 
   config->segment_size = 1000;
-  config->chrom = "22";
-  config->start = 50276998ul;
-  config->stop = 50357719ul;
   config->masks = masks;
   config->sample_subset = "ALL";
   config->genotype_files = {genotype_file};
