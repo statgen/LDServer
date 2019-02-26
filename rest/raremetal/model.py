@@ -216,6 +216,9 @@ def get_masks_for_genotypes(genotype_dataset_id):
 
 def get_mask_by_name(mask_name, genotype_dataset_id):
   result = db.session.query(Mask).filter_by(name = mask_name, genotype_dataset_id = genotype_dataset_id).scalar()
+  if result is None:
+    raise ValueError("No mask exists by the name {} for genotype dataset {}".format(mask_name, genotype_dataset_id))
+
   as_dict = {c.key: getattr(result, c.key) for c in inspect(result).mapper.column_attrs}
 
   as_dict["group_type"] = VariantGroupType.names.get(result.group_type)
