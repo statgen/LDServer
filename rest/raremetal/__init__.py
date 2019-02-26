@@ -27,6 +27,12 @@ def create_app(test_config = None):
   from . import api
   app.register_blueprint(api.bp)
 
+  from . import sentry
+  sentry.init_app(app)
+
+  from . import errors
+  errors.init_app(app)
+
   if app.config['GZIP_COMPRESSION']:
     app.config['COMPRESS_MIMETYPES'] = ['application/json']
     app.config['COMPRESS_LEVEL'] = 3

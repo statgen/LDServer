@@ -11,3 +11,5 @@ requests
 argparse
 flask_sqlalchemy
 pysam
+raven==6.9.0
+blinker==1.4
