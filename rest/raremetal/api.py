@@ -149,19 +149,22 @@ def get_covariance():
   # TODO: check mask is valid for genotype dataset ID
   mask_vec = MaskVec()
   for mask_name in masks:
-    mask = model.get_mask_by_name(mask_name, genotype_dataset_id)
+    try:
+      mask = model.get_mask_by_name(mask_name, genotype_dataset_id)
+    except ValueError as e:
+      raise FlaskException(str(e), 400)
 
     if not os.path.isfile(mask["filepath"]):
-      raise FlaskException("Could not find mask file on server for mask {} with genotype dataset ID {}".format(mask_name, genotype_dataset_id), 500)
+      raise FlaskException("Could not find mask file on server for mask {} with genotype dataset ID {}".format(mask_name, genotype_dataset_id), 400)
 
     try:
       tb = Mask(str(mask["filepath"]), str(mask["name"]), mask["group_type"], mask["identifier_type"], chrom, start, stop)
     except RuntimeError as e:
       msg = str(e)
       if msg.startswith("No groups loaded within genomic region"):
-        raise FlaskException(msg, 500)
+        raise FlaskException(msg, 400)
       elif re.search("Chromosome.*not found.*", msg):
-        raise FlaskException(msg, 500)
+        raise FlaskException(msg, 400)
       else:
         # Re-raising exception leads to general error message that does not contain a risk of leaking server-side details
         raise
