@@ -7,6 +7,7 @@ from webargs import fields, ValidationError
 from functools import partial
 import model
 import os
+import re
 from ld.pywrapper import StringVec, ColumnType, ColumnTypeMap, Mask, MaskVec, VariantGroupType, \
                          ScoreCovarianceRunner, ScoreCovarianceConfig, GroupIdentifierType
 
@@ -155,6 +156,8 @@ def get_covariance():
     except RuntimeError as e:
       msg = str(e)
       if msg.startswith("No groups loaded within genomic region"):
+        raise FlaskException(msg, 500)
+      elif re.search("Chromosome.*not found.*", msg):
         raise FlaskException(msg, 500)
       else:
         # Re-raising exception leads to general error message that does not contain a risk of leaking server-side details
