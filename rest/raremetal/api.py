@@ -41,12 +41,6 @@ def validate_query(parsed_fields, all_fields):
   return True
 
 
-@bp.route('/constants/correlations', methods = ['GET'])
-def get_correlations():
-  response = { 'data': model.get_correlations(), 'error': None }
-  return make_response(jsonify(response), 200)
-
-
 @bp.route("/aggregation/metadata", methods=["GET"])
 def get_metadata():
   """
