@@ -118,6 +118,9 @@ def get_covariance():
   if not model.has_samples(genotype_dataset_id, sample_subset):
     raise FlaskException('Sample subset \'{}\' was not found in genotype dataset {}.'.format(sample_subset, genotype_dataset_id), 404)
 
+  if (stop - start) > current_app.config["API_MAX_REGION_SIZE"]:
+    raise FlaskException("Region requested for analysis exceeds maximum width of {}".format(current_app.config["API_MAX_REGION_SIZE"]), 400)
+
   genotype_files = StringVec()
   genotype_files.extend(model.get_files(genotype_dataset_id))
   config.genotype_files = genotype_files
