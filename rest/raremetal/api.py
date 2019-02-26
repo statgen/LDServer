@@ -1,6 +1,7 @@
 from flask import current_app, Blueprint, request, jsonify, make_response, abort
 from flask_cors import CORS
 from flask_compress import Compress
+from .errors import FlaskException
 from webargs.flaskparser import parser
 from webargs import fields, ValidationError
 from functools import partial
@@ -113,20 +114,16 @@ def get_covariance():
   config.sample_subset = str(args["samples"])
 
   if not model.has_genome_build(build):
-    response = { 'data': None, 'error': 'Genome build \'{}\' was not found.'.format(build) }
-    return make_response(jsonify(response), 404)
+    raise FlaskException('Genome build \'{}\' was not found.'.format(build), 404)
 
   if not model.has_genotype_dataset(build, genotype_dataset_id):
-    response = { 'data': None, 'error': 'No genotype dataset \'{}\' available for genome build {}.'.format(genotype_dataset_id, build) }
-    return make_response(jsonify(response), 404)
+    raise FlaskException('No genotype dataset \'{}\' available for genome build {}.'.format(genotype_dataset_id, build), 404)
 
   if not model.has_phenotype_dataset(phenotype_dataset_id):
-    response = { 'data': None, 'error': 'No phenotype dataset \'{}\' available for genome build {}.'.format(phenotype_dataset_id, build) }
-    return make_response(jsonify(response), 404)
+    raise FlaskException('No phenotype dataset \'{}\' available for genome build {}.'.format(phenotype_dataset_id, build), 404)
 
   if not model.has_samples(genotype_dataset_id, sample_subset):
-    response = { 'data': None, 'error': 'Sample subset \'{}\' was not found in genotype dataset {}.'.format(sample_subset, genotype_dataset_id) }
-    return make_response(jsonify(response), 404)
+    raise FlaskException('Sample subset \'{}\' was not found in genotype dataset {}.'.format(sample_subset, genotype_dataset_id), 404)
 
   genotype_files = StringVec()
   genotype_files.extend(model.get_files(genotype_dataset_id))
@@ -159,10 +156,7 @@ def get_covariance():
     mask = model.get_mask_by_name(mask_name, genotype_dataset_id)
 
     if not os.path.isfile(mask["filepath"]):
-      return_error(
-        "Could not find mask file on server for mask {} with genotype dataset ID {}".format(mask_name, genotype_dataset_id),
-        500
-      )
+      raise FlaskException("Could not find mask file on server for mask {} with genotype dataset ID {}".format(mask_name, genotype_dataset_id), 500)
 
     tb = Mask(str(mask["filepath"]), str(mask["name"]), mask["group_type"], mask["identifier_type"], chrom, start, stop)
     mask_vec.append(tb)
