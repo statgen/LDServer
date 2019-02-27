@@ -39,10 +39,10 @@ int main() {
 
   string chrom = "22";
   auto start = 50276998ul;
-  auto end = 50357719ul;
+  auto stop = 50357719ul;
 
   // try out mask
-  Mask mask("../../../data/mask.epacts.chr22.gencode-exons-AF01.tab.gz", "AF < 0.01", VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, chrom, start, end);
+  Mask mask("../../../data/mask.epacts.chr22.gencode-exons-AF01.tab.gz", "AF < 0.01", VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, chrom, start, stop);
 
   // try out runner
   vector<Mask> masks;
@@ -50,6 +50,9 @@ int main() {
 
   auto config = make_score_covariance_config();
 
+  config->chrom = chrom;
+  config->start = start;
+  config->stop = stop;
   config->segment_size = 1000;
   config->masks = masks;
   config->sample_subset = "ALL";

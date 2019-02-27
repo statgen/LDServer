@@ -15,7 +15,7 @@
 // 2nd to last argument is minimum number of arguments the function should accept
 // last argument is the maximum number of arguments the function should accept
 // compute_region_ld()'s last argument has a default argument of nullptr
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(compute_region_ld_overloads, compute_region_ld, 6, 7)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(compute_region_ld_overloads, compute_region_ld, 5, 8)
 
 BOOST_PYTHON_MODULE(pywrapper) {
 

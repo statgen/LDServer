@@ -55,7 +55,19 @@ public:
     vector<string> get_chromosomes();
     uint32_t get_segment_size() const;
 
-    bool compute_region_ld(const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, correlation correlation_type, struct LDQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY, SharedSegmentVector segments_out = nullptr) const;
+    /**
+     * Compute LD between all variants in a region.
+     * @param region_chromosome
+     * @param region_start_bp
+     * @param region_stop_bp
+     * @param correlation_type
+     * @param result
+     * @param samples_name
+     * @param diagonal Should we compute the diagonal elements? (variance of each variant)
+     * @param segments_out Shared vector of segments that can be passed on to the ScoreServer for extra computations.
+     * @return
+     */
+    bool compute_region_ld(const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, correlation correlation_type, struct LDQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY, bool diagonal = false, SharedSegmentVector segments_out = nullptr) const;
     bool compute_variant_ld(const string& index_variant, const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, correlation correlation_type, struct LDQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY) const;
 };
 

@@ -109,6 +109,10 @@ void ScoreCovarianceRunner::run() {
 
       const VariantGroup& group = group_item.second;
 
+      // DEBUG PATCH
+
+      // END PATCH
+
       SharedSegmentVector segments = make_shared_segment_vector();
 
       ld_server.compute_region_ld(
@@ -118,6 +122,7 @@ void ScoreCovarianceRunner::run() {
         correlation::COV,
         ld_res,
         config->sample_subset,
+        true, // compute diagonal elements (variance of each variant)
         segments
       );
 
