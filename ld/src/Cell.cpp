@@ -79,7 +79,7 @@ bool Cell::is_cached() const {
  * @param region_stop_bp
  * @param result
  */
-void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result) {
+void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result, bool diagonal) {
 //    auto start = std::chrono::system_clock::now();
     if (this->i == this->j) { // diagonal cell
         int segment_i_from = 0, segment_i_to = 0;
@@ -88,11 +88,11 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
             return;
         }
         int i = result.last_i >= 0 ? result.last_i : 0;
-        int j = result.last_j >= 0 ? result.last_j : i + 1;
+        int j = result.last_j >= 0 ? result.last_j : i + !diagonal;
         arma::fmat R(raw_fmat.get(), segment_i->get_n_variants(), segment_i->get_n_variants(), false, true);
         auto segment_i_n_variants = segment_i_to - segment_i_from + 1;
         auto result_i = result.data.size();
-        while (i < segment_i_n_variants - 1u) {
+        while (i < segment_i_n_variants - !diagonal) {
             while (j < segment_i_n_variants) {
                 // Grab the correlation value from the R matrix for these two variants at i and j in the segment, and
                 // store it to a VariantPair object in result.
@@ -105,11 +105,11 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
                         // Both i and j are still within bounds of the segment
                         result.last_i = i;
                         result.last_j = j;
-                    } else if (++i < segment_i_n_variants - 1u) {
+                    } else if (++i < segment_i_n_variants - !diagonal) {
                         // j ran off the end of the matrix, and incrementing i results in a valid new row
                         // i + 1 is because we only need the upper triangle of the matrix
                         result.last_i = i;
-                        result.last_j = i + 1;
+                        result.last_j = i + !diagonal;
                     } else {
                         // The entire matrix of variant pairs has been iterated over at this point.
                         result.last_i = result.last_j = -1;
@@ -118,7 +118,7 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
                 }
             }
             ++i;
-            j = i + 1;
+            j = i + !diagonal;
         }
     } else {
         int segment_i_from = 0, segment_i_to = 0;

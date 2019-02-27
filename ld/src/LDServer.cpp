@@ -187,7 +187,7 @@ vector<string> LDServer::get_chromosomes() {
  *   passing on segments to another function to be used for computations.
  * @return
  */
-bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, correlation correlation_type, LDQueryResult& result, const std::string& samples_name, shared_ptr<vector<shared_ptr<Segment>>> segments_out) const {
+bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, correlation correlation_type, LDQueryResult& result, const std::string& samples_name, bool diagonal, shared_ptr<vector<shared_ptr<Segment>>> segments_out) const {
 //    auto start = std::chrono::system_clock::now();
     if (result.is_last()) {
         // It seems as though we reach this code if:
@@ -255,7 +255,7 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
             }
         }
 
-        cell->extract(region_start_bp, region_stop_bp, result);
+        cell->extract(region_start_bp, region_stop_bp, result, diagonal);
 
         // Setting last_i and last_j to -1 is the sentinel for flagging that extraction of this cell is either complete,
         // or had to stop due to the result object becoming full.

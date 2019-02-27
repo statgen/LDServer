@@ -15,6 +15,7 @@
 #include "../src/Mask.h"
 #include "../src/ScoreCovarianceRunner.h"
 #include <armadillo>
+#include <cereal/external/rapidjson/document.h>
 
 using namespace std;
 
@@ -270,7 +271,7 @@ TEST_F(LDServerTest, simple_cov_test) {
     LDQueryResult result(1000);
 
     server.set_file("chr21.test.vcf.gz");
-    ASSERT_TRUE(server.compute_region_ld("21", 9411239, 9411793, correlation::COV, result));
+    ASSERT_TRUE(server.compute_region_ld("21", 9411239, 9411793, correlation::COV, result, "ALL", true));
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
     ASSERT_TRUE(result.is_last());
@@ -280,7 +281,7 @@ TEST_F(LDServerTest, simple_cov_test) {
         double value_ldserver = entry.value;
         ASSERT_NE(entry.variant1, "");
         ASSERT_NE(entry.variant2, "");
-        ASSERT_NEAR(value_gold, value_ldserver, 0.0000001);
+        ASSERT_NEAR(value_gold, value_ldserver, 0.0001);
     }
 }
 
@@ -315,7 +316,7 @@ TEST_F(LDServerTest, score_server) {
 
     auto segments = make_shared_segment_vector();
 
-    ASSERT_TRUE(ld_server.compute_region_ld("21", 9411239, 9411793, correlation::COV, ld_result, "ALL", segments));
+    ASSERT_TRUE(ld_server.compute_region_ld("21", 9411239, 9411793, correlation::COV, ld_result, "ALL", true, segments));
     ASSERT_TRUE(score_server.compute_scores("21", 9411239, 9411793, score_result, "ALL", segments));
     ASSERT_NEAR(goldstd->get_sigma2(), score_result.sigma2, 0.001);
     for (auto&& score_res : score_result.data) {
@@ -323,6 +324,74 @@ TEST_F(LDServerTest, score_server) {
         ASSERT_NEAR(gold->u_stat, score_res.score_stat, 0.001);
         ASSERT_NEAR(gold->pvalue, score_res.pvalue, 0.001);
     }
+}
+
+TEST_F(LDServerTest, score_covariance_runner) {
+    LDServer ld_server(100);
+    LDQueryResult ld_result(1000);
+
+    ScoreServer score_server(100);
+    ScoreStatQueryResult score_results(1000);
+    auto segments = make_shared_segment_vector();
+
+    string genotype_file = "chr22.test.vcf.gz";
+    ld_server.set_file(genotype_file);
+    score_server.set_genotypes_file(genotype_file, 1);
+
+    ColumnTypeMap ctmap;
+    ctmap.add("fid", ColumnType::TEXT);
+    ctmap.add("iid", ColumnType::TEXT);
+    ctmap.add("patid", ColumnType::TEXT);
+    ctmap.add("matid", ColumnType::TEXT);
+    ctmap.add("sex", ColumnType::CATEGORICAL);
+    ctmap.add("rand_binary", ColumnType::CATEGORICAL);
+    ctmap.add("rand_qt", ColumnType::FLOAT);
+
+    string phenotype_file = "chr22.test.tab";
+    score_server.load_phenotypes_file(phenotype_file, ctmap, 2504, 1);
+    score_server.set_phenotype("rand_qt");
+
+    // Region to analyze
+    string chrom = "22";
+    auto start = 50276998ul;
+    //auto stop = 50357719ul;
+    auto stop = 50294147ul;
+
+    // Setup mask
+    vector<Mask> masks;
+    Mask mask("mask.epacts.chr22.gencode-exons-AF01.tab.gz", "AF < 0.01", VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, chrom, start, stop);
+    masks.emplace_back(mask);
+
+    // Setup ScoreCovarianceRunner configuration
+    auto config = make_score_covariance_config();
+    config->chrom = chrom;
+    config->start = start;
+    config->stop = stop;
+    config->segment_size = 1000;
+    config->masks = masks;
+    config->sample_subset = "ALL";
+    config->genotype_files = {genotype_file};
+    config->genotype_dataset_id = 1;
+    config->phenotype_file = phenotype_file;
+    config->column_types = ctmap;
+    config->phenotype_dataset_id = 1;
+    config->phenotype = "rand_qt";
+    config->nrows = 2504;
+
+    // Run score/covariance calculations
+    ScoreCovarianceRunner runner(config);
+    runner.run();
+    string json = runner.getJSON();
+
+    // Parse back out JSON
+    rapidjson::Document doc;
+    doc.Parse(json.c_str());
+
+    // Tests
+    ASSERT_EQ(doc["data"]["nSamples"].GetDouble(), 2504.0);
+    ASSERT_NEAR(doc["data"]["sigmaSquared"].GetDouble(), 0.08188312, 0.0001);
+    ASSERT_EQ(doc["data"]["groups"][0]["variants"].Capacity(), 162);
+    ASSERT_EQ(doc["data"]["groups"][0]["covariance"].Capacity(), 13203);
 }
 
 TEST_F(LDServerTest, BCF_one_page) {
@@ -1117,7 +1186,7 @@ TEST_F(LDServerTest, score_server_paging) {
   auto segments = make_shared_segment_vector();
 
   ld_server.set_file("chr22.test.vcf.gz");
-  ld_server.compute_region_ld("22", 51241101, 51241385, correlation::COV, ld_result, "ALL", segments);
+  ld_server.compute_region_ld("22", 51241101, 51241385, correlation::COV, ld_result, "ALL", true, segments);
 
   score_server.set_genotypes_file("chr22.test.vcf.gz", 1);
 
