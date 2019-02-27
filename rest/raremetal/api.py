@@ -5,6 +5,7 @@ from .errors import FlaskException
 from webargs.flaskparser import parser
 from webargs import fields, ValidationError
 from functools import partial
+from raven.versioning import fetch_git_sha
 import model
 import os
 import re
@@ -38,6 +39,19 @@ def validate_query(parsed_fields, all_fields):
       raise ValidationError({'start': ['Start position must be greater than stop position.']})
 
   return True
+
+
+@bp.route("/status", methods=["GET"])
+def get_status():
+  sha = fetch_git_sha(os.path.join(current_app.root_path, "../../"))
+  json = {
+    "data": {
+      "sha": sha
+    }
+  }
+  resp = make_response(jsonify(json), 200)
+  resp.mimetype = "application/json"
+  return resp
 
 
 @bp.route("/aggregation/metadata", methods=["GET"])
