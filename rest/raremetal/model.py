@@ -146,6 +146,9 @@ def has_genotype_dataset(genome_build, genotype_dataset_id):
 def has_phenotype_dataset(phenotype_dataset_id):
   return db.session.query(PhenotypeDataset.id).filter_by(id = phenotype_dataset_id).first() is not None
 
+def has_phenotype(phenotype_dataset_id, phenotype):
+  return db.session.query(PhenotypeColumn).filter_by(phenotype_dataset_id=phenotype_dataset_id, column_name=phenotype).scalar()
+
 def get_phenotype_dataset_id(phenotype_dataset_name):
   return db.session.query(PhenotypeDataset.id).filter_by(name = phenotype_dataset_name).scalar()
 
