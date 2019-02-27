@@ -1,3 +1,5 @@
+import re
+
 def test_malformed_chrom(client):
     resp = client.post("/aggregation/covariance", data = {
         "chrom": "22REERERFFAFA",
@@ -11,4 +13,6 @@ def test_malformed_chrom(client):
         "masks": ["AF < 0.01"]
     })
 
-    assert resp.status_code == 500
+    assert resp.status_code == 400
+    assert resp.is_json
+    assert re.search("Chromosome.*.not found",resp.json["error"]) is not None
