@@ -61,6 +61,16 @@ def return_error(error_message, http_code):
   response = {"data": None, "error": error_message}
   return make_response(jsonify(response), http_code)
 
+def find_file(relpath):
+  if os.path.isfile(relpath):
+    return relpath
+
+  data_path = os.path.join(current_app.root_path, "../../", relpath)
+
+  if os.path.isfile(data_path):
+    return data_path
+  else:
+    raise IOError("Could not locate file, tried '{}' and '{}'".format(relpath, data_path))
 
 @bp.route('/aggregation/covariance', methods = ['POST'])
 def get_covariance():
@@ -125,7 +135,7 @@ def get_covariance():
     raise FlaskException("Region requested for analysis exceeds maximum width of {}".format(current_app.config["API_MAX_REGION_SIZE"]), 400)
 
   genotype_files = StringVec()
-  genotype_files.extend(model.get_files(genotype_dataset_id))
+  genotype_files.extend([find_file(x) for x in model.get_files(genotype_dataset_id)])
   config.genotype_files = genotype_files
   config.genotype_dataset_id = genotype_dataset_id
 
@@ -134,7 +144,7 @@ def get_covariance():
     s.extend(model.get_samples(genotype_dataset_id, sample_subset))
     config.samples = s
 
-  config.phenotype_file = model.get_phenotype_file(phenotype_dataset_id)
+  config.phenotype_file = find_file(model.get_phenotype_file(phenotype_dataset_id))
   config.column_types = model.get_column_types(phenotype_dataset_id)
   config.nrows = model.get_phenotype_nrows(phenotype_dataset_id)
   config.columns = model.get_phenotype_columns(phenotype_dataset_id)
@@ -157,11 +167,13 @@ def get_covariance():
     except ValueError as e:
       raise FlaskException(str(e), 400)
 
-    if not os.path.isfile(mask["filepath"]):
+    mask_path = find_file(mask["filepath"])
+
+    if not os.path.isfile(mask_path):
       raise FlaskException("Could not find mask file on server for mask {} with genotype dataset ID {}".format(mask_name, genotype_dataset_id), 400)
 
     try:
-      tb = Mask(str(mask["filepath"]), str(mask["name"]), mask["group_type"], mask["identifier_type"], chrom, start, stop)
+      tb = Mask(str(mask_path), str(mask["name"]), mask["group_type"], mask["identifier_type"], chrom, start, stop)
     except RuntimeError as e:
       msg = str(e)
       if msg.startswith("No groups loaded within genomic region"):
