@@ -281,7 +281,7 @@ def add_genotype_dataset(name, description, genome_build, samples_filename, geno
     r.samples.append(Sample(subset = 'ALL', sample = sample))
   db.session.add(r)
   db.session.commit()
-
+  print r.id
 
 def guess_type(values):
   guesses = []

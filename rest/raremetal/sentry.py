@@ -13,8 +13,6 @@ def init_app(app):
 
   if sentry is None:
     if "SENTRY_DSN" in app.config:
-      print("Sentry DSN found, attaching to app")
-
       app.config["SENTRY_CONFIG"] = {
         "dsn": app.config["SENTRY_DSN"],
         "release": release
@@ -24,7 +22,3 @@ def init_app(app):
         app.config["SENTRY_CONFIG"]["environment"] = app.config["SENTRY_ENV"]
 
       sentry = Sentry(app, register_signal=False, wrap_wsgi=False)
-    else:
-      print("Warning: Sentry DSN not found, skipping")
-  else:
-    print("Sentry already attached to app")
