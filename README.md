@@ -256,7 +256,7 @@ Genotype datasets may be in VCF, BCF, or [Savvy](https://github.com/statgen/savv
 To add the dataset to the server, use the `add-genotypes` command:
 
 ```bash
-flask add-genotypes <short label> <long description> <genome build> <sample list file> <VCF/BCF/Savvy file>
+flask add-genotypes <short label> <long description> <genome build> <VCF/BCF/Savvy file>
 ```
 
 The parameters:
@@ -264,16 +264,20 @@ The parameters:
 * `<short label>` is a short description of the dataset, often a study abbreviation.
 * `<long description>` a longer description that may include the genotyping platform or sequencing.
 * `<genome build>` is the genome build of the positions in the file.
-* `<sample list file>` a file denoting all of the samples in the VCF/BCF/Savvy genotype file. One sample per line.
 * `<VCF/BCF/Savvy file>` the file containing genotypes for variants over a number of samples. We recommend placing these files (or symbolic links) to these files in the `data/` directory under the application root. You may also provide a glob of files, in the event your genotypes are separated into files by chromosome.
+
+Optional parameters:
+
+* `--samples <file>` provide a file with a list of samples to use, if you do not wish to use all of the samples in the genotype file. One sample per line.
 
 As an example:
 
 ```bash
-gid=`flask add-genotypes "1000G" "1000G Test VCF" "GRCh37" "data/ALL.samples.txt" data/chr*.test.vcf.gz`
+gid=`flask add-genotypes "1000G" "1000G Test VCF" "GRCh37" data/chr*.test.vcf.gz`
 ```
 
 With the command above, you can capture the genotype dataset ID that was assigned in the database, and use it in later commands.
+
 
 ##### Adding phenotype datasets
 

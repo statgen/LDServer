@@ -8,10 +8,11 @@
 #include "Phenotypes.h"
 #include "Mask.h"
 #include "ScoreCovarianceRunner.h"
+#include "Raw.h"
 #include <armadillo>
 using namespace std;
 
-int main() {
+void test1() {
   LDServer ld_server(100);
   LDQueryResult ld_result(1000);
 
@@ -77,4 +78,14 @@ int main() {
   out.close();
 
   int x = 0;
+}
+
+void test2() {
+  auto samples1 = extract_samples("../../../data/chr21.test.vcf.gz");
+  auto samples2 = extract_samples("../../../data/chr21.test.sav");
+}
+
+int main() {
+  test2();
+  return 0;
 }

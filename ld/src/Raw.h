@@ -11,6 +11,13 @@
 
 using namespace std;
 
+/**
+ * Helper function for python to extract full list of samples from a genotype file.
+ * @param filepath
+ * @return
+ */
+std::vector<std::string> extract_samples(const string& filepath);
+
 class Raw {
 protected:
     string file;

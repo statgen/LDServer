@@ -1,5 +1,22 @@
 #include "Raw.h"
 
+std::vector<std::string> extract_samples(const std::string& filepath) {
+    bool is_vcf = filepath.find(".vcf") != string::npos;
+    bool is_bcf = filepath.find(".bcf") != string::npos;
+    bool is_sav = filepath.find(".sav") != string::npos;
+    if (is_vcf || is_bcf) {
+        savvy::vcf::reader<1> reader(filepath, savvy::fmt::gt);
+        return reader.samples();
+    }
+    else if (is_sav) {
+        savvy::reader reader(filepath, savvy::fmt::gt);
+        return reader.samples();
+    }
+    else {
+        throw std::invalid_argument("File " + filepath + " has unsupported format");
+    }
+}
+
 Raw::Raw(const string& file) : file(file) {
 
 }
