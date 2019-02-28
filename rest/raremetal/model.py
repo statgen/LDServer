@@ -3,7 +3,7 @@ from sqlalchemy import Index, inspect
 from sqlalchemy.types import Enum
 from flask.cli import with_appcontext
 from collections import Counter, OrderedDict
-from ld.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType, GroupIdentifierType
+from ld.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType, GroupIdentifierType, extract_samples
 from tabulate import tabulate
 import click
 import json
@@ -305,11 +305,21 @@ def show_masks():
 def add_genotype_dataset(name, description, genome_build, samples_filename, genotype_files):
   db.create_all()
   samples = []
-  with open(samples_filename, 'r') as f:
-    for sample in f:
-      sample = sample.strip()
-      if sample:
-        samples.append(sample)
+  if samples_filename:
+    with open(samples_filename, 'r') as f:
+      for sample in f:
+        sample = sample.strip()
+        if sample:
+          samples.append(sample)
+  else:
+    for f in genotype_files:
+      f_samples = extract_samples(f)
+      if len(samples) == 0:
+        samples = f_samples
+      else:
+        if set(samples) != set(f_samples):
+          raise ValueError("Genotype file {} did not have the same samples as the others")
+
   r = GenotypeDataset(name = name, description = description, genome_build = genome_build)
   for path in genotype_files:
     r.files.append(File(path = path))
@@ -531,7 +541,7 @@ def show_masks_command():
 @click.argument('name')
 @click.argument('description')
 @click.argument('genome_build')
-@click.argument('samples', type = click.Path(exists = True))
+@click.option('--samples', type = click.Path(exists = True))
 @click.argument('genotypes', type = click.Path(exists = True), nargs=-1)
 @with_appcontext
 def add_genotypes_command(name, description, genome_build, samples, genotypes):

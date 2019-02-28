@@ -10,6 +10,7 @@
 #include "Phenotypes.h"
 #include "Mask.h"
 #include "ScoreCovarianceRunner.h"
+#include "Raw.h"
 
 // This means generate a thin set of wrappers for versions of this function with or without default arguments
 // 2nd to last argument is minimum number of arguments the function should accept
@@ -162,4 +163,6 @@ BOOST_PYTHON_MODULE(pywrapper) {
             ;
 
     boost::python::def("make_score_covariance_config", &make_score_covariance_config);
+
+    boost::python::def("extract_samples", &extract_samples);
 }
