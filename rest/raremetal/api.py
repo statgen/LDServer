@@ -26,7 +26,7 @@ def handle_parsing_error(error, request, schema, status_code=None, headers=None)
     message = 'Error while parsing \'{}\' query parameter: {}'.format(field, message[0])
     break
 
-  raise FlaskException(message, 422)
+  raise FlaskException(message, 400)
 
 
 def validate_query(parsed_fields, all_fields):
@@ -131,19 +131,19 @@ def get_covariance():
   config.sample_subset = str(args["samples"])
 
   if not model.has_genome_build(build):
-    raise FlaskException('Genome build \'{}\' was not found.'.format(build), 404)
+    raise FlaskException('Genome build \'{}\' was not found.'.format(build), 400)
 
   if not model.has_genotype_dataset(build, genotype_dataset_id):
-    raise FlaskException('No genotype dataset \'{}\' available for genome build {}.'.format(genotype_dataset_id, build), 404)
+    raise FlaskException('No genotype dataset \'{}\' available for genome build {}.'.format(genotype_dataset_id, build), 400)
 
   if not model.has_phenotype_dataset(phenotype_dataset_id):
-    raise FlaskException('No phenotype dataset \'{}\' available for genome build {}.'.format(phenotype_dataset_id, build), 404)
+    raise FlaskException('No phenotype dataset \'{}\' available for genome build {}.'.format(phenotype_dataset_id, build), 400)
 
   if not model.has_samples(genotype_dataset_id, sample_subset):
-    raise FlaskException('Sample subset \'{}\' was not found in genotype dataset {}.'.format(sample_subset, genotype_dataset_id), 404)
+    raise FlaskException('Sample subset \'{}\' was not found in genotype dataset {}.'.format(sample_subset, genotype_dataset_id), 400)
 
   if not model.has_phenotype(phenotype_dataset_id, phenotype):
-    raise FlaskException("Phenotype '{}' does not exist in phenotype dataset {}".format(phenotype, phenotype_dataset_id), 404)
+    raise FlaskException("Phenotype '{}' does not exist in phenotype dataset {}".format(phenotype, phenotype_dataset_id), 400)
 
   if (stop - start) > current_app.config["API_MAX_REGION_SIZE"]:
     raise FlaskException("Region requested for analysis exceeds maximum width of {}".format(current_app.config["API_MAX_REGION_SIZE"]), 400)
