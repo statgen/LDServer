@@ -4,6 +4,7 @@ from sqlalchemy.types import Enum
 from flask.cli import with_appcontext
 from collections import Counter, OrderedDict
 from ld.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType, GroupIdentifierType
+from tabulate import tabulate
 import click
 import json
 import gzip
@@ -261,10 +262,45 @@ def load_genotype_datasets(json_file):
 
 def show_genotype_datasets():
   db.create_all()
-  print '\t'.join(['NAME', 'DESCRIPTION', 'GENOME BUILD', 'POPULATIONS'])
+  header = ["ID", "Name", "Description", "Genome Build", "Populations"]
+  rows = []
   for genotype_dataset in GenotypeDataset.query.all():
-    print '\t'.join([genotype_dataset.name, genotype_dataset.description, genotype_dataset.genome_build, ';'.join(list(set([s.subset for s in genotype_dataset.samples])))])
+    rows.append([
+      genotype_dataset.id,
+      genotype_dataset.name,
+      genotype_dataset.description,
+      genotype_dataset.genome_build,
+      ';'.join(list(set([s.subset for s in genotype_dataset.samples]))),
+      "\n".join([f.path for f in genotype_dataset.files])
+    ])
 
+  print(tabulate(rows, header, 'psql'))
+
+def show_phenotype_datasets():
+  db.create_all()
+  header = ["ID", "Name", "Description", "Path"]
+  rows = []
+  for phenotype_dataset in PhenotypeDataset.query.all():
+    rows.append([phenotype_dataset.id, phenotype_dataset.name, phenotype_dataset.description, phenotype_dataset.filepath])
+
+  print(tabulate(rows, header, 'psql'))
+
+def show_masks():
+  db.create_all()
+  header = ["ID", "Name", "Description", "Genome Build", "Group Type", "Identifier Type", "Path"]
+  rows = []
+  for mask in Mask.query.all():
+    rows.append([
+      mask.id,
+      mask.name,
+      mask.description,
+      mask.genome_build,
+      mask.group_type,
+      mask.identifier_type,
+      mask.filepath
+    ])
+
+  print(tabulate(rows, header, 'psql'))
 
 def add_genotype_dataset(name, description, genome_build, samples_filename, genotype_files):
   db.create_all()
@@ -477,6 +513,20 @@ def show_genotypes_command():
   show_genotype_datasets()
 
 
+@click.command('show-phenotypes')
+@with_appcontext
+def show_phenotypes_command():
+  """Shows loaded phenotype datasets."""
+  show_phenotype_datasets()
+
+
+@click.command('show-masks')
+@with_appcontext
+def show_masks_command():
+  """Shows loaded masks."""
+  show_masks()
+
+
 @click.command('add-genotypes')
 @click.argument('name')
 @click.argument('description')
@@ -550,19 +600,6 @@ def create_subset_command(genome_build, genotype_dataset, sample_subset, samples
   samples -- File with a list of sample names. One sample name per line.\n
   """
   create_subset(genome_build, genotype_dataset, sample_subset, samples)
-
-
-@click.command('show-genotypes')
-@click.argument('genome_build')
-@click.argument('genotype_dataset')
-@with_appcontext
-def show_genotypes_command(genome_build, genotype_dataset):
-  """Shows raw genotype files.
-
-  genome_build -- The genome build version.\n
-  genotype_dataset -- The short name of a genotype dataset.\n
-  """
-  show_genotypes(genome_build, genotype_dataset)
 
 
 @click.command('show-sample-subset')

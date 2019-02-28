@@ -13,3 +13,4 @@ flask_sqlalchemy
 pysam
 raven==6.9.0
 blinker==1.4
+tabulate==0.8.3
