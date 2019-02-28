@@ -96,6 +96,35 @@ protected:
         }
     }
 
+    shared_ptr<map<string, double>> load_variant_freqs(const string &file) {
+        auto variant_freq = make_shared<map<string, double>>();
+        ifstream input_file(file);
+        string line;
+        vector<string> tokens;
+        auto separator = regex("[ \t]");
+        string variant;
+        double freq;
+        uint64_t i = 0;
+        while (getline(input_file, line)) {
+            copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
+            variant = tokens.at(2);
+            freq = stod(tokens.at(7));
+
+            if ((freq < 0) || (freq > 1)) {
+                throw std::domain_error("Allele frequency for variant " + variant + " is invalid: " + to_string(freq));
+            }
+
+            if (variant.empty() || (variant == ".") || (variant == "NA")) {
+                throw std::domain_error("Invalid variant in frequency file on row " + to_string(i));
+            }
+
+            variant_freq->emplace(variant, freq);
+            tokens.clear();
+            i++;
+        }
+        return variant_freq;
+    }
+
     auto load_raremetal_scores(const string &file) {
       return make_shared<RareMetalScores>(file);
     }
@@ -289,6 +318,9 @@ TEST_F(LDServerTest, score_server) {
     // Load score statistics
     auto goldstd = load_raremetal_scores("chr21.test.RAND_QT.singlevar.score.txt");
 
+    // Load allele frequencies
+    auto goldfrq = load_variant_freqs("chr21.test.frq");
+
     // LD server
     const uint32_t MAX_UINT32 = numeric_limits<uint32_t>::max();
     LDServer ld_server(100);
@@ -323,20 +355,15 @@ TEST_F(LDServerTest, score_server) {
         auto gold = goldstd->get_record(score_res.variant);
         ASSERT_NEAR(gold->u_stat, score_res.score_stat, 0.001);
         ASSERT_NEAR(gold->pvalue, score_res.pvalue, 0.001);
+
+        auto gf = goldfrq->at(score_res.variant);
+        ASSERT_NEAR(gf, score_res.alt_freq, 0.001);
     }
 }
 
 TEST_F(LDServerTest, score_covariance_runner) {
-    LDServer ld_server(100);
-    LDQueryResult ld_result(1000);
-
-    ScoreServer score_server(100);
-    ScoreStatQueryResult score_results(1000);
-    auto segments = make_shared_segment_vector();
-
     string genotype_file = "chr22.test.vcf.gz";
-    ld_server.set_file(genotype_file);
-    score_server.set_genotypes_file(genotype_file, 1);
+    string phenotype_file = "chr22.test.tab";
 
     ColumnTypeMap ctmap;
     ctmap.add("fid", ColumnType::TEXT);
@@ -347,15 +374,10 @@ TEST_F(LDServerTest, score_covariance_runner) {
     ctmap.add("rand_binary", ColumnType::CATEGORICAL);
     ctmap.add("rand_qt", ColumnType::FLOAT);
 
-    string phenotype_file = "chr22.test.tab";
-    score_server.load_phenotypes_file(phenotype_file, ctmap, 2504, 1);
-    score_server.set_phenotype("rand_qt");
-
     // Region to analyze
     string chrom = "22";
     auto start = 50276998ul;
-    //auto stop = 50357719ul;
-    auto stop = 50294147ul;
+    auto stop = 50357719ul;
 
     // Setup mask
     vector<Mask> masks;
