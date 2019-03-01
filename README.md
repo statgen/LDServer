@@ -24,6 +24,7 @@ This project contains multiple components that work together to provide these fe
 - [LDServer](#ldserver)
 	- [Documentation](#documentation)
 	- [Installation](#installation)
+	- [Updating](#updating)
 	- [Configuring & running the flask apps](#configuring-running-the-flask-apps)
 		- [rest app](#rest-app)
 			- [Configuring the rest app](#configuring-the-rest-app)
@@ -117,6 +118,10 @@ Now follow these steps to complete installation:
   ```
 
 - Configure REST API by copying the config file `rest/config/default.py` to `rest/instance/config.py` and then modify values as needed. Modifying `default.py` is not recommended as it will be overwritten when pulling updates from github.
+
+## Updating
+
+Update your files using `git pull`, then recompile the server by doing `cget install --update ld`.
 
 ## Configuring & running the flask apps
 
