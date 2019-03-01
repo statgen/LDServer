@@ -322,7 +322,7 @@ def load_genotype_datasets(json_file):
 
 def show_genotype_datasets():
   db.create_all()
-  header = ["ID", "Name", "Description", "Genome Build", "Populations"]
+  header = ["ID", "Name", "Description", "Genome Build", "Populations", "Files"]
   rows = []
   for genotype_dataset in GenotypeDataset.query.all():
     rows.append([
