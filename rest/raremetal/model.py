@@ -218,6 +218,17 @@ def get_masks_for_genotypes(genotype_dataset_id):
 
   return masks
 
+def get_mask_by_id(mask_id):
+  result = db.session.query(Mask).filter_by(id = mask_id).scalar()
+  if result is None:
+    raise ValueError("No mask exists for ID {}".format(mask_id))
+
+  as_dict = {c.key: getattr(result, c.key) for c in inspect(result).mapper.column_attrs}
+
+  as_dict["group_type"] = VariantGroupType.names.get(result.group_type)
+  as_dict["identifier_type"] = GroupIdentifierType.names.get(result.identifier_type)
+  return as_dict
+
 def get_mask_by_name(mask_name, genotype_dataset_id):
   result = db.session.query(Mask).filter_by(name = mask_name, genotype_dataset_id = genotype_dataset_id).scalar()
   if result is None:
@@ -460,6 +471,7 @@ def add_masks(name, description, filepath, genome_build, genotype_dataset, group
   )
   db.session.add(mask)
   db.session.commit()
+  print mask.id
 
 
 def create_subset(genome_build, genotype_dataset_name, subset_name, samples_filename):
