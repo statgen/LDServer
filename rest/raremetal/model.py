@@ -524,6 +524,9 @@ def add_phenotype_dataset(name, description, filepath, genotype_datasets, column
 
         column_types[col][k] = v
 
+  if ".ped" in filepath or ".dat" in filepath:
+    sample_column = "IID"
+
   args = {
     "name": name,
     "description": description,
