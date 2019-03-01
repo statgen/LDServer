@@ -141,8 +141,8 @@ def get_full_genotype_datasets():
 
   return datasets
 
-def has_genotype_dataset(genome_build, genotype_dataset_id):
-  return db.session.query(GenotypeDataset).filter_by(genome_build = genome_build).filter_by(id = genotype_dataset_id).first() is not None
+def has_genotype_dataset(genotype_dataset_id):
+  return db.session.query(GenotypeDataset).filter_by(id = genotype_dataset_id).first() is not None
 
 def has_phenotype_dataset(phenotype_dataset_id):
   return db.session.query(PhenotypeDataset.id).filter_by(id = phenotype_dataset_id).first() is not None
