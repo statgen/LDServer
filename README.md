@@ -4,7 +4,7 @@ LDServer is a fast implementation of various metrics of linkage disequilibrium (
 
 Features:
 
-* **Fast**: calculating covariance in a typical window (500kb) and on typical VCFs (10,000's of samples) will return in under 3-4 seconds.
+* **Fast**: calculating LD in a typical window (500kb) and on typical VCFs (10,000's of samples) will return in under 3-4 seconds.
 * **API**: serves statistics over a REST API, suitable for web applications (used by [LocusZoom](http://locuszoom.org)).
 * **Caching**: statistics are cached by Redis; common queries will return in under 1 second.
 * **Paging**: iterate over pages of results, rather than processing immediately all at once.
@@ -37,10 +37,11 @@ This project contains multiple components that work together to provide these fe
 			- [Running the playground app](#running-the-playground-app)
 		- [raremetal app](#raremetal-app)
 			- [Configuring the raremetal app](#configuring-the-raremetal-app)
-				- [Adding genotype datasets](#adding-genotype-datasets)
-				- [Adding phenotype datasets](#adding-phenotype-datasets)
-				- [Adding masks of genetic variants](#adding-masks-of-genetic-variants)
-				- [Listing available datasets](#listing-available-datasets)
+				- [CLI: Adding genotype datasets](#cli-adding-genotype-datasets)
+				- [CLI: Adding phenotype datasets](#cli-adding-phenotype-datasets)
+				- [CLI: Adding masks of genetic variants](#cli-adding-masks-of-genetic-variants)
+				- [CLI: Listing available datasets](#cli-listing-available-datasets)
+				- [YAML: Adding multiple datasets with one YAML config file](#yaml-adding-multiple-datasets-with-one-yaml-config-file)
 			- [Running the raremetal app](#running-the-raremetal-app)
 
 <!-- /TOC -->
@@ -249,7 +250,14 @@ Before running the following commands, you should set the appropriate flask app 
 export FLASK_APP="rest/raremetal"
 ```
 
-##### Adding genotype datasets
+There are two methods for inserting datasets:
+
+1. Quickly add datasets with the command-line interface (CLI) commands
+2. Provide metadata about all of your datasets at once in a YAML file
+
+**The second option is our recommendation for production**, but to get up and running quickly or for testing, the first option works well.
+
+##### CLI: Adding genotype datasets
 
 Genotype datasets may be in VCF, BCF, or [Savvy](https://github.com/statgen/savvy) formats. VCF files must be [bgzipped](http://www.htslib.org/doc/bgzip.html) and [tabixed](http://www.htslib.org/doc/tabix.html).
 
@@ -279,7 +287,7 @@ gid=`flask add-genotypes "1000G" "1000G Test VCF" "GRCh37" data/chr*.test.vcf.gz
 With the command above, you can capture the genotype dataset ID that was assigned in the database, and use it in later commands.
 
 
-##### Adding phenotype datasets
+##### CLI: Adding phenotype datasets
 
 Phenotype datasets are files containing a number of phenotypes (such as BMI, fasting glucose, heart rate, etc.) collected on a set of samples. Each row is a sample/individual, and each column is a phenotype.
 
@@ -325,7 +333,7 @@ Where `$gid` was set above when adding the genotype dataset for these phenotypes
 
 Each phenotype dataset added should correspond to a genotype dataset (and hence supplying the genotype dataset ID.) This allows the server to know which phenotypes are available (and valid) for each dataset.
 
-##### Adding masks of genetic variants
+##### CLI: Adding masks of genetic variants
 
 A mask file maps genetic variants to "groups", which are typically genes (though they could also be arbitrary genomic regions.) Typically mask files are created using variant filters, such as "allele frequency < 0.01" or "protein truncating variants AND loss-of-function variants".
 
@@ -376,13 +384,138 @@ flask add-masks "AF < 0.01" "Variants with alternate allele freq < 0.01" "data/m
 
 Where `$gid` was the genotype dataset ID generated after using the `add-genotypes` command earlier.
 
-##### Listing available datasets
+##### CLI: Listing available datasets
 
 You can see the list of phenotypes, genotypes, and masks that have been given to the server using:
 
 * `flask show-genotypes`
 * `flask show-phenotypes`
 * `flask show-masks`
+
+##### YAML: Adding multiple datasets with one YAML config file
+
+Datasets may be specified in a YAML file, which provides additional features over the CLI interface:
+
+1. Set your own dataset IDs. This allows you to maintain consistency on IDs when reloading the database.
+2. Specify columns that are not meant to be used for analysis. These columns will not show up in metadata queries.
+3. Specify longer text descriptions for each column.
+
+An example YAML file is located in `data/test.yaml`, and looks like:
+
+```YAML
+genotypes:
+- id: 1
+  name: "1000G"
+  description: "1000G chr22 Testing VCF"
+  filepath: "data/chr22.test.vcf.gz"
+  genome_build: "GRCh37"
+
+phenotypes:
+- id: 1
+  name: "1000G random phenotypes"
+  description: "An example set of randomly generated phenotypes for 1000G"
+  genotypes: 1
+  filepath: "data/chr22.test.tab"
+  delim: "\t"
+  columns:
+    iid:
+      column_type: "TEXT"
+      sample_column: true
+
+    sex:
+      column_type: "CATEGORICAL"
+      for_analysis: false
+
+    rand_binary:
+      column_type: "CATEGORICAL"
+      description: "A random binary phenotype"
+
+    rand_qt:
+      column_type: "FLOAT"
+      description: "A random quantitative phenotype"
+
+- id: 2
+  name: "1000G random phenotypes II"
+  genotypes: 1
+  filepath: "data/chr22.more_phenotypes.test.ped"
+  description: "Adding a second set of phenotypes for 1000G"
+  delim: "\t"
+  columns:
+    ANOTHER_RAND_QT:
+      column_type: "FLOAT"
+      description: "Another random quantitative phenotype"
+
+masks:
+- id: 1
+  name: "AF < 0.01"
+  description: "Variants with allele frequency < 1%"
+  filepath: "data/mask.epacts.chr22.gencode-exons-AF01.tab.gz"
+  genome_build: "GRCh37"
+  genotypes: 1
+  group_type: "GENE"
+  identifier_type: "ENSEMBL"
+
+- id: 2
+  name: "AF < 0.05"
+  description: "Variants with allele frequency < 5%"
+  filepath: "data/mask.epacts.chr22.gencode-exons-AF05.tab.gz"
+  genome_build: "GRCh37"
+  genotypes: 1
+  group_type: "GENE"
+  identifier_type: "ENSEMBL"
+```
+
+The file has 3 "blocks": `genotypes`, `phenotypes`, and `masks`.
+
+Each record under `genotypes` looks like:
+
+```YAML
+- id: <genotype dataset ID you would like to use>
+  name: <short description of genotype dataset, typically a study name>
+  description: <long form description of dataset>
+  filepath: <path to VCF, BCF, or Savvy file>
+  genome_build: <genome build, e.g. GRCh37 or GRCh38>
+```
+
+Each record under `phenotypes` looks like:
+
+```YAML
+- id: <phenotype dataset ID you would like to use>
+  name: <short description of phenotypes>
+  description: <long description of phenotypes>
+  genotypes: <genotype dataset ID, i.e. which genotypes do these samples line up with?>
+  filepath: "data/chr22.test.tab"
+  delim: "\t"
+  columns:
+    <column name as it exists in header or DAT file for PED files>:
+      column_type: <type, can be "TEXT" or "CATEGORICAL" or "FLOAT"
+      sample_column: <true or false, is this column the sample ID column?>
+      for_analysis: <true or false, should this phenotype be used in analysis?>
+      description: <long form description of the phenotype>
+```
+
+Under `columns`, the following keys are optional:
+
+* `sample_column`: (if no columns specified as the sample ID column, we assume it is the first column in the file.)
+* `for_analysis`: all columns are assumed to be used for analysis unless specified otherwise.
+* `column_type`: if not specified, the type will be guessed by examining the phenotype file.
+
+Also, specifying columns is entirely optional itself. Column names and types will be deduced if not provided.
+
+For PED files, you do not need to specify anything about the first 5 columns (family ID, individual ID, paternal ID, maternal ID, sex) - they are part of the format and automatically handled. If you specify information for the remaining phenotypes in the file, note that they must match the phenotype as specified in the DAT file.
+
+Each record under `masks` looks like:
+
+```YAML
+- id: <mask ID you would like to use>
+  name: <short description of mask>
+  description: <long description of mask>
+  filepath: "data/mask.epacts.chr22.gencode-exons-AF01.tab.gz"
+  genome_build: <genome build, e.g. GRCh37>
+  genotypes: <genotype dataset ID containing the variants specified in this mask>
+  group_type: <group type, can be "GENE" or "REGION">
+  identifier_type: <identifier type, currently only "ENSEMBL" supported>
+```
 
 #### Running the raremetal app
 
