@@ -133,7 +133,7 @@ def get_covariance():
   if not model.has_genome_build(build):
     raise FlaskException('Genome build \'{}\' was not found.'.format(build), 400)
 
-  if not model.has_genotype_dataset(build, genotype_dataset_id):
+  if not model.has_genotype_dataset(genotype_dataset_id):
     raise FlaskException('No genotype dataset \'{}\' available for genome build {}.'.format(genotype_dataset_id, build), 400)
 
   if not model.has_phenotype_dataset(phenotype_dataset_id):
