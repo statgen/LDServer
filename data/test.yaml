@@ -1,0 +1,60 @@
+genotypes:
+- id: 1
+  name: "1000G"
+  description: "1000G chr22 Testing VCF"
+  filepath: "data/chr22.test.vcf.gz"
+  genome_build: "GRCh37"
+  
+phenotypes:
+- id: 1
+  name: "1000G random phenotypes"
+  description: "An example set of randomly generated phenotypes for 1000G"
+  genotypes: 1
+  filepath: "data/chr22.test.tab"
+  delim: "\t"
+  columns:
+    iid:
+      column_type: "TEXT"
+      sample_column: true
+
+    sex: 
+      column_type: "CATEGORICAL"
+      for_analysis: false
+
+    rand_binary:
+      column_type: "CATEGORICAL"
+      description: "A random binary phenotype"
+
+    rand_qt:
+      column_type: "FLOAT"
+      description: "A random quantitative phenotype"
+
+- id: 2
+  name: "1000G random phenotypes II"
+  genotypes: 1
+  filepath: "data/chr22.more_phenotypes.test.ped"
+  description: "Adding a second set of phenotypes for 1000G"
+  delim: "\t"
+  columns:
+    ANOTHER_RAND_QT:
+      column_type: "FLOAT"
+      description: "Another random quantitative phenotype"
+
+masks:
+- id: 1
+  name: "AF < 0.01"
+  description: "Variants with allele frequency < 1%"
+  filepath: "data/mask.epacts.chr22.gencode-exons-AF01.tab.gz"
+  genome_build: "GRCh37"
+  genotypes: 1
+  group_type: "GENE"
+  identifier_type: "ENSEMBL"
+
+- id: 2
+  name: "AF < 0.05"
+  description: "Variants with allele frequency < 5%"
+  filepath: "data/mask.epacts.chr22.gencode-exons-AF05.tab.gz"
+  genome_build: "GRCh37"
+  genotypes: 1
+  group_type: "GENE"
+  identifier_type: "ENSEMBL"

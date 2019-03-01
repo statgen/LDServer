@@ -159,10 +159,10 @@ def get_covariance():
     config.samples = s
 
   config.phenotype_file = find_file(model.get_phenotype_file(phenotype_dataset_id))
-  config.column_types = model.get_column_types(phenotype_dataset_id)
-  config.nrows = model.get_phenotype_nrows(phenotype_dataset_id)
-  config.columns = model.get_phenotype_columns(phenotype_dataset_id)
-
+  config.phenotype_column_types = model.get_column_types(phenotype_dataset_id)
+  config.phenotype_nrows = model.get_phenotype_nrows(phenotype_dataset_id)
+  config.phenotype_sample_column = str(model.get_phenotype_sample_column(phenotype_dataset_id))
+  config.phenotype_delim = str(model.get_phenotype_delim(phenotype_dataset_id))
   config.phenotype_dataset_id = phenotype_dataset_id
   config.phenotype = phenotype
 

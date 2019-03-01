@@ -12,7 +12,7 @@ def create_app(test_config = None):
 
   from .model import db, load_correlations, load_genotypes_command, show_genotypes_command, \
     add_genotypes_command, create_subset_command, show_genotypes_command, show_samples_command, \
-    add_phenotypes_command, add_masks_command, show_phenotypes_command, show_masks_command
+    add_phenotypes_command, add_masks_command, show_phenotypes_command, show_masks_command, add_yaml_command
 
   db.init_app(app)
   app.cli.add_command(add_masks_command)
@@ -25,6 +25,7 @@ def create_app(test_config = None):
   app.cli.add_command(show_samples_command)
   app.cli.add_command(show_phenotypes_command)
   app.cli.add_command(show_masks_command)
+  app.cli.add_command(add_yaml_command)
 
   from . import api
   app.register_blueprint(api.bp)

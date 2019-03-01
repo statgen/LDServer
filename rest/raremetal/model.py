@@ -5,8 +5,11 @@ from flask.cli import with_appcontext
 from collections import Counter, OrderedDict
 from ld.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType, GroupIdentifierType, extract_samples
 from tabulate import tabulate
+from glob import glob
+import os
 import click
 import json
+import yaml
 import gzip
 
 db = SQLAlchemy()
@@ -75,6 +78,8 @@ class PhenotypeDataset(db.Model):
   filepath = db.Column(db.String, unique = False, nullable = False)
   nrows = db.Column(db.Integer, nullable = False)
   ncols = db.Column(db.Integer, nullable = False)
+  sample_column = db.Column(db.String, unique = False, nullable = False)
+  delim = db.Column(db.String, unique = False, nullable = False)
 
   columns = db.relationship("PhenotypeColumn", back_populates = "dataset")
   genotypes = db.relationship("GenotypeDataset", secondary="genotype_phenotype", back_populates="phenotypes")
@@ -86,6 +91,8 @@ class PhenotypeColumn(db.Model):
   phenotype_dataset_id = db.Column(db.Integer, db.ForeignKey('phenotype_datasets.id'))
   column_name = db.Column(db.String, nullable = False)
   column_type = db.Column(Enum(*tuple(ColumnType.values[i].name for i in range(len(ColumnType.values)))), nullable = False, name = "column_type")
+  description = db.Column(db.String, nullable = True)
+  for_analysis = db.Column(db.Boolean, default = True)
 
   dataset = db.relationship("PhenotypeDataset", back_populates = "columns")
 
@@ -150,6 +157,9 @@ def has_phenotype_dataset(phenotype_dataset_id):
 def has_phenotype(phenotype_dataset_id, phenotype):
   return db.session.query(PhenotypeColumn).filter_by(phenotype_dataset_id=phenotype_dataset_id, column_name=phenotype).scalar()
 
+def has_mask(mask_id):
+  return db.session.query(Mask).filter_by(id = mask_id).scalar() is not None
+
 def get_phenotype_dataset_id(phenotype_dataset_name):
   return db.session.query(PhenotypeDataset.id).filter_by(name = phenotype_dataset_name).scalar()
 
@@ -182,8 +192,15 @@ def get_column_types(phenotype_dataset_id):
 
   return mapping
 
+# TODO: clean this up, should just get object all at once
 def get_phenotype_nrows(phenotype_dataset_id):
   return db.session.query(PhenotypeDataset.nrows).filter_by(id = phenotype_dataset_id).scalar()
+
+def get_phenotype_delim(phenotype_dataset_id):
+  return db.session.query(PhenotypeDataset.delim).filter_by(id = phenotype_dataset_id).scalar()
+
+def get_phenotype_sample_column(phenotype_dataset_id):
+  return db.session.query(PhenotypeDataset.sample_column).filter_by(id = phenotype_dataset_id).scalar()
 
 def get_phenotype_columns(phenotype_dataset_id):
   return [str(x) for x in db.session.query(PhenotypeColumn.column_name).filter_by(id = phenotype_dataset_id).order_by(PhenotypeColumn.id)]
@@ -197,7 +214,15 @@ def get_phenotypes_for_genotypes(genotype_dataset_id):
     del as_dict["nrows"]
     del as_dict["ncols"]
     del as_dict["filepath"]
-    as_dict["phenotypes"] = [x.column_name for x in row.columns]
+    del as_dict["sample_column"]
+    del as_dict["delim"]
+
+    for col in row.columns:
+      if col.for_analysis:
+        as_dict.setdefault("phenotypes", []).append({
+          "name": col.column_name,
+          "description": col.description
+        })
 
     result.append(as_dict)
 
@@ -313,7 +338,7 @@ def show_masks():
 
   print(tabulate(rows, header, 'psql'))
 
-def add_genotype_dataset(name, description, genome_build, samples_filename, genotype_files):
+def add_genotype_dataset(name, description, genome_build, samples_filename, genotype_files, dbid=None):
   db.create_all()
   samples = []
   if samples_filename:
@@ -331,7 +356,11 @@ def add_genotype_dataset(name, description, genome_build, samples_filename, geno
         if set(samples) != set(f_samples):
           raise ValueError("Genotype file {} did not have the same samples as the others")
 
-  r = GenotypeDataset(name = name, description = description, genome_build = genome_build)
+  args = {"name": name, "description": description, "genome_build": genome_build}
+  if dbid is not None:
+    args["id"] = dbid
+
+  r = GenotypeDataset(**args)
   for path in genotype_files:
     r.files.append(File(path = path))
   for sample in samples:
@@ -375,18 +404,24 @@ def _load_phenotype_ped(ped_file, dat_file):
     column_types = OrderedDict()
 
     # We know some of the column types already in a PED file
-    column_types["IID"] = ColumnType.TEXT.name
-    column_types["FID"] = ColumnType.TEXT.name
-    column_types["PID"] = ColumnType.TEXT.name
-    column_types["MID"] = ColumnType.TEXT.name
-    column_types["SEX"] = ColumnType.CATEGORICAL.name
+    column_types["FID"] = {"column_type": ColumnType.TEXT.name}
+    column_types["IID"] = {"column_type": ColumnType.TEXT.name}
+    column_types["PID"] = {"column_type": ColumnType.TEXT.name}
+    column_types["MID"] = {"column_type": ColumnType.TEXT.name}
+    column_types["SEX"] = {"column_type": ColumnType.CATEGORICAL.name}
+
+    for k, v in column_types.items():
+      v["column_name"] = k
+      v["for_analysis"] = False
 
     for i, line in enumerate(fp_dat):
       ctype, pheno = line.split()
       if ctype == "A":
-        column_types[pheno] = ColumnType.CATEGORICAL.name
+        column_types.setdefault(pheno, {})["column_type"] = ColumnType.CATEGORICAL.name
+        column_types.setdefault(pheno, {})["column_name"] = pheno
       elif ctype == "T":
-        column_types[pheno] = ColumnType.FLOAT.name
+        column_types.setdefault(pheno, {})["column_type"] = ColumnType.FLOAT.name
+        column_types.setdefault(pheno, {})["column_name"] = pheno
       elif ctype == "M":
         continue
       else:
@@ -427,12 +462,12 @@ def _load_phenotype_tab(tab_file):
 
   column_types = OrderedDict()
   for k, v in column_values.items():
-    column_types[k] = guess_type(v)
+    column_types[k] = {"column_name": k, "column_type": guess_type(v)}
 
   return column_types, nrows
 
 
-def add_phenotypes(name, description, filepath, genotype_datasets):
+def add_phenotype_dataset(name, description, filepath, genotype_datasets, column_spec=None, delim="\t", pid=None):
   db.create_all()
 
   if ".ped" in filepath:
@@ -444,31 +479,61 @@ def add_phenotypes(name, description, filepath, genotype_datasets):
   else:
     raise ValueError("Must specify PED+DAT or tab-delimited file")
 
-  pheno = PhenotypeDataset(name = name, description = description, filepath = filepath, nrows = nrows, ncols = len(column_types))
+  sample_column = None
+
+  if column_spec is not None:
+    for col, col_data in column_spec.items():
+      for k, v in col_data.items():
+        if k == "sample_column":
+          sample_column = col
+          column_types[col]["for_analysis"] = False
+          continue
+
+        if col not in column_types:
+          raise ValueError("Column '{}' was specified in YAML, but it does not exist in phenotype dataset '{}'".format(col, name))
+
+        column_types[col][k] = v
+
+  args = {
+    "name": name,
+    "description": description,
+    "filepath": filepath,
+    "nrows": nrows,
+    "ncols": len(column_types),
+    "delim": delim,
+    "sample_column": sample_column if sample_column is not None else next(iter(column_types)) # assume it is the first column unless told otherwise
+  }
+  if pid is not None:
+    args["id"] = pid
+
+  pheno = PhenotypeDataset(**args)
   for col, ctype in column_types.items():
-    pheno.columns.append(PhenotypeColumn(column_name = col, column_type = ctype))
+    pheno.columns.append(PhenotypeColumn(**ctype))
+
+  try:
+    genotype_datasets = [int(x) for x in genotype_datasets]
+  except:
+    genotype_datasets = [int(genotype_datasets)]
 
   for gd in genotype_datasets:
     genotype_dataset = GenotypeDataset.query.filter_by(id = gd).first()
     if genotype_dataset is not None:
       pheno.genotypes.append(genotype_dataset)
     else:
-      raise ValueError("Genotype dataset with name {} does not exist".format(gd))
+      raise ValueError("Genotype dataset with ID {} does not exist".format(gd))
 
   db.session.add(pheno)
   db.session.commit()
 
 
-def add_masks(name, description, filepath, genome_build, genotype_dataset, group_type, identifier_type):
-  mask = Mask(
-    name = name,
-    description = description,
-    filepath = filepath,
-    genome_build = genome_build,
-    genotype_dataset_id = genotype_dataset,
-    group_type = group_type,
-    identifier_type = identifier_type
-  )
+def add_masks(name, description, filepath, genome_build, genotype_dataset_id, group_type, identifier_type, mid=None):
+  args = locals()
+  if mid is not None:
+    args["id"] = mid
+
+  if "mid" in args: del args["mid"]
+
+  mask = Mask(**args)
   db.session.add(mask)
   db.session.commit()
   print mask.id
@@ -548,6 +613,68 @@ def show_masks_command():
   """Shows loaded masks."""
   show_masks()
 
+def add_from_yaml(filepath):
+  if not os.path.isfile(filepath):
+    raise IOError("Not a file: " + filepath)
+
+  with open(filepath) as fp:
+    data = yaml.safe_load(fp)
+
+  # We need to preprocess the file to make sure their requested database IDs have not already been taken.
+  for block_type, block_data in data.iteritems():
+    id_lookup = None
+    if block_type == "genotypes":
+      id_lookup = has_genotype_dataset
+    elif block_type == "phenotypes":
+      id_lookup = has_phenotype_dataset
+    elif block_type == "masks":
+      id_lookup = has_mask
+    else:
+      raise ValueError("Unrecognized block in yaml file: " + block_type)
+
+    requested_ids = set()
+    for record in block_data:
+      if id_lookup(record.get("id")):
+        raise ValueError("Database already has ID {} for this type of record. Please make sure your IDs are unique, if you wish to assign them yourself.".format(record["id"]))
+
+      rec_id = record.get("id")
+      if rec_id is not None:
+        if rec_id in requested_ids:
+          raise ValueError("Cannot have two phenotype datasets with the same ID - {} already seen previously".format(rec_id))
+        else:
+          requested_ids.add(rec_id)
+
+  # Validate column types for phenotypes.
+  for record in data.get("phenotypes", []):
+    for col, column_record in record.get("columns", {}).items():
+      column_type = column_record.get("type")
+      if column_type is not None and column_type not in ColumnType.names:
+        raise ValueError("Invalid column type '{}' for column '{}' in phenotype dataset '{}'".format(column_type, column_record["name"], record["name"]))
+
+  # We made it here, the IDs are all acceptable to insert into the database.
+  for block_type, block_data in data.iteritems():
+    if block_type == "genotypes":
+      for record in block_data:
+        if "*" in record["filepath"]:
+          genotype_files = glob(record["filepath"])
+        else:
+          genotype_files = [record["filepath"]]
+
+        add_genotype_dataset(record["name"], record["description"], record["genome_build"], record.get("samples"), genotype_files, record.get("id"))
+
+    elif block_type == "phenotypes":
+      for record in block_data:
+        add_phenotype_dataset(record["name"], record["description"], record["filepath"], record["genotypes"], record.get("columns"), record.get("delim"), record.get("id"))
+
+    elif block_type == "masks":
+      for record in block_data:
+        add_masks(record["name"], record["description"], record["filepath"], record["genome_build"], record["genotypes"], record["group_type"], record["identifier_type"], record.get("id"))
+
+@click.command("add-yaml")
+@click.argument("yaml_path", type=click.Path(exists=True))
+@with_appcontext
+def add_yaml_command(yaml_path):
+  add_from_yaml(yaml_path)
 
 @click.command('add-genotypes')
 @click.argument('name')
@@ -582,7 +709,7 @@ def add_phenotypes_command(name, description, filepath, genotype_datasets):
   filepath -- Path to PED file or TAB-delimited file containing the phenotypes and samples.\n
   genotype_datasets -- List of genotype datasets (IDs) that are linked to this phenotype dataset.\n
   """
-  add_phenotypes(name, description, filepath, genotype_datasets)
+  add_phenotype_dataset(name, description, filepath, genotype_datasets)
 
 
 @click.command('add-masks')

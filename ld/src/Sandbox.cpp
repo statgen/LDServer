@@ -26,16 +26,13 @@ void test1() {
   score_server.set_genotypes_file(genotype_file, 1);
 
   ColumnTypeMap ctmap;
-  ctmap.add("fid", ColumnType::TEXT);
   ctmap.add("iid", ColumnType::TEXT);
-  ctmap.add("patid", ColumnType::TEXT);
-  ctmap.add("matid", ColumnType::TEXT);
   ctmap.add("sex", ColumnType::CATEGORICAL);
   ctmap.add("rand_binary", ColumnType::CATEGORICAL);
   ctmap.add("rand_qt", ColumnType::FLOAT);
 
   string phenotype_file = "../../../data/chr22.test.tab";
-  score_server.load_phenotypes_file(phenotype_file, ctmap, 2504, 1);
+  score_server.load_phenotypes_file(phenotype_file, ctmap, 2504, "\t", "iid", 1);
   score_server.set_phenotype("rand_qt");
 
   string chrom = "22";
@@ -60,10 +57,12 @@ void test1() {
   config->genotype_files = {genotype_file};
   config->genotype_dataset_id = 1;
   config->phenotype_file = phenotype_file;
-  config->column_types = ctmap;
+  config->phenotype_column_types = ctmap;
   config->phenotype_dataset_id = 1;
   config->phenotype = "rand_qt";
-  config->nrows = 2504;
+  config->phenotype_nrows = 2504;
+  config->phenotype_sample_column = "iid";
+  config->phenotype_delim = "\t";
 
   config->pprint();
 

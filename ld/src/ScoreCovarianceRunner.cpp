@@ -20,10 +20,10 @@ void ScoreCovarianceConfig::pprint() const {
   cout << "Phenotype dataset ID: " << phenotype_dataset_id << endl;
   cout << "Phenotype file: " << phenotype_file << endl;
   cout << "Phenotype: " << phenotype << endl;
-  for (auto&& kv : column_types) {
+  for (auto&& kv : phenotype_column_types) {
     cout << ".. " << "column " << kv.first << " of type " << kv.second << endl;
   }
-  cout << "# rows: " << nrows << endl;
+  cout << "# rows: " << phenotype_nrows << endl;
   cout << "Sample subset key: " << sample_subset << endl;
   cout << "Samples provided? " << !samples.empty() << endl;
   cout << "Masks: " << endl;
@@ -73,7 +73,14 @@ void ScoreCovarianceRunner::run() {
     score_server.set_samples(config->sample_subset, config->samples);
   }
 
-  score_server.load_phenotypes_file(config->phenotype_file, config->column_types, config->nrows, config->phenotype_dataset_id);
+  score_server.load_phenotypes_file(
+    config->phenotype_file,
+    config->phenotype_column_types,
+    config->phenotype_nrows,
+    config->phenotype_delim,
+    config->phenotype_sample_column,
+    config->phenotype_dataset_id
+  );
   score_server.set_phenotype(config->phenotype);
 
 //  if (!config->redis_hostname.empty()) {
