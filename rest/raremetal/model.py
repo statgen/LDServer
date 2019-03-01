@@ -232,7 +232,6 @@ def get_masks_for_genotypes(genotype_dataset_id):
   masks = []
   for row in db.session.query(Mask).filter_by(genotype_dataset_id = genotype_dataset_id):
     as_dict = {c.key: getattr(row, c.key) for c in inspect(row).mapper.column_attrs}
-    as_dict["id"] = as_dict.pop("name")
     as_dict["groupType"] = as_dict.pop("group_type")
     as_dict["identifierType"] = as_dict.pop("identifier_type")
 
