@@ -27,8 +27,10 @@ public:
   std::string phenotype_file;
   uint32_t phenotype_dataset_id;
   std::string phenotype;
-  ColumnTypeMap column_types;
-  uint64_t nrows;
+  ColumnTypeMap phenotype_column_types;
+  uint64_t phenotype_nrows;
+  std::string phenotype_delim;
+  std::string phenotype_sample_column;
   std::vector<Mask> masks;
   std::string sample_subset;
   std::vector<std::string> samples;

@@ -334,16 +334,13 @@ TEST_F(LDServerTest, score_server) {
     score_server.set_genotypes_file("chr21.test.vcf.gz", 1);
 
     ColumnTypeMap ctmap;
-    ctmap.add("fid", ColumnType::TEXT);
     ctmap.add("iid", ColumnType::TEXT);
-    ctmap.add("patid", ColumnType::TEXT);
-    ctmap.add("matid", ColumnType::TEXT);
     ctmap.add("sex", ColumnType::CATEGORICAL);
     ctmap.add("rand_binary", ColumnType::CATEGORICAL);
     ctmap.add("rand_qt", ColumnType::FLOAT);
 
     string phenotype_file = "chr21.test.tab";
-    score_server.load_phenotypes_file(phenotype_file, ctmap, 2504, 1);
+    score_server.load_phenotypes_file(phenotype_file, ctmap, 2504, "\t", "iid", 1);
     score_server.set_phenotype("rand_qt");
 
     auto segments = make_shared_segment_vector();
@@ -366,10 +363,7 @@ TEST_F(LDServerTest, score_covariance_runner) {
     string phenotype_file = "chr22.test.tab";
 
     ColumnTypeMap ctmap;
-    ctmap.add("fid", ColumnType::TEXT);
     ctmap.add("iid", ColumnType::TEXT);
-    ctmap.add("patid", ColumnType::TEXT);
-    ctmap.add("matid", ColumnType::TEXT);
     ctmap.add("sex", ColumnType::CATEGORICAL);
     ctmap.add("rand_binary", ColumnType::CATEGORICAL);
     ctmap.add("rand_qt", ColumnType::FLOAT);
@@ -395,10 +389,12 @@ TEST_F(LDServerTest, score_covariance_runner) {
     config->genotype_files = {genotype_file};
     config->genotype_dataset_id = 1;
     config->phenotype_file = phenotype_file;
-    config->column_types = ctmap;
+    config->phenotype_column_types = ctmap;
     config->phenotype_dataset_id = 1;
     config->phenotype = "rand_qt";
-    config->nrows = 2504;
+    config->phenotype_nrows = 2504;
+    config->phenotype_sample_column = "iid";
+    config->phenotype_delim = "\t";
 
     // Run score/covariance calculations
     ScoreCovarianceRunner runner(config);
@@ -1023,15 +1019,12 @@ TEST_F(LDServerTest, DISABLED_read_spead) {
 TEST_F(LDServerTest, pheno_read_tab) {
     Phenotypes pheno;
     ColumnTypeMap ctmap;
-    ctmap.add("fid", ColumnType::TEXT);
     ctmap.add("iid", ColumnType::TEXT);
-    ctmap.add("patid", ColumnType::TEXT);
-    ctmap.add("matid", ColumnType::TEXT);
     ctmap.add("sex", ColumnType::CATEGORICAL);
     ctmap.add("rand_binary", ColumnType::CATEGORICAL);
     ctmap.add("rand_qt", ColumnType::FLOAT);
 
-    pheno.load_file("chr21.test.tab", ctmap, 2504);
+    pheno.load_file("chr21.test.tab", ctmap, 2504, "\t", "iid");
 
     auto &rand_qt = *pheno.as_vec("rand_qt");
     ASSERT_NEAR(rand_qt[0], 0.283211535632, 0.000001);
@@ -1046,12 +1039,13 @@ TEST_F(LDServerTest, pheno_read_tab) {
     ASSERT_EQ(sex[1], 1);
 
     auto phenos_loaded = *pheno.get_phenotypes();
-    ASSERT_EQ(phenos_loaded[0], "fid");
+    ASSERT_EQ(phenos_loaded[0], "iid");
 }
 
 TEST_F(LDServerTest, pheno_read_ped) {
     Phenotypes pheno;
     ColumnTypeMap ctmap;
+
     ctmap.add("fid", ColumnType::TEXT);
     ctmap.add("iid", ColumnType::TEXT);
     ctmap.add("patid", ColumnType::TEXT);
@@ -1060,7 +1054,7 @@ TEST_F(LDServerTest, pheno_read_ped) {
     ctmap.add("rand_binary", ColumnType::CATEGORICAL);
     ctmap.add("rand_qt", ColumnType::FLOAT);
 
-    pheno.load_file("chr21.test.ped", ctmap, 2504);
+    pheno.load_file("chr21.test.ped", ctmap, 2504, "\t", "iid");
 
     auto &rand_qt = *pheno.as_vec("rand_qt");
     ASSERT_NEAR(rand_qt[0], 0.283211535632, 0.000001);
@@ -1081,15 +1075,12 @@ TEST_F(LDServerTest, pheno_read_ped) {
 TEST_F(LDServerTest, pheno_reorder) {
     Phenotypes pheno;
     ColumnTypeMap ctmap;
-    ctmap.add("fid", ColumnType::TEXT);
     ctmap.add("iid", ColumnType::TEXT);
-    ctmap.add("patid", ColumnType::TEXT);
-    ctmap.add("matid", ColumnType::TEXT);
     ctmap.add("sex", ColumnType::CATEGORICAL);
     ctmap.add("rand_binary", ColumnType::CATEGORICAL);
     ctmap.add("rand_qt", ColumnType::FLOAT);
 
-    pheno.load_file("chr21.test.tab", ctmap, 2504);
+    pheno.load_file("chr21.test.tab", ctmap, 2504, "\t", "iid");
 
     // Reorder samples
     vector<string> new_samples = {"HG00100","HG00103","HG00096","BAD_SAMPLE"};
@@ -1109,15 +1100,12 @@ TEST_F(LDServerTest, pheno_reorder) {
 TEST_F(LDServerTest, pheno_compute_score) {
     Phenotypes pheno;
     ColumnTypeMap ctmap;
-    ctmap.add("fid", ColumnType::TEXT);
     ctmap.add("iid", ColumnType::TEXT);
-    ctmap.add("patid", ColumnType::TEXT);
-    ctmap.add("matid", ColumnType::TEXT);
     ctmap.add("sex", ColumnType::CATEGORICAL);
     ctmap.add("rand_binary", ColumnType::CATEGORICAL);
     ctmap.add("rand_qt", ColumnType::FLOAT);
 
-    pheno.load_file("chr21.test.tab", ctmap, 2504);
+    pheno.load_file("chr21.test.tab", ctmap, 2504, "\t", "iid");
 
     vector<double> test_geno = {0,0,0,0,0,1,1,0,0,0,0,0,0,1,0,0,0,0,1,0,0,1,1,1,0,0,1,0,0,0,0,2,0,1,0,
                                1,0,0,0,1,1,1,0,1,0,0,1,1,1,0,1,0,1,0,0,0,0,1,0,0,1,0,0,2,1,2,1,0,0,0,
@@ -1213,14 +1201,11 @@ TEST_F(LDServerTest, score_server_paging) {
   score_server.set_genotypes_file("chr22.test.vcf.gz", 1);
 
   ColumnTypeMap ctmap;
-  ctmap.add("fid", ColumnType::TEXT);
   ctmap.add("iid", ColumnType::TEXT);
-  ctmap.add("patid", ColumnType::TEXT);
-  ctmap.add("matid", ColumnType::TEXT);
   ctmap.add("sex", ColumnType::CATEGORICAL);
   ctmap.add("rand_binary", ColumnType::CATEGORICAL);
   ctmap.add("rand_qt", ColumnType::FLOAT);
-  score_server.load_phenotypes_file("chr21.test.tab", ctmap, 2504, 1);
+  score_server.load_phenotypes_file("chr21.test.tab", ctmap, 2504, "\t", "iid", 1);
   score_server.set_phenotype("rand_qt");
   score_server.compute_scores("22", 51241101, 51241385, score_results, "ALL", segments);
 

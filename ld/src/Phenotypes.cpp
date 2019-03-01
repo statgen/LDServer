@@ -44,10 +44,10 @@ inline bool is_integer(const std::string &s) {
 //  return most_common;
 //}
 
-void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_t nrows) {
+void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_t nrows, const string& delim, const string& sample_column) {
   ifstream input_file(path);
   string line;
-  auto separator = regex("[ \t]");
+  auto separator = regex(delim);
 
   if (!input_file.good()) {
     throw std::invalid_argument("Cannot access file: " + path);
@@ -197,7 +197,7 @@ void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_
   }
 
   // In a tab-delimited file, we assume the first column contains the sample IDs.
-  sample_ids = columns_text[header[0]];
+  sample_ids = columns_text[sample_column];
 
   // Store a copy of the column types.
   column_types = types;

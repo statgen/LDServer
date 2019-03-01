@@ -49,7 +49,7 @@ public:
    * @param nrows
    * @param columns Name of each column, in the order they appear in the file.
    */
-  void load_file(const string &path, const ColumnTypeMap &types, size_t nrows);
+  void load_file(const string &path, const ColumnTypeMap &types, size_t nrows, const string& delim, const string& sample_column);
 
   SharedArmaVec as_vec(const string &colname);
   SharedVector<string> as_text(const string &colname);
