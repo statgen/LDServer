@@ -1,12 +1,13 @@
 import os
 from raremetal import create_app
+from raremetal.model import add_yaml_command
 import pytest
 
 @pytest.fixture
 def app():
     app = create_app({
         'TESTING': True,
-        'SQLALCHEMY_DATABASE_URI': 'sqlite:///' + os.path.join(os.path.dirname(__file__), '../../raremetal/sql.db'),
+        'SQLALCHEMY_DATABASE_URI': 'sqlite:///' + os.path.join(os.path.dirname(__file__), 'sql.db'),
         'SQLALCHEMY_TRACK_MODIFICATIONS': False,
         'PROXY_PASS': None,
         'API_MAX_PAGE_SIZE': 1000,
@@ -29,3 +30,11 @@ def client(app):
 @pytest.fixture
 def config(app):
     return app.config
+
+@pytest.fixture(scope="module")
+def db(app):
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+        runner = app.test_cli_runner()
+        runner.invoke(add_yaml_command, ["../data/test.yaml"])

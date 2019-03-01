@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Index, inspect
 from sqlalchemy.types import Enum
 from flask.cli import with_appcontext
+from flask import current_app
 from collections import Counter, OrderedDict
 from ld.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType, GroupIdentifierType, extract_samples
 from tabulate import tabulate
@@ -115,6 +116,17 @@ Index('genotype_dataset_index_1', GenotypeDataset.genome_build)
 Index('file_index', File.genotype_dataset_id, File.path)
 Index('sample_index', Sample.genotype_dataset_id, Sample.subset, Sample.sample)
 
+def find_file(relpath):
+  if os.path.isfile(relpath):
+    return relpath
+
+  data_path = os.path.join(current_app.root_path, "../../", relpath)
+
+  if os.path.isfile(data_path):
+    return data_path
+  else:
+    raise IOError("Could not locate file, tried '{}' and '{}'".format(relpath, data_path))
+
 def get_correlations():
   return [{'name': name, 'label': label, 'description': desc, 'type': type} for name, label, desc, type in db.session.query(Correlation.name, Correlation.label, Correlation.descripition, Correlation.type)]
 
@@ -130,10 +142,18 @@ def get_genotype_datasets(genome_build):
 def get_genotype_dataset_id(genome_build, genotype_dataset_name):
   return db.session.query(GenotypeDataset.id).filter_by(genome_build = genome_build).filter_by(name = genotype_dataset_name).scalar()
 
-def get_genotype_dataset(genome_build, genotype_dataset_name):
-  genotype_dataset = GenotypeDataset.query.filter_by(genome_build = genome_build, name = genotype_dataset_name).first()
+def get_genotype_dataset(genotype_dataset_id):
+  genotype_dataset = GenotypeDataset.query.filter_by(id = genotype_dataset_id).first()
   if genotype_dataset is not None:
-    return { 'name': genotype_dataset.name, 'description': genotype_dataset.description, 'genome build': genotype_dataset.genome_build }
+    return {c.key: getattr(genotype_dataset, c.key) for c in inspect(genotype_dataset).mapper.column_attrs}
+
+  return None
+
+def get_phenotype_dataset(phenotype_dataset_id):
+  phenotype_dataset = PhenotypeDataset.query.filter_by(id = phenotype_dataset_id).first()
+  if phenotype_dataset is not None:
+    return {c.key: getattr(phenotype_dataset, c.key) for c in inspect(phenotype_dataset).mapper.column_attrs}
+
   return None
 
 def get_full_genotype_datasets():
@@ -204,6 +224,11 @@ def get_phenotype_sample_column(phenotype_dataset_id):
 
 def get_phenotype_columns(phenotype_dataset_id):
   return [str(x) for x in db.session.query(PhenotypeColumn.column_name).filter_by(id = phenotype_dataset_id).order_by(PhenotypeColumn.id)]
+
+def get_phenotype_column_objects(phenotype_dataset_id):
+  results = db.session.query(PhenotypeColumn).filter_by(phenotype_dataset_id=phenotype_dataset_id)
+  objs =  [{c.key: getattr(row, c.key) for c in inspect(row).mapper.column_attrs} for row in results]
+  return objs
 
 def get_phenotypes_for_genotypes(genotype_dataset_id):
   result = []
@@ -348,7 +373,12 @@ def add_genotype_dataset(name, description, genome_build, samples_filename, geno
           samples.append(sample)
   else:
     for f in genotype_files:
+      f = find_file(f)
       f_samples = extract_samples(f)
+
+      if len(f_samples) == 0:
+        raise ValueError("Extracted 0 samples from {} - is the file missing?".format(f))
+
       if len(samples) == 0:
         samples = f_samples
       else:
@@ -468,13 +498,14 @@ def _load_phenotype_tab(tab_file):
 
 def add_phenotype_dataset(name, description, filepath, genotype_datasets, column_spec=None, delim="\t", pid=None):
   db.create_all()
+  fullpath = find_file(filepath)
 
-  if ".ped" in filepath:
-    column_types, nrows = _load_phenotype_ped(filepath, filepath.replace(".ped",".dat"))
-  elif ".dat" in filepath:
-    column_types, nrows = _load_phenotype_ped(filepath, filepath.replace(".dat",".ped"))
-  elif ".tab" in filepath:
-    column_types, nrows = _load_phenotype_tab(filepath)
+  if ".ped" in fullpath:
+    column_types, nrows = _load_phenotype_ped(fullpath, fullpath.replace(".ped",".dat"))
+  elif ".dat" in fullpath:
+    column_types, nrows = _load_phenotype_ped(fullpath, fullpath.replace(".dat",".ped"))
+  elif ".tab" in fullpath:
+    column_types, nrows = _load_phenotype_tab(fullpath)
   else:
     raise ValueError("Must specify PED+DAT or tab-delimited file")
 
