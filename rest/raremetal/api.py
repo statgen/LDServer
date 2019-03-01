@@ -100,7 +100,7 @@ def get_covariance():
     'phenotypeDataset': fields.Int(required=True, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'phenotype': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'samples': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
-    'masks': fields.DelimitedList(fields.Str(), required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': "Must provide at least 1 mask ID"}),
+    'masks': fields.DelimitedList(fields.Int(), required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': "Must provide at least 1 mask ID"}),
     'genomeBuild': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
   }
 
@@ -123,7 +123,7 @@ def get_covariance():
   phenotype_dataset_id = args["phenotypeDataset"]
   sample_subset = str(args["samples"])
   phenotype = str(args["phenotype"])
-  masks = [str(x) for x in args["masks"]]
+  masks = args["masks"]
 
   config.chrom = chrom
   config.start = start
@@ -172,19 +172,23 @@ def get_covariance():
 
   # Determine regions in which to compute LD/scores.
   # This is determined by the mask file, and the overall window requested.
-  # TODO: check mask is valid for genome build
-  # TODO: check mask is valid for genotype dataset ID
   mask_vec = MaskVec()
-  for mask_name in masks:
+  for mask_id in masks:
     try:
-      mask = model.get_mask_by_name(mask_name, genotype_dataset_id)
+      mask = model.get_mask_by_id(mask_id)
     except ValueError as e:
       raise FlaskException(str(e), 400)
 
     mask_path = find_file(mask["filepath"])
 
     if not os.path.isfile(mask_path):
-      raise FlaskException("Could not find mask file on server for mask {} with genotype dataset ID {}".format(mask_name, genotype_dataset_id), 400)
+      raise FlaskException("Could not find mask file on server for mask ID {}".format(mask_id), 400)
+
+    if mask["genome_build"] != build:
+      raise FlaskException("Mask ID {} is invalid for genome build {}".format(mask_id, build), 400)
+
+    if mask["genotype_dataset_id"] != genotype_dataset_id:
+      raise FlaskException("Mask ID {} is invalid for genotype dataset ID {}".format(mask_id, genotype_dataset_id), 400)
 
     try:
       tb = Mask(str(mask_path), str(mask["name"]), mask["group_type"], mask["identifier_type"], chrom, start, stop)

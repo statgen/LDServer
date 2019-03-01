@@ -10,7 +10,7 @@ def test_malformed_chrom(client):
         "phenotype": "rand_qt",
         "samples": "ALL",
         "genomeBuild": "GRCh37",
-        "masks": ["AF < 0.01"]
+        "masks": [1]
     })
 
     assert resp.status_code == 400
@@ -27,7 +27,7 @@ def test_invalid_position(client):
         "phenotype": "rand_qt",
         "samples": "ALL",
         "genomeBuild": "GRCh37",
-        "masks": ["AF < 0.01"]
+        "masks": [1]
     })
 
     assert resp.status_code == 400
@@ -44,12 +44,12 @@ def test_invalid_mask(client):
         "phenotype": "rand_qt",
         "samples": "ALL",
         "genomeBuild": "GRCh37",
-        "masks": ["bad mask"]
+        "masks": [-9]
     })
 
     assert resp.status_code == 400
     assert resp.is_json
-    assert re.search("No mask exists by the name", resp.json["error"]) is not None
+    assert re.search("No mask exists for ID", resp.json["error"]) is not None
 
 def test_invalid_phenotype(client):
     resp = client.post("/aggregation/covariance", data = {
@@ -61,7 +61,7 @@ def test_invalid_phenotype(client):
         "phenotype": "invalid_phenotype",
         "samples": "ALL",
         "genomeBuild": "GRCh37",
-        "masks": ["AF < 0.01"]
+        "masks": [1]
     })
 
     assert resp.status_code == 400
@@ -78,7 +78,7 @@ def test_covar(client):
         "phenotype": "rand_qt",
         "samples": "ALL",
         "genomeBuild": "GRCh37",
-        "masks": ["AF < 0.01"]
+        "masks": [1]
     })
 
     assert resp.status_code == 200
