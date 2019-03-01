@@ -20,12 +20,20 @@ install(FILES
         ../../data/chr21.test.bcf.csi
         ../../data/chr21.test.sav
         ../../data/chr21.test.sav.s1r
+        ../../data/chr21.test.tab
+        ../../data/chr21.test.ped
+        ../../data/chr21.test.dat
+        ../../data/chr21.test.frq
         ../../data/chr22.test.vcf.gz
         ../../data/chr22.test.vcf.gz.tbi
         ../../data/chr22.test.bcf
         ../../data/chr22.test.bcf.csi
         ../../data/chr22.test.sav
         ../../data/chr22.test.sav.s1r
+        ../../data/chr22.test.tab
+        ../../data/chr22.test.ped
+        ../../data/chr22.test.dat
+        ../../data/chr22.test.frq
         ../../data/chrX.test.sav
         ../../data/chrX.test.sav.s1r
         ../../data/region_ld_22_51241101_51241385.hap.ld
@@ -36,4 +44,10 @@ install(FILES
         ../../data/variant_ld_22_51241309_vs_51241101_51244237.hap.ld
         ../../data/variant_ld_22_50546666_vs_50544251_50549251.hap.ld
         ../../data/region_ld_X_60100_60150.hap.ld
+        ../../data/mask.epacts.chr22.gencode-exons-AF01.tab.gz
+        ../../data/mask.epacts.chr22.gencode-exons-AF01.tab.gz.tbi
+        ../../data/mask.epacts.chr22.gencode-exons-AF05.tab.gz
+        ../../data/mask.epacts.chr22.gencode-exons-AF05.tab.gz.tbi
+        ../../data/chr21.test.RAND_QT.singlevar.cov.txt
+        ../../data/chr21.test.RAND_QT.singlevar.score.txt
         DESTINATION test)
