@@ -44,6 +44,7 @@ This project contains multiple components that work together to provide these fe
 				- [CLI: Listing available datasets](#cli-listing-available-datasets)
 				- [YAML: Adding multiple datasets with one YAML config file](#yaml-adding-multiple-datasets-with-one-yaml-config-file)
 			- [Running the raremetal app](#running-the-raremetal-app)
+			- [APIs](#apis)
 
 <!-- /TOC -->
 
