@@ -55,7 +55,7 @@ public:
    * Default constructor that loads the entire mask.
    * @param filepath
    */
-  Mask(const std::string &filepath, const std::string& id, VariantGroupType group_type, GroupIdentifierType ident_type);
+  Mask(const std::string &filepath, const uint64_t id, VariantGroupType group_type, GroupIdentifierType ident_type);
 
   /**
    * Constructor to load only a subset of the mask, using only regions of variants that overlap the given start/stop.
@@ -64,7 +64,7 @@ public:
    * @param start
    * @param stop
    */
-  Mask(const std::string &filepath, const std::string& id, VariantGroupType group_type, GroupIdentifierType ident_type, const std::string &chrom, uint64_t start, uint64_t stop);
+  Mask(const std::string &filepath, const uint64_t id, VariantGroupType group_type, GroupIdentifierType ident_type, const std::string &chrom, uint64_t start, uint64_t stop);
 
   /**
    * Print out each group and its variants, mainly for debugging purposes.
@@ -98,7 +98,7 @@ public:
   /**
    * Getters/setters
    */
-  inline std::string get_id() const { return id; };
+  inline uint64_t get_id() const { return id; };
 
   inline VariantGroupType get_group_type() const { return group_type; };
   inline void set_group_type(VariantGroupType group_type) { this->group_type = group_type; }
@@ -112,7 +112,7 @@ public:
   bool operator==(const Mask& other) const;
 
 protected:
-  std::string id;                         // Unique string for this mask
+  uint64_t id;                         // Unique string for this mask
   std::string description;                // Text description of what variant filters this mask represents
   VariantGroupType group_type;            // The type of group (is it a gene, a region, etc?)
   GroupIdentifierType identifier_type;    // The identifier type of the group (ENSEMBL ID, REFSEQ?)

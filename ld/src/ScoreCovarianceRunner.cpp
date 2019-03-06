@@ -165,7 +165,7 @@ void ScoreCovarianceRunner::run() {
       }
 
       Value this_group(kObjectType);
-      this_group.AddMember("mask", Value(mask.get_id().c_str(), alloc), alloc);
+      this_group.AddMember("mask", mask.get_id(), alloc);
       this_group.AddMember("group", Value(group.name.c_str(), alloc), alloc);
 
       switch (mask.get_group_type()) {

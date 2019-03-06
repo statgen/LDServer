@@ -375,7 +375,7 @@ TEST_F(LDServerTest, score_covariance_runner) {
 
     // Setup mask
     vector<Mask> masks;
-    Mask mask("mask.epacts.chr22.gencode-exons-AF01.tab.gz", "AF < 0.01", VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, chrom, start, stop);
+    Mask mask("mask.epacts.chr22.gencode-exons-AF01.tab.gz", 1, VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, chrom, start, stop);
     masks.emplace_back(mask);
 
     // Setup ScoreCovarianceRunner configuration

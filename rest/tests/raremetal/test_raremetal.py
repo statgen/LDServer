@@ -88,6 +88,7 @@ def test_covar(client):
         n_variants = len(group["variants"])
         n_covar = len(group["covariance"])
         assert n_covar == (n_variants * (n_variants + 1) / 2)
+        assert isinstance(group["mask"], int)
 
     for variant in resp.json["data"]["variants"]:
         assert variant["altFreq"] > 0

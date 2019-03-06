@@ -241,7 +241,7 @@ gunicorn -b 127.0.0.1:[port] -w [n workers] -k gevent --pythonpath rest "playgro
 
 ### raremetal app
 
-This app serves a more specialized REST API for calculating aggregation tests of rare genetic variants. It provides covariance between variants, in addition to score statistics (summary statistics of the association between genetic variants and phenotypes.)
+This app serves a more specialized [REST API](https://github.com/statgen/raremetal.js/blob/master/docs/portal-api.pdf) for calculating aggregation tests of rare genetic variants. It provides covariance between variants, in addition to score statistics (summary statistics of the association between genetic variants and phenotypes.)
 
 These statistics can be used by the [raremetal.js](https://github.com/statgen/raremetal.js) package to perform the aggregation tests. That package also provides documentation on the methodology.
 
@@ -522,6 +522,14 @@ Each record under `masks` looks like:
   identifier_type: <identifier type, currently only "ENSEMBL" supported>
 ```
 
+The YAML file may have genotype, phenotype, and mask blocks specified in any order, however there may only be 1 block for each type. Additionally, genotypes will always be processed first, followed by phenotypes, and finally mask files. This is because the latter two are dependent on having at least 1 genotype dataset available.
+
+To add the datasets specified by the YAML file:
+
+```bash
+flask add-yaml <path/to/yamlfile>
+```
+
 #### Running the raremetal app
 
 For quickly starting a server:
@@ -538,3 +546,139 @@ For production, use `gunicorn`:
 ```bash
 gunicorn -b 127.0.0.1:[port] -w [n workers] -k gevent --pythonpath rest "raremetal:create_app()"
 ```
+
+#### APIs
+
+The [full API specification](https://github.com/statgen/raremetal.js/blob/master/docs/portal-api.pdf) can be found in the [raremetal.js](https://github.com/statgen/raremetal.js) package.
+
+[raremetal.js] and [locuszoom.js] have built-in support for these APIs. You may only need to parse the `/aggregation/metadata` endpoint below to provide UI for users selecting which genotypes/phenotypes/masks they would like to use. After that, locuszoom can leverage raremetal.js to make the appropriate calls and parse the response accordingly.
+
+As a brief summary: there are two primary endpoints of interest:
+
+1. GET `/aggregation/metadata` - this endpoint shows available datasets
+2. POST `/aggregation/covariance` - computes covariance and score statistics within a region
+
+The metadata endpoint returns JSON that looks like:
+
+```json
+{
+    "data": [
+        {
+            "description": "1000G chr22 Testing VCF",
+            "genomeBuild": "GRCh37",
+            "genotypeDataset": 1,
+            "masks": [
+                {
+                    "id": 1,
+                    "name": "AF < 0.01",
+                    "description": "Variants with allele frequency < 1%",
+                    "groupType": "GENE",
+                    "identifierType": "ENSEMBL",
+                },
+                {
+                    "id": 2,
+                    "name": "AF < 0.05",
+                    "description": "Variants with allele frequency < 5%",
+                    "groupType": "GENE",
+                    "identifierType": "ENSEMBL",
+                }
+            ],
+            "name": "1000G",
+            "phenotypeDatasets": [
+                {
+                    "description": "An example set of randomly generated phenotypes for 1000G",
+                    "name": "1000G random phenotypes",
+                    "phenotypeDataset": 1,
+                    "phenotypes": [
+                        {
+                            "description": "A random binary phenotype",
+                            "name": "rand_binary"
+                        },
+                        {
+                            "description": "A random quantitative phenotype",
+                            "name": "rand_qt"
+                        }
+                    ]
+                },
+                {
+                    "description": "Adding a second set of phenotypes for 1000G",
+                    "name": "1000G random phenotypes II",
+                    "phenotypeDataset": 2,
+                    "phenotypes": [
+                        {
+                            "description": "Another random quantitative phenotype",
+                            "name": "ANOTHER_RAND_QT"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
+```
+
+Each genotype dataset (think VCF) has a number of masks and phenotype datasets associated with it.
+
+The covariance endpoint is a POST request, the query is a JSON object of the following form:
+
+```json
+{
+	"chrom": "22",
+	"start": 50276998,
+	"stop": 50357719,
+	"genotypeDataset": 1,
+	"phenotypeDataset": 1,
+	"phenotype": "rand_qt",
+	"samples": "ALL",
+	"genomeBuild": "GRCh37",
+	"masks": [1]
+}
+```
+
+This tells the covariance endpoint to compute within the region 22:50276998-50357719, using the genotype dataset with ID 1, phenotype dataset with ID 1, and mask with ID 1. The phenotype will be `rand_qt` (in the test/example data, the phenotypes are randomly generated, since we can't release actual data.)
+
+Typically you will always set `samples` to `ALL`. The server supports arbitrary subsets of samples, such as sub-populations, that can be specified with the `flask create-sample-subset` command.
+
+The response will look like:
+
+```json
+{
+  "data": {
+    "genotypeDataset": 1,
+    "description": "1000G chr22 Testing VCF",
+    "phenotypeDataset": 1,
+    "phenotype": "rand_qt",
+    "sigmaSquared": 0.081,
+    "nSamples": 2504,
+    "variants": [
+      {
+        "variant": "2:21228642_G/A",
+        "altFreq": 0.033,
+        "pvalue": 0.000431,
+        "score": 0.1
+      }
+    ],
+    "groups": [
+      {
+        "groupType": "gene",
+        "group": "ENSG000001",
+        "mask": 1,
+        "variants": ["2:21228642_G/A"],
+        "covariance": [0.3],
+      }
+    ]
+  }
+}
+```
+
+The first few entries are simply repeating back the request parameters, namely `genotypeDataset`, `phenotypeDataset`, `phenotype`.
+
+The remaining parameters:
+
+* `sigmaSquared` - this is the variance of the phenotype, in this example `rand_qt` is the phenotype.
+* `nSamples` - number of samples that went into the analysis
+* `variants` - an array of variant objects, each containing a score statistic, p-value, and alt allele frequency
+* `groups` - an array of group objects. Each group object is the result of calculating covariance for each combination of (group, mask). Within each group, covariance is returned as the linearized upper triangle of the covariance matrix.
+
+[raremetal.js]: https://github.com/statgen/raremetal.js
+[locuszoom.js]: https://github.com/statgen/locuszoom

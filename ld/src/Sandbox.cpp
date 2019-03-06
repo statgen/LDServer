@@ -40,7 +40,7 @@ void test1() {
   auto stop = 50357719ul;
 
   // try out mask
-  Mask mask("../../../data/mask.epacts.chr22.gencode-exons-AF01.tab.gz", "AF < 0.01", VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, chrom, start, stop);
+  Mask mask("../../../data/mask.epacts.chr22.gencode-exons-AF01.tab.gz", 1, VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, chrom, start, stop);
 
   // try out runner
   vector<Mask> masks;

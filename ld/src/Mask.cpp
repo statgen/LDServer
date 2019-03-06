@@ -71,15 +71,15 @@ void Mask::load_file(const string &filepath, const string &chrom, uint64_t start
   }
 }
 
-Mask::Mask(const string& filepath, const std::string& name, VariantGroupType group_type, GroupIdentifierType ident_type) {
-  this->id = name;
+Mask::Mask(const string& filepath, const uint64_t id, VariantGroupType group_type, GroupIdentifierType ident_type) {
+  this->id = id;
   this->group_type = group_type;
   this->identifier_type = ident_type;
   load_file(filepath);
 }
 
-Mask::Mask(const string &filepath, const std::string& name, VariantGroupType group_type, GroupIdentifierType ident_type, const string &chrom, uint64_t start, uint64_t stop) {
-  this->id = name;
+Mask::Mask(const string &filepath, const uint64_t id, VariantGroupType group_type, GroupIdentifierType ident_type, const string &chrom, uint64_t start, uint64_t stop) {
+  this->id = id;
   this->group_type = group_type;
   this->identifier_type = ident_type;
   load_file(filepath, chrom, start, stop);

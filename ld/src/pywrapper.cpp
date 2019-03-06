@@ -116,8 +116,8 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("compute_scores", &ScoreServer::compute_scores)
             ;
 
-    boost::python::class_<Mask, shared_ptr<Mask>, boost::noncopyable>("Mask", boost::python::init<const std::string&, const std::string&, VariantGroupType, GroupIdentifierType>())
-            .def(boost::python::init<const std::string&, const std::string&, VariantGroupType, GroupIdentifierType, const std::string&, uint64_t, uint64_t>())
+    boost::python::class_<Mask, shared_ptr<Mask>, boost::noncopyable>("Mask", boost::python::init<const std::string&, const uint64_t, VariantGroupType, GroupIdentifierType>())
+            .def(boost::python::init<const std::string&, const uint64_t, VariantGroupType, GroupIdentifierType, const std::string&, uint64_t, uint64_t>())
             .def("get_variant_set", &Mask::get_variant_set)
             .def("get_group_names", &Mask::get_group_names)
             .def("get_group", &Mask::get_group)

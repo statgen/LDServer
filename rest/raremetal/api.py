@@ -180,7 +180,7 @@ def get_covariance():
       raise FlaskException("Mask ID {} is invalid for genotype dataset ID {}".format(mask_id, genotype_dataset_id), 400)
 
     try:
-      tb = Mask(str(mask_path), str(mask["name"]), mask["group_type"], mask["identifier_type"], chrom, start, stop)
+      tb = Mask(str(mask_path), mask_id, mask["group_type"], mask["identifier_type"], chrom, start, stop)
     except RuntimeError as e:
       msg = str(e)
       if msg.startswith("No groups loaded within genomic region"):
