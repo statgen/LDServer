@@ -19,6 +19,9 @@
 
 using namespace std;
 
+const uint32_t MAX_UINT32 = numeric_limits<uint32_t>::max();
+const uint32_t INITIAL_RESULT_SIZE = 100000000;
+
 class LDServerTest: public::testing::Test {
 protected:
     static string hostname;
@@ -322,15 +325,15 @@ TEST_F(LDServerTest, score_server) {
     auto goldfrq = load_variant_freqs("chr21.test.frq");
 
     // LD server
-    const uint32_t MAX_UINT32 = numeric_limits<uint32_t>::max();
     LDServer ld_server(100);
-    LDQueryResult ld_result(MAX_UINT32);
-
+    LDQueryResult ld_result(INITIAL_RESULT_SIZE);
+    ld_result.limit = MAX_UINT32;
     ld_server.set_file("chr21.test.vcf.gz");
 
     // Score server
     ScoreServer score_server(100);
-    ScoreStatQueryResult score_result(MAX_UINT32);
+    ScoreStatQueryResult score_result(INITIAL_RESULT_SIZE);
+    score_result.limit = MAX_UINT32;
     score_server.set_genotypes_file("chr21.test.vcf.gz", 1);
 
     ColumnTypeMap ctmap;
