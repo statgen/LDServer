@@ -1,6 +1,7 @@
 language: cpp
 os: linux
 dist: xenial
+compiler: gcc
 before_install:
  - sudo apt update
  - sudo apt install cmake
