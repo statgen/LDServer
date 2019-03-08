@@ -1,5 +1,16 @@
 import re
 
+def is_sha(s):
+    return re.search("[A-Fa-f0-9]+",s) is not None
+
+def test_status(client):
+    resp = client.get("/status")
+
+    assert resp.status_code == 200
+    assert "sha" in resp.json["data"]
+    sha = resp.json["data"]["sha"]
+    assert sha == "no-git" or is_sha(sha)
+
 def test_malformed_chrom(client):
     resp = client.post("/aggregation/covariance", data = {
         "chrom": "22REERERFFAFA",

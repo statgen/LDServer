@@ -8,7 +8,11 @@ def init_app(app):
   global sentry
 
   # Start logging errors
-  sha = fetch_git_sha(os.path.join(app.root_path, "../../"))
+  try:
+    sha = fetch_git_sha(os.path.join(app.root_path, "../../"))
+  except:
+    sha = "no-git"
+
   release = "raremetal-server@{}".format(sha)
 
   if sentry is None:

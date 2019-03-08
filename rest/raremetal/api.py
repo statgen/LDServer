@@ -43,7 +43,11 @@ def validate_query(parsed_fields, all_fields):
 
 @bp.route("/status", methods=["GET"])
 def get_status():
-  sha = fetch_git_sha(os.path.join(current_app.root_path, "../../"))
+  try:
+    sha = fetch_git_sha(os.path.join(current_app.root_path, "../../"))
+  except:
+    sha = "no-git"
+
   json = {
     "data": {
       "sha": sha
