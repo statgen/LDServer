@@ -1,6 +1,6 @@
 import os
 from raremetal import create_app
-from raremetal.model import add_yaml_command
+from raremetal.model import add_yaml_command, db as dbo
 import pytest
 
 @pytest.fixture
@@ -31,10 +31,12 @@ def client(app):
 def config(app):
     return app.config
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def db(app):
     with app.app_context():
-        db.drop_all()
-        db.create_all()
+        dbo.drop_all()
+        dbo.create_all()
         runner = app.test_cli_runner()
-        runner.invoke(add_yaml_command, ["../data/test.yaml"])
+        result = runner.invoke(add_yaml_command, ["../data/test.yaml"])
+
+        return dbo

@@ -685,23 +685,22 @@ def add_from_yaml(filepath):
         raise ValueError("Invalid column type '{}' for column '{}' in phenotype dataset '{}'".format(column_type, column_record["name"], record["name"]))
 
   # We made it here, the IDs are all acceptable to insert into the database.
-  for block_type, block_data in data.iteritems():
-    if block_type == "genotypes":
-      for record in block_data:
-        if "*" in record["filepath"]:
-          genotype_files = glob(record["filepath"])
-        else:
-          genotype_files = [record["filepath"]]
+  if "genotypes" in data:
+    for record in data["genotypes"]:
+      if "*" in record["filepath"]:
+        genotype_files = glob(record["filepath"])
+      else:
+        genotype_files = [record["filepath"]]
 
-        add_genotype_dataset(record["name"], record["description"], record["genome_build"], record.get("samples"), genotype_files, record.get("id"))
+      add_genotype_dataset(record["name"], record["description"], record["genome_build"], record.get("samples"), genotype_files, record.get("id"))
 
-    elif block_type == "phenotypes":
-      for record in block_data:
-        add_phenotype_dataset(record["name"], record["description"], record["filepath"], record["genotypes"], record.get("columns"), record.get("delim"), record.get("id"))
+  if "phenotypes" in data:
+    for record in data["phenotypes"]:
+      add_phenotype_dataset(record["name"], record["description"], record["filepath"], record["genotypes"], record.get("columns"), record.get("delim"), record.get("id"))
 
-    elif block_type == "masks":
-      for record in block_data:
-        add_masks(record["name"], record["description"], record["filepath"], record["genome_build"], record["genotypes"], record["group_type"], record["identifier_type"], record.get("id"))
+  if "masks" in data:
+    for record in data["masks"]:
+      add_masks(record["name"], record["description"], record["filepath"], record["genome_build"], record["genotypes"], record["group_type"], record["identifier_type"], record.get("id"))
 
 @click.command("add-yaml")
 @click.argument("yaml_path", type=click.Path(exists=True))

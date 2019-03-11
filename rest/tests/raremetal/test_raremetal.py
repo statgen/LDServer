@@ -43,7 +43,7 @@ def test_invalid_position(client):
 
     assert resp.status_code == 400
     assert resp.is_json
-    assert re.search("Error while parsing.*start.*", resp.json["error"]) is not None
+    assert re.search("Error while parsing", resp.json["error"]) is not None
 
 def test_invalid_mask(client):
     resp = client.post("/aggregation/covariance", data = {
