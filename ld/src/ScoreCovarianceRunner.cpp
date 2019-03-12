@@ -3,7 +3,7 @@ using namespace std;
 using namespace rapidjson;
 
 const uint32_t MAX_UINT32 = numeric_limits<uint32_t>::max();
-const uint32_t INITIAL_RESULT_SIZE = 100000000;
+const uint32_t INITIAL_RESULT_SIZE = 10000000;
 
 void ScoreCovarianceConfig::pprint() const {
   cout << boost::format("Region: %s:%i-%i") % chrom % start % stop << endl;
