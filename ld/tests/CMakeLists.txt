@@ -1,14 +1,19 @@
 find_library(GTEST_LIB gmock HINT ${CGET_PREFIX}/lib)
 find_library(BOOST_SYSTEM_LIB boost_system HINT ${CGET_PREFIX}/lib)
+find_library(MKL_RT_LIB mkl_rt)
 find_package(Threads REQUIRED)
 
 if(CGET_PREFIX)
     include_directories(${CGET_PREFIX}/include)
 endif()
 
+if(NOT MKL_RT_LIB)
+   set(MKL_RT_LIB "")
+endif()
+
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 add_executable(testAll LDServerTest.cpp Main_TestAll.cpp RareMetal.cpp)
-target_link_libraries(testAll LDServer ${BOOST_SYSTEM_LIB} ${GTEST_LIB} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(testAll LDServer ${BOOST_SYSTEM_LIB} ${GTEST_LIB} ${MKL_RT_LIB} ${CMAKE_THREAD_LIBS_INIT})
 
 install(TARGETS testAll COMPONENT cli RUNTIME DESTINATION test OPTIONAL)
 install(FILES

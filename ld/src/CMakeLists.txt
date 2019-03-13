@@ -7,11 +7,16 @@ find_library(BOOST_PYTHON_LIB boost_python27 HINT ${CGET_PREFIX}/lib)
 find_library(PYTHON_LIB python2.7 HINT ${CGET_PREFIX}/lib)
 find_library(HIREDIS_LIB hiredis HINT ${CGET_PREFIX}/lib)
 find_library(ARMADILLO_LIB armadillo HINT ${CGET_PREFIX}/lib)
+find_library(MKL_RT_LIB mkl_rt)
 find_package(PythonLibs 2.7 REQUIRED)
 find_package(Threads REQUIRED)
 
 if(CGET_PREFIX)
     include_directories(${CGET_PREFIX}/include)
+endif()
+
+if(NOT MKL_RT_LIB)
+   set(MKL_RT_LIB "")
 endif()
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -23,9 +28,9 @@ add_library(pywrapper SHARED pywrapper.cpp LDServer.cpp ScoreServer.cpp Raw.cpp 
 set_target_properties(pywrapper PROPERTIES SUFFIX ".so")
 set_target_properties(pywrapper PROPERTIES PREFIX "")
 target_include_directories(pywrapper PUBLIC ${PYTHON_INCLUDE_DIRS})
-target_link_libraries(pywrapper ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${TABIXPP_LIB} ${BOOST_PYTHON_LIB} ${PYTHON_LIB})
+target_link_libraries(pywrapper ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${MKL_RT_LIB} ${TABIXPP_LIB} ${BOOST_PYTHON_LIB} ${PYTHON_LIB})
 
 add_executable(sandbox Sandbox.cpp ${SOURCE_FILES})
-target_link_libraries(sandbox Threads::Threads ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${TABIXPP_LIB} ${BOOST_PYTHON_LIB} ${PYTHON_LIB})
+target_link_libraries(sandbox Threads::Threads ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${MKL_RT_LIB} ${TABIXPP_LIB} ${BOOST_PYTHON_LIB} ${PYTHON_LIB})
 
 install(TARGETS pywrapper DESTINATION ${PROJECT_SOURCE_DIR}/../rest/ld)
