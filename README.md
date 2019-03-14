@@ -65,7 +65,7 @@ The following software is optional:
 
 Most Linux distributions provide these packages already. For example, in Ubuntu:
 
-```
+```bash
 sudo apt install \
   build-essential \
   cmake \
@@ -99,13 +99,13 @@ Now follow these steps to complete installation:
 
 - *Optional*: Test the LDServer C++ shared library. The '127.0.0.1' and '8888' arguments are the hostname and port for Redis server which will be started during unit tests. If you wish to run Redis server on another port, then change these values correspondingly.
 
-  ```
+  ```bash
   cd cget/test/ && ./testAll 127.0.0.1 8888 && cd ../../
   ```
 
 - Install required python packages for the flask apps.
 
-  ```
+  ```bash
   # Activate the environment
   source venv/bin/activate
 
@@ -115,7 +115,7 @@ Now follow these steps to complete installation:
 
 - *Optional*: Run the flask app test suite.
 
-  ```
+  ```bash
   cd rest
   python -m pytest
   ```
@@ -124,7 +124,7 @@ Now follow these steps to complete installation:
 
 ## Updating
 
-Update your files using `git pull`, then recompile the server by doing `cget install --update ld`.
+Update your files using `git pull`, then recompile the core server by doing `cget install --update core`.
 
 ## Configuring & running the flask apps
 
@@ -137,13 +137,13 @@ This app serves r2, D', and covariance of genetic variants over a REST API.
 ##### Add new reference
 
 - Execute `flask add-reference` command:
-   ```
+   ```bash
    cd rest
    export FLASK_APP=ldserver
    flask add-reference <name> <description> <genome build> <samples file> <genotype files>
    ```
    For example, the below command adds a new reference panel named `1000G_GRCh37`. The `samples.txt` file stores list of sample names in `ALL.chr*.bcf` files.
-   ```
+   ```bash
    flask add-reference 1000G "1000 Genomes Project Phase 3" GRCh37 samples.txt ALL.chr*.bcf
    ```
    The genotypes can be stored in VCF, BCF, and SAV formats. For better runtime performance and more compact storage, we highly recommend using SAV format.
@@ -152,7 +152,7 @@ This app serves r2, D', and covariance of genetic variants over a REST API.
 
 - To define populations in the reference, execute `flask create-population` command:
 
-   ```
+   ```bash
    cd rest
    export FLASK_APP=ldserver
    flask create-population <genome build> <reference name> <population name> <samples file>
@@ -160,7 +160,7 @@ This app serves r2, D', and covariance of genetic variants over a REST API.
 
    For example, the below command defines `AFR` population in the `1000G_GRCh37` reference. The `samples.txt` file stores list of sample names that will be included into `AFR`.
 
-   ```
+   ```bash
    flask create-population GRCh37 1000G AFR samples.txt
    ```
 
@@ -168,7 +168,7 @@ This app serves r2, D', and covariance of genetic variants over a REST API.
 
 - Run the following command to list all references that are currently loaded into the server:
 
-  ```
+  ```bash
   flask show-references
   ```
 
@@ -176,13 +176,13 @@ This app serves r2, D', and covariance of genetic variants over a REST API.
 
 - Run the following command to list all genotype files loaded for a specified reference:
 
-  ```
+  ```bash
   flask show-genotypes <genome build> <reference name>
   ```
 
   Example:
 
-  ```
+  ```bash
   flask show-genotypes GRCh37 1000G
   ```
 
@@ -190,13 +190,13 @@ This app serves r2, D', and covariance of genetic variants over a REST API.
 
 - Run the following command to list all sample names from a specified population in a specified reference:
 
-  ```
+  ```bash
   flask show-population <genome build> <reference name> <population name>
   ```
 
   Example:
 
-  ```
+  ```bash
   flask show-population GRCh37 1000G EUR
   ```
 
@@ -204,22 +204,22 @@ This app serves r2, D', and covariance of genetic variants over a REST API.
 
 1. Start Redis cache (provide configuration parameters depending on your needs):
 
-   ```
+   ```bash
    cd cget/bin/
    ./redis-server
    ```
 
 2. Start LD server API:
 
-   ```
+   ```bash
    cd rest
-   export FLASK_APP=rest/ldserver
+   export FLASK_APP=ldserver
    flask run
    ```
 
    Or with `gunicorn`:
 
-   ```
+   ```bash
    gunicorn -b 127.0.0.1:[port] -w [n workers] -k gevent --pythonpath rest "ldserver:create_app()"
    ```
 
@@ -231,14 +231,14 @@ This app provides a simple developer sandbox for learning the REST API.
 
 #### Running the playground app
 
-```
+```bash
 cd rest
 export FLASK_APP=playground
 flask run [ --port ... ]
 ```
 
 Or with `gunicorn`:
-```
+```bash
 gunicorn -b 127.0.0.1:[port] -w [n workers] -k gevent --pythonpath rest "playground:create_app()"
 ```
 
