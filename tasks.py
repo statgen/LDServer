@@ -18,7 +18,7 @@ def build(ctx):
   Recompile the C++ component (pywrapper)
   """
 
-  ctx.run("cget install --update ld")
+  ctx.run("cget install --update core")
 
 @task(build)
 def test(ctx):

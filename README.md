@@ -94,7 +94,7 @@ Now follow these steps to complete installation:
   virtualenv -p python2 venv &&
     source venv/bin/activate &&
     pip install backports.lzma cget &&
-    cget install ld
+    cget install core
   ```
 
 - *Optional*: Test the LDServer C++ shared library. The '127.0.0.1' and '8888' arguments are the hostname and port for Redis server which will be started during unit tests. If you wish to run Redis server on another port, then change these values correspondingly.
@@ -128,7 +128,7 @@ Update your files using `git pull`, then recompile the server by doing `cget ins
 
 ## Configuring & running the flask apps
 
-### rest app
+### ldserver app
 
 This app serves r2, D', and covariance of genetic variants over a REST API.
 
@@ -139,7 +139,7 @@ This app serves r2, D', and covariance of genetic variants over a REST API.
 - Execute `flask add-reference` command:
    ```
    cd rest
-   export FLASK_APP=rest
+   export FLASK_APP=ldserver
    flask add-reference <name> <description> <genome build> <samples file> <genotype files>
    ```
    For example, the below command adds a new reference panel named `1000G_GRCh37`. The `samples.txt` file stores list of sample names in `ALL.chr*.bcf` files.
@@ -154,7 +154,7 @@ This app serves r2, D', and covariance of genetic variants over a REST API.
 
    ```
    cd rest
-   export FLASK_APP=rest
+   export FLASK_APP=ldserver
    flask create-population <genome build> <reference name> <population name> <samples file>
    ```
 
@@ -213,14 +213,14 @@ This app serves r2, D', and covariance of genetic variants over a REST API.
 
    ```
    cd rest
-   export FLASK_APP=rest/rest
+   export FLASK_APP=rest/ldserver
    flask run
    ```
 
    Or with `gunicorn`:
 
    ```
-   gunicorn -b 127.0.0.1:[port] -w [n workers] -k gevent --pythonpath rest "rest:create_app()"
+   gunicorn -b 127.0.0.1:[port] -w [n workers] -k gevent --pythonpath rest "ldserver:create_app()"
    ```
 
    In production you are advised to run with `gunicorn`, as it provides a number of asynchronous workers to handle requests. Using `flask run` as above starts only a single synchronous worker, which can be blocked by long running requests.
@@ -233,7 +233,7 @@ This app provides a simple developer sandbox for learning the REST API.
 
 ```
 cd rest
-export FLASK_APP=rest/playground
+export FLASK_APP=playground
 flask run [ --port ... ]
 ```
 

@@ -1,5 +1,5 @@
 import os
-from rest import create_app
+from ldserver import create_app
 import pytest
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def app():
         'GZIP_COMPRESSION': True
     })
     app.config['REFERENCES_JSON'] = os.path.join(os.path.dirname(__file__), 'datasets.json')
-    from rest.model import load_references
+    from ldserver.model import load_references
     with app.app_context():
         load_references(app.config['REFERENCES_JSON'])
     yield app

@@ -9,7 +9,7 @@ from raven.versioning import fetch_git_sha
 import model
 import os
 import re
-from ld.pywrapper import StringVec, ColumnType, ColumnTypeMap, Mask, MaskVec, VariantGroupType, \
+from core.pywrapper import StringVec, ColumnType, ColumnTypeMap, Mask, MaskVec, VariantGroupType, \
                          ScoreCovarianceRunner, ScoreCovarianceConfig, GroupIdentifierType
 
 API_VERSION = "1.0"

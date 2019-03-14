@@ -1,6 +1,6 @@
 from raremetal.model import add_yaml_command, get_genotype_dataset, get_phenotype_dataset, \
                             get_phenotype_column_objects, get_mask_by_id
-from ld.pywrapper import VariantGroupType, GroupIdentifierType
+from core.pywrapper import VariantGroupType, GroupIdentifierType
 
 def test_add_yaml(app, db):
   with app.app_context():

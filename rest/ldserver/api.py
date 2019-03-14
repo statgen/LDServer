@@ -6,7 +6,7 @@ from webargs import fields, ValidationError
 from functools import partial
 from model import Reference, File, Sample
 import model
-from ld.pywrapper import LDServer, LDQueryResult, StringVec, correlation
+from core.pywrapper import LDServer, LDQueryResult, StringVec, correlation
 import time
 
 API_VERSION = "1.0"

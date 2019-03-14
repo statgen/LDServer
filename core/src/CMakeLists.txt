@@ -33,4 +33,4 @@ target_link_libraries(pywrapper ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} 
 add_executable(sandbox Sandbox.cpp ${SOURCE_FILES})
 target_link_libraries(sandbox Threads::Threads ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${MKL_RT_LIB} ${TABIXPP_LIB} ${BOOST_PYTHON_LIB} ${PYTHON_LIB})
 
-install(TARGETS pywrapper DESTINATION ${PROJECT_SOURCE_DIR}/../rest/ld)
+install(TARGETS pywrapper DESTINATION ${PROJECT_SOURCE_DIR}/../rest/core)

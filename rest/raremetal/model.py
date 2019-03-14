@@ -4,7 +4,7 @@ from sqlalchemy.types import Enum
 from flask.cli import with_appcontext
 from flask import current_app
 from collections import Counter, OrderedDict
-from ld.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType, GroupIdentifierType, extract_samples
+from core.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType, GroupIdentifierType, extract_samples
 from tabulate import tabulate
 from glob import glob
 import os
