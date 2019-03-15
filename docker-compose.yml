@@ -1,0 +1,18 @@
+version: '3'
+services:
+  raremetal:
+    image: "ldserver:latest"
+    environment:
+      - FLASK_APP
+      - CONFIG_DATA
+      - WORKERS
+    ports:
+      - "5000:5000"
+    depends_on:
+      - redis
+    volumes:
+      - /mnt/data:/home/ldserver/var
+    restart: "on-failure"
+    command: /bin/bash -c "flask add-yaml ${CONFIG_DATA} && gunicorn -b 0.0.0.0:5000 -w ${WORKERS} -k gevent --pythonpath rest 'raremetal:create_app()'"
+  redis:
+    image: "redis:alpine"
