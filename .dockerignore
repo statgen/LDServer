@@ -1,0 +1,4 @@
+cget
+venv
+.git
+docker-compose.override.yml

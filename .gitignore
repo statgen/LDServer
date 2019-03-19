@@ -8,3 +8,4 @@ venv
 .pytest_cache
 __pycache__
 *.db
+docker-compose.override.yml
