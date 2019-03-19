@@ -21,14 +21,16 @@ This project contains multiple components that work together to provide these fe
 
 ## Documentation
 
-<!-- TOC depthFrom:1 depthTo:7 withLinks:1 updateOnSave:1 orderedList:0 -->
+<!-- TOC depthFrom:1 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
 - [LDServer](#ldserver)
 	- [Documentation](#documentation)
 	- [Installation](#installation)
+		- [Docker](#docker)
+		- [Manual installation](#manual-installation)
 	- [Updating](#updating)
 	- [Configuring & running the flask apps](#configuring-running-the-flask-apps)
-		- [rest app](#rest-app)
+		- [ldserver app](#ldserver-app)
 			- [Configuring the rest app](#configuring-the-rest-app)
 				- [Add new reference](#add-new-reference)
 				- [Add new (sub-)population to the reference](#add-new-sub-population-to-the-reference)
@@ -51,6 +53,59 @@ This project contains multiple components that work together to provide these fe
 <!-- /TOC -->
 
 ## Installation
+
+### Docker
+
+We provide a docker image and example docker-compose configuration to deploy the LDServer. Using our provided image bypasses the need to perform the compilation steps, which can sometimes be problematic on older servers.
+
+First, pull our docker image:
+
+```bash
+docker pull statgen/ldserver:latest
+```
+
+You can start a barebones container to begin exploring:
+
+```bash
+docker run -it ldserver:latest /bin/bash
+```
+
+For configuring in production, we recommend using [docker-compose](https://docs.docker.com/compose/install/). We provide a base configuration `docker-compose.yml` that specifies the core services.
+
+To add specific configuration for your environment, create a file `docker-compose.override.yml`.
+
+As an example, you could map in your own data and configuration files:
+
+```YAML
+version: '3'
+services:
+  raremetal:
+    environment:
+      - RAREMETAL_CONFIG_DATA=var/test.yaml
+      - RAREMETAL_WORKERS=4
+    volumes:
+      - /mnt/data:/home/ldserver/var
+      - /mnt/data/config.py:/home/ldserver/rest/instance/config.py
+```
+
+When providing configuration files that specify filepaths, such as the file `RAREMETAL_CONFIG_DATA` above, you must specify paths **as they would appear in the container.** In the example above, we have mapped in our data files into the directory `/home/ldserver/var`, and therefore the paths in `var/test.yaml` should be `var/data_file.txt`, etc. For example:
+
+```YAML
+genotypes:
+- id: 1
+  name: "1000G"
+  description: "1000G chr22 Testing VCF"
+  filepath: "var/test.vcf.gz"
+  genome_build: "GRCh37"
+```
+
+To launch the server:
+
+```bash
+docker-compose pull && docker-compose up -d
+```
+
+### Manual installation
 
 Before installing, the following software/packages are required:
 

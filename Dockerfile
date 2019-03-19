@@ -2,12 +2,13 @@ FROM ubuntu:18.04
 
 ARG BUILD_DATE
 ARG GIT_SHA
+ARG LDSERVER_VERSION
 
-LABEL org.label-schema.name="raremetal-server"
-LABEL org.label-schema.version="0.0.1"
-LABEL org.label-schema.description="RAREMETAL server for calculating score statistics and covariance of rare genetic variants"
+LABEL org.label-schema.name="LDServer"
+LABEL org.label-schema.version=$LDSERVER_VERSION
+LABEL org.label-schema.description="LDServer for calculating linkage disequilibrium of genetic variants"
 LABEL org.label-schema.vendor="University of Michigan, Center for Statistical Genetics"
-LABEL org.label-schema.url="https://github.com/statgen/LDServer#raremetal-app"
+LABEL org.label-schema.url="https://github.com/statgen/LDServer"
 LABEL org.label-schema.usage="https://github.com/statgen/LDServer#docker"
 LABEL org.label-schema.vcs-url="https://github.com/statgen/LDServer"
 LABEL org.label-schema.vcs-ref=$GIT_SHA

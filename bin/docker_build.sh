@@ -8,5 +8,5 @@ if [ `git rev-parse --abbrev-ref HEAD` != 'master' ]; then
   exit 1
 fi
 
-docker build -t ldserver:${LDSERVER_VERSION} --build-arg BUILD_DATE=${BUILD_DATE} --build-arg GIT_SHA=${GIT_SHA} . && \
+docker build -t ldserver:${LDSERVER_VERSION} --build-arg BUILD_DATE=${BUILD_DATE} --build-arg GIT_SHA=${GIT_SHA} --build-arg LDSERVER_VERSION=${LDSERVER_VERSION} . && \
   docker tag ldserver:${LDSERVER_VERSION} ldserver:latest

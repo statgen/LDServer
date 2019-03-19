@@ -1,4 +1,4 @@
 #!/bin/bash
-LDSERVER_VERSION=`git describe --tags --abbrev=11`
+
 docker system prune -f
-docker image rm ldserver:${LDSERVER_VERSION}
+docker image rm -f `docker image ls --filter "label=org.label-schema.name=LDServer" -q | sort -u`
