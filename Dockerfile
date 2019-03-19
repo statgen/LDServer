@@ -15,8 +15,6 @@ LABEL org.label-schema.vcs-ref=$GIT_SHA
 LABEL org.label-schema.build-date=$BUILD_DATE
 LABEL org.label-schema.schema-version="1.0"
 
-EXPOSE 5000
-
 # Install required packages for swiss to install. Many of swiss' dependencies
 # require compiling C/C++ code.
 RUN apt-get update && apt-get install -y \
