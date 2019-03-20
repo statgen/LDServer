@@ -1,5 +1,19 @@
 version: '3'
 services:
+  ldserver:
+    image: "ldserver:latest"
+    environment:
+      - FLASK_APP=rest/ldserver
+      - LDSERVER_CONFIG_SCRIPT
+      - LDSERVER_WORKERS
+    ports:
+      - "5001:5001"
+    depends_on:
+      - redis
+    restart: "on-failure"
+    working_dir: /home/ldserver
+    command: /bin/bash -c "source $$LDSERVER_CONFIG_SCRIPT && gunicorn -b 0.0.0.0:5001 -w $$LDSERVER_WORKERS -k gevent --pythonpath rest 'ldserver:create_app()'"
+
   raremetal:
     image: "ldserver:latest"
     environment:
