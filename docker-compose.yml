@@ -12,7 +12,7 @@ services:
       - redis
     restart: "on-failure"
     working_dir: /home/ldserver
-    command: /bin/bash -c "flask add-yaml ${RAREMETAL_CONFIG_DATA} && gunicorn -b 0.0.0.0:5000 -w ${RAREMETAL_WORKERS} -k gevent --pythonpath rest 'raremetal:create_app()'"
+    command: /bin/bash -c "flask add-yaml $$RAREMETAL_CONFIG_DATA && gunicorn -b 0.0.0.0:5000 -w $$RAREMETAL_WORKERS -k gevent --pythonpath rest 'raremetal:create_app()'"
 
   redis:
     image: "redis:alpine"
