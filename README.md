@@ -27,11 +27,14 @@ This project contains multiple components that work together to provide these fe
 	- [Documentation](#documentation)
 	- [Installation](#installation)
 		- [Docker](#docker)
+			- [Configuration for ldserver app](#configuration-for-ldserver-app)
+			- [Configuration for raremetal app](#configuration-for-raremetal-app)
+			- [Running the services](#running-the-services)
 		- [Manual installation](#manual-installation)
 	- [Updating](#updating)
 	- [Configuring & running the flask apps](#configuring-running-the-flask-apps)
 		- [ldserver app](#ldserver-app)
-			- [Configuring the rest app](#configuring-the-rest-app)
+			- [Configuring the ldserver app](#configuring-the-ldserver-app)
 				- [Add new reference](#add-new-reference)
 				- [Add new (sub-)population to the reference](#add-new-sub-population-to-the-reference)
 				- [List loaded references](#list-loaded-references)
@@ -72,13 +75,18 @@ docker run -it ldserver:latest /bin/bash
 
 For configuring in production, we recommend using [docker-compose](https://docs.docker.com/compose/install/). We provide a base configuration `docker-compose.yml` that specifies the core services.
 
-To add specific configuration for your environment, create a file `docker-compose.override.yml`.
-
-As an example, you could map in your own data and configuration files:
+To add specific configuration for your environment, start by creating a file `docker-compose.override.yml` and copy the following into it:
 
 ```YAML
 version: '3'
 services:
+  ldserver:
+    environment:
+      - LDSERVER_CONFIG_SCRIPT=var/ldserver.config.sh
+      - LDSERVER_WORKERS=4
+    volumes:
+      - /mnt/data:/home/ldserver/var
+      - /mnt/data/ldserver.config.sh:/home/ldserver/var/ldserver.config.sh
   raremetal:
     environment:
       - RAREMETAL_CONFIG_DATA=var/test.yaml
@@ -88,7 +96,33 @@ services:
       - /mnt/data/config.py:/home/ldserver/rest/instance/config.py
 ```
 
-When providing configuration files that specify filepaths, such as the file `RAREMETAL_CONFIG_DATA` above, you must specify paths **as they would appear in the container.** In the example above, we have mapped in our data files into the directory `/home/ldserver/var`, and therefore the paths in `var/test.yaml` should be `var/data_file.txt`, etc. For example:
+You will need to modify the above values according to your server environment.
+
+Volumes have the format `/path/to/data`:`/path/to/mount/in/container`.
+
+#### Configuration for ldserver app
+
+Mount a configuration script into the container by changing:
+
+```YAML
+volumes:
+  - XXX:/home/ldserver/var/ldserver.config.sh`.
+```
+
+The `XXX` is a path on your local filesystem to a script that contains commands for adding datasets to the ldserver. See the [Configuring the ldserver app](#configuring-the-ldserver-app) section for commands to use for adding reference genotype files. If desired, you can modify the name of this script, but you must also modify the `LDSERVER_CONFIG_SCRIPT` variable to refer to the new path (as it would appear inside the container.)
+
+You will also need to mount your data into the container. As an example, the line `/mnt/data:/home/ldserver/var` mounts a directory of data `/mnt/data` on your local filesystem into the container at `/home/ldserver/var`.
+
+#### Configuration for raremetal app
+
+The raremetal app uses a YAML file for configuration. See the raremetal app section "[YAML: Adding multiple datasets with one YAML config file](#yaml-adding-multiple-datasets-with-one-yaml-config-file)" for more information. Map one into the container by modifying:
+
+```YAML
+volumes:
+  - XXX:/home/ldserver/var
+```
+
+Remember that when specifying paths in the YAML file, you must specify paths **as they would appear in the container.** In the example above, we have mapped in our data files into the directory `/home/ldserver/var`, and therefore the paths in `var/test.yaml` should be `var/data_file.txt`, etc. For example:
 
 ```YAML
 genotypes:
@@ -99,10 +133,20 @@ genotypes:
   genome_build: "GRCh37"
 ```
 
-To launch the server:
+#### Running the services
+
+The `docker-compose.yml` specifies services, where each flask app (ldserver, raremetal) are separate services.
+
+To launch all services:
 
 ```bash
 docker-compose pull && docker-compose up -d
+```
+
+However, you may only wish to start a subset of services. For example, if you only wish to run raremetal:
+
+```bash
+docker-compose up -d redis raremetal
 ```
 
 ### Manual installation
@@ -187,7 +231,7 @@ Update your files using `git pull`, then recompile the core server by doing `cge
 
 This app serves r2, D', and covariance of genetic variants over a REST API.
 
-#### Configuring the rest app
+#### Configuring the ldserver app
 
 ##### Add new reference
 
