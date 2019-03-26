@@ -2,7 +2,6 @@ from __future__ import print_function
 import traceback
 import re
 from flask import current_app, request, jsonify
-from .sentry import sentry
 
 class FlaskException(Exception):
   status_code = 400
@@ -21,6 +20,8 @@ class FlaskException(Exception):
     return rv
 
 def handle_all(error):
+  sentry = current_app.extensions.get("sentry")
+
   # Log all exceptions to Sentry, unless we're in a test environment like travis.
   if current_app.config["SENTRY_ENV"] != "travis":
     if sentry is not None:
