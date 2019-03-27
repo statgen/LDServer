@@ -1,9 +1,15 @@
 #include "ScoreCovarianceRunner.h"
+#include <sys/stat.h>
 using namespace std;
 using namespace rapidjson;
 
 const uint32_t MAX_UINT32 = numeric_limits<uint32_t>::max();
 const uint32_t INITIAL_RESULT_SIZE = 10000000;
+
+bool is_file(const std::string& name) {
+  struct stat buffer;
+  return (stat (name.c_str(), &buffer) == 0);
+}
 
 void ScoreCovarianceConfig::pprint() const {
   cout << boost::format("Region: %s:%i-%i") % chrom % start % stop << endl;
@@ -64,6 +70,10 @@ void ScoreCovarianceRunner::run() {
   ScoreServer score_server(config->segment_size);
 
   for (auto&& genotype_file : config->genotype_files) {
+    if (!is_file(genotype_file)) {
+      throw std::invalid_argument("Genotype file not accessible: " + genotype_file);
+    }
+
     ld_server.set_file(genotype_file);
     score_server.set_genotypes_file(genotype_file, config->genotype_dataset_id);
   }
