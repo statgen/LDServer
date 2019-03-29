@@ -65,48 +65,59 @@ void ScoreSegment::compute_scores(const arma::vec &phenotype) {
     return;
   }
 
-  // Find the mean of all genotype columns.
-  auto genotypes = this->get_genotypes();
-  arma::fmat means(arma::mean(genotypes));
-
-  // Mean center the genotype matrix.
-  for (int i = 0; i < means.n_elem; i++) {
-    genotypes.col(i) -= means[i];
-  }
-
-  // Calculate score statistics for all variants.
-  arma::fmat fpheno = arma::conv_to<arma::fmat>::from(phenotype);
-  auto genotypesT = genotypes.t();
-  auto score_stats = genotypesT * fpheno;
+  // Load genotypes.
+  auto genotypes = arma::conv_to<arma::fmat>::from(this->get_genotypes());
 
   // Calculate sigma2.
-  double sigma2 = arma::var(phenotype, 1);
+  arma::vec nonmiss_pheno = phenotype.elem(find_finite(phenotype));
+  double sigma2 = arma::var(nonmiss_pheno, 1);
 
-  // Calculate denominator
-  arma::vec denom(genotypes.n_cols);
-  for (int j = 0; j < genotypes.n_cols; j++) {
-    double d = 0.0;
-    for (int i = 0; i < genotypes.n_rows; i++) {
-      d += genotypes.at(i, j) * genotypes.at(i, j);
+  // Calculate statistics for each variant
+  vector<uint64_t> nonmiss_ind;
+  nonmiss_ind.reserve(genotypes.n_rows);
+  for (uint64_t col = 0; col < genotypes.n_cols; col++) {
+    // Re-create phenotype/genotype vectors for only those cases where the row is complete.
+    double xval, yval;
+    for (uint64_t row = 0; row < genotypes.n_rows; row++) {
+      xval = genotypes.at(row, col);
+      yval = phenotype.at(row);
+      if (std::isfinite(xval) && std::isfinite(yval)) {
+        nonmiss_ind.push_back(row);
+      }
     }
-    denom[j] = d * sigma2;
-  }
 
-  // Calculate p-values.
-  double pvalue;
-  double u, v, t;
-  for (int i = 0; i < genotypes.n_cols; i++) {
-    u = score_stats[i];
-    v = sqrt(denom[i]);
-    t = (u / v);
-    pvalue = 2 * arma::normcdf(-fabs(t));
+    arma::uvec index(nonmiss_ind);
+    arma::vec complete_g = arma::conv_to<arma::vec>::from(genotypes.submat(index, arma::uvec({col})));
+    arma::vec complete_p = phenotype.elem(index);
+    nonmiss_ind.clear();
+
+    // Mean center genotypes.
+    double mean = arma::mean(complete_g);
+    complete_g = complete_g - mean;
+
+    // Score stat
+    double u = arma::dot(complete_g, complete_p);
+
+    // Calculate denominator
+    double denom = 0;
+    for (int i = 0; i < complete_g.n_elem; i++) {
+      double value = complete_g.at(i);
+      if (std::isfinite(value)) {
+        denom += value * value;
+      }
+    }
+    denom = denom * sigma2;
+
+    double v = sqrt(denom);
+    double t = (u / v);
+    double pvalue = 2 * arma::normcdf(-fabs(t));
 
     ScoreResult result;
-    result.score_stat = score_stats[i] / sigma2; // match RAREMETAL convention
+    result.score_stat = u / sigma2; // match RAREMETAL convention
     result.pvalue = pvalue;
-    result.variant = this->names[i];
-    result.alt_freq = this->freqs[i];
-    result.position = this->positions[i];
+    result.variant = this->names[col];
+    result.alt_freq = this->freqs[col];
+    result.position = this->positions[col];
     result.chrom = this->chromosome;
 
     score_results->emplace_back(result);
