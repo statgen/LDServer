@@ -34,6 +34,7 @@ protected:
   map<string, map<double, string>> map_cat;
   map<string, map<string, double>> map_level;
 
+  string file_path;
   ColumnTypeMap column_types;
   SharedVector<string> sample_ids;
 public:
@@ -83,6 +84,12 @@ public:
    * @return
    */
   uint64_t get_nsamples(const string &phenotype);
+
+  /**
+   * Pretty print a summary of the current state of this object,
+   * primarly for debugging purposes.
+   */
+  void pprint() const;
 };
 
 #endif //LDSERVER_PHENOTYPES_H

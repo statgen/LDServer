@@ -9,6 +9,7 @@
 #include <armadillo>
 #include <algorithm>
 #include <cstdlib>
+#include <cmath>
 #include <boost/algorithm/string/predicate.hpp>
 
 using namespace std;
@@ -52,6 +53,8 @@ void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_
   if (!input_file.good()) {
     throw std::invalid_argument("Cannot access file: " + path);
   }
+
+  this->file_path = path;
 
   // Do we need to read a header?
   bool is_ped = path.find(".ped") != string::npos;
@@ -345,12 +348,59 @@ shared_ptr<ScoreResult> Phenotypes::compute_score(arma::vec &genotypes, const st
 
 double Phenotypes::compute_sigma2(const string &phenotype) {
   auto &pheno_vec = *as_vec(phenotype);
-  double sigma2 = arma::var(pheno_vec, 1);
-  return sigma2;
+  arma::vec nonmiss_pheno = pheno_vec.elem(find_finite(pheno_vec));
+  return arma::var(nonmiss_pheno, 1);
 }
 
 uint64_t Phenotypes::get_nsamples(const string &phenotype) {
   auto &pheno_vec = *as_vec(phenotype);
   arma::uvec non_finite = arma::find_nonfinite(pheno_vec);
   return pheno_vec.n_elem - non_finite.n_elem;
+}
+
+void Phenotypes::pprint() const {
+  cout << "Loaded file: " << this->file_path << endl;
+  cout << "Number of columns: " << this->column_types.size() << endl;
+  cout << "Column types: " << endl;
+  for (auto&& p : this->column_types) {
+    auto colname = p.first;
+    auto ctype = p.second;
+    cout << "- " + colname + ": " + to_string(ctype) << endl;
+
+    switch (ctype) {
+      case ColumnType::INTEGER:
+      case ColumnType::CATEGORICAL:
+      case ColumnType::FLOAT: {
+        auto vec = *columns_float.at(colname);
+        arma::uvec non_finite = arma::find_nonfinite(vec);
+        cout << "  " << "Number of elements: " << to_string(vec.n_elem) << endl;
+        cout << "  " << "Number of non-missing elements: " << to_string(vec.n_elem - non_finite.n_elem) << endl;
+
+        cout << "  " << "First few elements:";
+        uint64_t enum_n = std::min(vec.n_elem, 5ull);
+        for (int i = 0; i < enum_n; i++) {
+          cout << " " << to_string(vec[i]);
+        }
+        cout << endl;
+
+        break;
+      }
+      case ColumnType::TEXT: {
+        auto vec = *columns_text.at(colname);
+        cout << "  " << "Number of elements: " << to_string(vec.size()) << endl;
+
+        cout << "  " << "First few elements:";
+        uint64_t n_elem = vec.size();
+        uint64_t enum_n = std::min(n_elem, 5ull);
+        for (int i = 0; i < enum_n; i++) {
+          cout << " " << vec[i];
+        }
+        cout << endl;
+
+        break;
+      }
+    }
+
+    cout << endl;
+  }
 }
