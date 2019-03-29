@@ -46,6 +46,10 @@ void ScoreServer::load_phenotypes_file(const string &path, const ColumnTypeMap &
 
     // Store ID for use in cache key.
     this->phenotype_dataset_id = phenotype_dataset_id;
+
+    #ifndef NDEBUG
+    phenotypes->pprint();
+    #endif
 }
 
 void ScoreServer::set_phenotype(const string& p) {
