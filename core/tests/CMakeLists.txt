@@ -39,6 +39,14 @@ install(FILES
         ../../data/chr22.test.ped
         ../../data/chr22.test.dat
         ../../data/chr22.test.frq
+        ../../data/chr21.test.missing_genotypes_and_phenotypes.RAND_QT.singlevar.cov.txt
+        ../../data/chr21.test.missing_genotypes_and_phenotypes.RAND_QT.singlevar.score.txt
+        ../../data/chr21.test.missing_pheno.RAND_QT.singlevar.cov.txt
+        ../../data/chr21.test.missing_pheno.RAND_QT.singlevar.score.txt
+        ../../data/chr21.test.missing_values.ped
+        ../../data/chr21.test.missing_values.tab
+        ../../data/chr21.test.missing_values.vcf.gz
+        ../../data/chr21.test.missing_values.vcf.gz.tbi
         ../../data/chrX.test.sav
         ../../data/chrX.test.sav.s1r
         ../../data/region_ld_22_51241101_51241385.hap.ld
