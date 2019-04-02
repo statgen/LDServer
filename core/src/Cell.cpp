@@ -346,13 +346,40 @@ CellCov::~CellCov() {
 
 }
 
+template <typename T, typename C>
+shared_ptr<arma::fmat> mean_impute(T& matrix, C& means) {
+  auto ptr = make_shared<arma::fmat>(matrix);
+  float value;
+  for (uint64_t j = 0; j < matrix.n_cols; j++) {
+    for (uint64_t i = 0; i < matrix.n_rows; i++) {
+      value = ptr->at(i, j);
+      if (std::isnan(value)) {
+        value = 0;
+      }
+      else {
+        value = value - means[j];
+      }
+      ptr->at(i, j) = value;
+    }
+  }
+
+  return ptr;
+}
+
 void CellCov::compute() {
     auto n_variants_i = segment_i->get_n_variants();
     if (n_variants_i <= 0) {
         return;
     }
+
     if (this->i == this->j) { // diagonal cell
-        arma::fmat R(arma::cov(arma::fmat(segment_i->get_genotypes()), 1));
+        auto genotypes_i = make_shared<arma::fmat>(segment_i->get_genotypes());
+
+        if (segment_i->has_nans()) {
+          genotypes_i = mean_impute(*genotypes_i, segment_i->get_means());
+        }
+
+        arma::fmat R(arma::cov(*genotypes_i, 1));
         float* old_raw_mat = raw_fmat.release();
         if (old_raw_mat != nullptr) {
             delete[] old_raw_mat;
@@ -364,7 +391,18 @@ void CellCov::compute() {
         if (n_variants_j <= 0) {
             return;
         }
-        arma::fmat R(arma::cov(arma::fmat(segment_i->get_genotypes()), arma::fmat(segment_j->get_genotypes()), 1));
+
+        auto genotypes_i = make_shared<arma::fmat>(segment_i->get_genotypes());
+        auto genotypes_j = make_shared<arma::fmat>(segment_j->get_genotypes());
+
+        if (segment_i->has_nans() || segment_j->has_nans()) {
+          // If either segment has a genotype matrix with nans, then we need to mean impute/center them both.
+          // Otherwise one matrix will have a different scale than the other.
+          genotypes_i = mean_impute(*genotypes_i, segment_i->get_means());
+          genotypes_j = mean_impute(*genotypes_j, segment_j->get_means());
+        }
+
+        arma::fmat R(arma::cov(*genotypes_i, *genotypes_j, 1));
         float* old_raw_mat = raw_fmat.release();
         if (old_raw_mat != nullptr) {
             delete[] old_raw_mat;

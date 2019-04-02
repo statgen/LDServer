@@ -44,6 +44,8 @@ protected:
     vector<arma::uword> sp_mat_rowind;
     vector<arma::uword> sp_mat_colind;
     vector<float> sp_mat_values;
+    vector<double> means;
+    bool nans = false;
 
     // for BITSET representation
     vector<float> freqs;
@@ -90,6 +92,9 @@ public:
 
     bool overlaps_region(uint64_t region_start_bp, uint64_t region_stop_bp, int& from_index, int& to_index) const;
     bool overlaps_variant(const string& name, uint64_t bp, int& index) const;
+
+    inline bool has_nans() const { return nans; }
+    inline const vector<double>& get_means() const { return means; }
 
     /**
      * Load/save functions for redis.

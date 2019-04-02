@@ -66,45 +66,43 @@ void ScoreSegment::compute_scores(const arma::vec &phenotype) {
   }
 
   // Load genotypes.
-  auto genotypes = arma::conv_to<arma::fmat>::from(this->get_genotypes());
+  arma::fmat genotypes(this->get_genotypes());
+  //auto genotypes = arma::conv_to<arma::fmat>::from(this->get_genotypes());
 
-  // Calculate sigma2.
-  arma::vec nonmiss_pheno = phenotype.elem(find_finite(phenotype));
+  // Figure out which phenotype rows have non-missing data,
+  // center, and calculate sigma2.
+  arma::uvec index_nonmiss = find_finite(phenotype);
+  arma::vec nonmiss_pheno = phenotype.elem(index_nonmiss);
+  nonmiss_pheno = nonmiss_pheno - arma::mean(nonmiss_pheno);
   double sigma2 = arma::var(nonmiss_pheno, 1);
 
+  // Subset genotype matrix to only rows where we have a phenotype value.
+  // There will be no missing genotype values because we perform mean imputation.
+  genotypes = genotypes.rows(index_nonmiss);
+
   // Calculate statistics for each variant
-  vector<uint64_t> nonmiss_ind;
-  nonmiss_ind.reserve(genotypes.n_rows);
   for (uint64_t col = 0; col < genotypes.n_cols; col++) {
-    // Re-create phenotype/genotype vectors for only those cases where the row is complete.
-    double xval, yval;
-    for (uint64_t row = 0; row < genotypes.n_rows; row++) {
-      xval = genotypes.at(row, col);
-      yval = phenotype.at(row);
-      if (std::isfinite(xval) && std::isfinite(yval)) {
-        nonmiss_ind.push_back(row);
+    arma::vec genotype_col = arma::conv_to<arma::vec>::from(genotypes.col(col));
+    double mean = means[col];
+
+    for (uint64_t i = 0; i < genotype_col.n_elem; i++) {
+      if (std::isnan(genotype_col[i])) {
+        genotype_col[i] = 0;
+      }
+      else {
+        genotype_col[i] = genotype_col[i] - mean;
       }
     }
 
-    arma::uvec index(nonmiss_ind);
-    arma::vec complete_g = arma::conv_to<arma::vec>::from(genotypes.submat(index, arma::uvec({col})));
-    arma::vec complete_p = phenotype.elem(index);
-    nonmiss_ind.clear();
-
-    // Mean center genotypes.
-    double mean = arma::mean(complete_g);
-    complete_g = complete_g - mean;
-
     // Score stat
-    double u = arma::dot(complete_g, complete_p);
+    double u = arma::dot(genotype_col, nonmiss_pheno);
 
     // Calculate denominator
     double denom = 0;
-    for (int i = 0; i < complete_g.n_elem; i++) {
-      double value = complete_g.at(i);
-      if (std::isfinite(value)) {
-        denom += value * value;
-      }
+    double value;
+    for (uint64_t i = 0; i < genotype_col.n_elem; i++) {
+      value = genotype_col[i];
+      denom += value * value;
     }
     denom = denom * sigma2;
 

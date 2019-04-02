@@ -21,6 +21,7 @@ Segment::Segment(Segment&& segment) {
     this->sp_mat_colind = move(segment.sp_mat_colind);
     this->sp_mat_values = move(segment.sp_mat_values);
     this->freqs = move(segment.freqs);
+    this->means = move(segment.means);
     this->alleles = move(segment.alleles);
     this->alt_carriers = move(segment.alt_carriers);
     this->n_haplotypes = segment.n_haplotypes;
@@ -93,7 +94,7 @@ void Segment::add(savvy::site_info& anno, savvy::compressed_vector<float>& allel
     // When in CSC mode, savvy returns a vector of alleles coded 0/1/2 (additive count, or savvy:fmt:ac).
     // So the number of haplotypes is 2 * number of elements in vector, since each element represents 2 alleles.
     if (store == genotypes_store::CSC) {
-        n_haplotypes *= 2;
+      n_haplotypes *= 2;
     }
 
     unsigned int n_non_zero = alleles.non_zero_size();
@@ -114,13 +115,21 @@ void Segment::add(savvy::site_info& anno, savvy::compressed_vector<float>& allel
                 {
                 sp_mat_colind.emplace_back(sp_mat_rowind.size());
                 auto value_data = alleles.value_data();
-                float allele_total = 0.0;
+                double sum = 0.0;
+                double value;
                 for (unsigned int i = 0u; i < n_non_zero; ++i) {
+                    value = value_data[i];
                     sp_mat_rowind.emplace_back(index_data[i]);
-                    sp_mat_values.emplace_back(value_data[i]);
-                    allele_total += value_data[i];
+                    sp_mat_values.emplace_back(value);
+
+                    if (!std::isnan(value)) {
+                      nans = true;
+                      sum += value;
+                    }
                 }
-                freqs.push_back(allele_total / (float) n_haplotypes);
+
+                means.push_back(sum / alleles.size());
+                freqs.push_back(sum / n_haplotypes);
                 }
                 break;
             case BITSET:
@@ -168,11 +177,21 @@ void Segment::add_genotypes(savvy::compressed_vector<float>& alleles) {
                 {
                 sp_mat_colind.emplace_back(sp_mat_rowind.size());
                 auto value_data = alleles.value_data();
+                double sum = 0.0;
+                double value;
                 for (unsigned int i = 0u; i < n_non_zero; ++i) {
+                    value = value_data[i];
                     sp_mat_rowind.emplace_back(index_data[i]);
-                    sp_mat_values.emplace_back(value_data[i]);
+                    sp_mat_values.emplace_back(value);
+
+                    if (!std::isnan(value)) {
+                      nans = true;
+                      sum += value;
+                    }
                 }
-                freqs.push_back(n_non_zero / (float) n_haplotypes);
+
+                means.push_back(sum / alleles.size());
+                freqs.push_back(sum / (float) n_haplotypes);
                 }
                 break;
             case BITSET:
