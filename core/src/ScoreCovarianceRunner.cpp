@@ -169,8 +169,9 @@ void ScoreCovarianceRunner::run() {
         Value this_variant(kObjectType);
         this_variant.AddMember("variant", Value(v.variant.c_str(), alloc), alloc);
         this_variant.AddMember("altFreq", v.alt_freq, alloc);
-        this_variant.AddMember("pvalue", v.pvalue, alloc);
-        this_variant.AddMember("score", v.score_stat, alloc);
+
+        std::isnan(v.pvalue) ? this_variant.AddMember("pvalue", Value(), alloc) : this_variant.AddMember("pvalue", v.pvalue, alloc);
+        std::isnan(v.score_stat) ? this_variant.AddMember("score_stat", Value(), alloc) : this_variant.AddMember("score_stat", v.score_stat, alloc);
         variants.PushBack(this_variant, alloc);
       }
 

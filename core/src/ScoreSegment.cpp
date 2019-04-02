@@ -82,6 +82,18 @@ void ScoreSegment::compute_scores(const arma::vec &phenotype) {
 
   // Calculate statistics for each variant
   for (uint64_t col = 0; col < genotypes.n_cols; col++) {
+    ScoreResult result;
+    result.position = this->positions[col];
+    result.chrom = this->chromosome;
+
+    if (this->freqs[col] == 0) {
+      // This is a monomorphic variant, so we can't compute scores for it.
+      result.pvalue = arma::datum::nan;
+      result.score_stat = arma::datum::nan;
+      result.alt_freq = 0;
+      score_results->emplace_back(result);
+      continue;
+    }
     arma::vec genotype_col = arma::conv_to<arma::vec>::from(genotypes.col(col));
     double mean = means[col];
 
@@ -110,13 +122,10 @@ void ScoreSegment::compute_scores(const arma::vec &phenotype) {
     double t = (u / v);
     double pvalue = 2 * arma::normcdf(-fabs(t));
 
-    ScoreResult result;
     result.score_stat = u / sigma2; // match RAREMETAL convention
     result.pvalue = pvalue;
     result.variant = this->names[col];
     result.alt_freq = this->freqs[col];
-    result.position = this->positions[col];
-    result.chrom = this->chromosome;
 
     score_results->emplace_back(result);
   }
