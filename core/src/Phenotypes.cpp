@@ -367,6 +367,7 @@ void Phenotypes::pprint() const {
   cout << "Loaded file: " << this->file_path << endl;
   cout << "Number of columns: " << this->column_types.size() << endl;
   cout << "Column types: " << endl;
+  uint64_t lim = 5;
   for (auto&& p : this->column_types) {
     auto colname = p.first;
     auto ctype = p.second;
@@ -382,7 +383,8 @@ void Phenotypes::pprint() const {
         cout << "  " << "Number of non-missing elements: " << to_string(vec.n_elem - non_finite.n_elem) << endl;
 
         cout << "  " << "First few elements:";
-        uint64_t enum_n = std::min(vec.n_elem, 5ull);
+        uint64_t n_elem = vec.n_elem;
+        uint64_t enum_n = std::min(n_elem, lim);
         for (int i = 0; i < enum_n; i++) {
           cout << " " << to_string(vec[i]);
         }
@@ -396,7 +398,7 @@ void Phenotypes::pprint() const {
 
         cout << "  " << "First few elements:";
         uint64_t n_elem = vec.size();
-        uint64_t enum_n = std::min(n_elem, 5ull);
+        uint64_t enum_n = std::min(n_elem, lim);
         for (int i = 0; i < enum_n; i++) {
           cout << " " << vec[i];
         }
