@@ -9,6 +9,7 @@
 #include "Mask.h"
 #include "ScoreCovarianceRunner.h"
 #include "Raw.h"
+#include <chrono>
 #include <armadillo>
 using namespace std;
 
@@ -85,6 +86,8 @@ void test2() {
 }
 
 void test3() {
+  auto time_start = std::chrono::system_clock::now();
+
   // Genotype spec
   uint32_t genotype_dataset_id = 2;
   string genotype_file = "../../../data/METSIM/data/genotypes_chr22.vcf.gz";
@@ -157,6 +160,9 @@ void test3() {
   ofstream out("json.txt");
   out << json;
   out.close();
+
+  std::chrono::duration<double> elapsed = std::chrono::system_clock::now() - time_start;
+  cout << "Time required: " << elapsed.count() << endl;
 }
 
 int main() {
