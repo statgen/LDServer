@@ -201,6 +201,9 @@ void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_
 
   // In a tab-delimited file, we assume the first column contains the sample IDs.
   sample_ids = columns_text[sample_column];
+  for (uint64_t i = 0; i < sample_ids->size(); i++) {
+    sample_id_index[sample_ids->at(i)] = i;
+  }
 
   // Store a copy of the column types.
   column_types = types;
@@ -267,10 +270,9 @@ void Phenotypes::reorder(const vector<string> &samples) {
   vector<int64_t> indices;
   for (auto& sample : samples) {
     // Find index of requested sample in our original list of samples.
-    auto it = find(sample_ids->begin(), sample_ids->end(), sample);
-    if (it != sample_ids->end()) {
-      auto index = distance(sample_ids->begin(), it);
-      indices.emplace_back(index);
+    auto it = sample_id_index.find(sample);
+    if (it != sample_id_index.end()) {
+      indices.emplace_back(it->second);
     }
     else {
       // Store a sentinel value to denote this sample didn't exist.
@@ -300,6 +302,9 @@ void Phenotypes::reorder(const vector<string> &samples) {
   // Set samples
   vector<string> copy_samples = samples;
   this->sample_ids = make_shared_vector<string>(copy_samples);
+  for (uint64_t i = 0; i < sample_ids->size(); i++) {
+    sample_id_index[sample_ids->at(i)] = i;
+  }
 }
 
 SharedVector<string> Phenotypes::get_phenotypes() {

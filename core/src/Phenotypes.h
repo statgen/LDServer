@@ -37,6 +37,7 @@ protected:
   string file_path;
   ColumnTypeMap column_types;
   SharedVector<string> sample_ids;
+  map<string, uint64_t> sample_id_index;
 public:
    /**
    * Load a phenotype file.
