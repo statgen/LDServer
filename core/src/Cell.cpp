@@ -347,23 +347,11 @@ CellCov::~CellCov() {
 }
 
 template <typename T, typename C>
-shared_ptr<arma::fmat> mean_impute(T& matrix, C& means) {
-  auto ptr = make_shared<arma::fmat>(matrix);
-  float value;
+void mean_impute(T& matrix, C& means) {
   for (uint64_t j = 0; j < matrix.n_cols; j++) {
-    for (uint64_t i = 0; i < matrix.n_rows; i++) {
-      value = ptr->at(i, j);
-      if (std::isnan(value)) {
-        value = 0;
-      }
-      else {
-        value = value - means[j];
-      }
-      ptr->at(i, j) = value;
-    }
+    matrix.col(j) = matrix.col(j) - means[j];
   }
-
-  return ptr;
+  matrix.replace(arma::datum::nan, 0);
 }
 
 void CellCov::compute() {
@@ -376,7 +364,7 @@ void CellCov::compute() {
         auto genotypes_i = make_shared<arma::fmat>(segment_i->get_genotypes());
 
         if (segment_i->has_nans()) {
-          genotypes_i = mean_impute(*genotypes_i, segment_i->get_means());
+          mean_impute(*genotypes_i, segment_i->get_means());
         }
 
         arma::fmat R(arma::cov(*genotypes_i, 1));
@@ -398,8 +386,8 @@ void CellCov::compute() {
         if (segment_i->has_nans() || segment_j->has_nans()) {
           // If either segment has a genotype matrix with nans, then we need to mean impute/center them both.
           // Otherwise one matrix will have a different scale than the other.
-          genotypes_i = mean_impute(*genotypes_i, segment_i->get_means());
-          genotypes_j = mean_impute(*genotypes_j, segment_j->get_means());
+          mean_impute(*genotypes_i, segment_i->get_means());
+          mean_impute(*genotypes_j, segment_j->get_means());
         }
 
         arma::fmat R(arma::cov(*genotypes_i, *genotypes_j, 1));
