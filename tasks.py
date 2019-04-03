@@ -7,7 +7,7 @@ To run:
 
   * invoke build
   * invoke test
-  * invoke version --part <major|minor|part|beta|dev>
+  * invoke version --part <major|minor|patch|beta|dev>
 """
 
 VALID_PARTS = "major minor patch beta dev".split()
