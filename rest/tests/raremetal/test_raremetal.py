@@ -100,8 +100,11 @@ def test_covar(client):
         n_covar = len(group["covariance"])
         assert n_covar == (n_variants * (n_variants + 1) / 2)
         assert isinstance(group["mask"], int)
+        assert "group" in group
+        assert "groupType" in group
 
     for variant in resp.json["data"]["variants"]:
         assert variant["altFreq"] > 0
         assert variant["pvalue"] > 0
         assert variant["pvalue"] <= 1
+        assert "score" in variant

@@ -171,7 +171,7 @@ void ScoreCovarianceRunner::run() {
         this_variant.AddMember("altFreq", v.alt_freq, alloc);
 
         std::isnan(v.pvalue) ? this_variant.AddMember("pvalue", Value(), alloc) : this_variant.AddMember("pvalue", v.pvalue, alloc);
-        std::isnan(v.score_stat) ? this_variant.AddMember("score_stat", Value(), alloc) : this_variant.AddMember("score_stat", v.score_stat, alloc);
+        std::isnan(v.score_stat) ? this_variant.AddMember("score", Value(), alloc) : this_variant.AddMember("score", v.score_stat, alloc);
         variants.PushBack(this_variant, alloc);
       }
 
