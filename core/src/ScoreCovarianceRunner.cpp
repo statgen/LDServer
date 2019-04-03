@@ -181,10 +181,10 @@ void ScoreCovarianceRunner::run() {
 
       switch (mask.get_group_type()) {
         case VariantGroupType::GENE:
-          this_group.AddMember("groupType", Value("gene", alloc), alloc);
+          this_group.AddMember("groupType", Value("GENE", alloc), alloc);
           break;
         case VariantGroupType::REGION:
-          this_group.AddMember("groupType", Value("region", alloc), alloc);
+          this_group.AddMember("groupType", Value("REGION", alloc), alloc);
       }
 
       Value group_variants(kArrayType);

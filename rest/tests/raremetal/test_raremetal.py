@@ -102,6 +102,7 @@ def test_covar(client):
         assert isinstance(group["mask"], int)
         assert "group" in group
         assert "groupType" in group
+        assert group["groupType"] in ("REGION", "GENE")
 
     for variant in resp.json["data"]["variants"]:
         assert variant["altFreq"] > 0
