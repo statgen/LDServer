@@ -75,30 +75,36 @@ docker run -it ldserver:latest /bin/bash
 
 For configuring in production, we recommend using [docker-compose](https://docs.docker.com/compose/install/). We provide a base configuration `docker-compose.yml` that specifies the core services.
 
-To add specific configuration for your environment, start by creating a file `docker-compose.override.yml` and copy the following into it:
+To customize the config to your environment, copy `docker-compose.yml` to a file `docker-compose.prod.yml`. You can then modify the file as needed. For example, you can change the port mapping, as well as the user uid/gid running inside the container (this is important when mounting files into the container.) For example:
 
 ```YAML
 version: '3'
 services:
-  ldserver:
-    environment:
-      - LDSERVER_CONFIG_SCRIPT=var/ldserver.config.sh
-      - LDSERVER_WORKERS=4
-    volumes:
-      - /mnt/data:/home/ldserver/var
-      - /mnt/data/ldserver.config.sh:/home/ldserver/var/ldserver.config.sh
   raremetal:
+    user: "ldserver:1234"
+    image: "statgen/ldserver:latest"
     environment:
-      - RAREMETAL_CONFIG_DATA=var/test.yaml
+      - FLASK_APP=rest/raremetal
+      - RAREMETAL_CONFIG_DATA=var/config.yaml
       - RAREMETAL_WORKERS=4
+    ports:
+      - "4545:4545"
     volumes:
-      - /mnt/data:/home/ldserver/var
-      - /mnt/data/config.py:/home/ldserver/rest/instance/config.py
+      - /data/raremetal:/home/ldserver/var
+      - /data/raremetal/config.py:/home/ldserver/rest/instance/config.py
+    depends_on:
+      - redis
+    restart: "on-failure"
+    working_dir: /home/ldserver
+    command: /bin/bash -c "flask add-yaml $$RAREMETAL_CONFIG_DATA && gunicorn -b 0.0.0.0:4545 -w $$RAREMETAL_WORKERS -k gevent --pythonpath rest 'raremetal:create_app()'"
+
+  redis:
+    image: "redis:alpine"
 ```
 
-You will need to modify the above values according to your server environment.
-
 Volumes have the format `/path/to/data`:`/path/to/mount/in/container`.
+
+To change port, you will have to modify it in two places above - under `ports:` and under `command: `. Unfortunately docker-compose will not use environment variables specified within the file inside the `ports: ` section, so it must be set manually. It doesn't seem to work even with env vars specified in a `.env` file, or when set on the shell. 
 
 #### Configuration for ldserver app
 
@@ -147,6 +153,18 @@ However, you may only wish to start a subset of services. For example, if you on
 
 ```bash
 docker-compose up -d redis raremetal
+```
+
+If you wish to run with an entirely different compose file, you can supply `-f` to docker-compose:
+
+```bash
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+To debug the container, the following command is very useful. It will start the raremetal service, using all of your configuration values from the docker-compose file, and drop you into a bash shell as root. From there, you can run the services manually to debug, and install any additional packages that could be useful. Obviously, you should not use this for production, as the container is not meant to be run as root.
+
+```bash
+docker-compose run -u root raremetal bash
 ```
 
 ### Manual installation
