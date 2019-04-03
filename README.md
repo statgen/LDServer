@@ -104,7 +104,7 @@ services:
 
 Volumes have the format `/path/to/data`:`/path/to/mount/in/container`.
 
-To change port, you will have to modify it in two places above - under `ports:` and under `command: `. Unfortunately docker-compose will not use environment variables specified within the file inside the `ports: ` section, so it must be set manually. It doesn't seem to work even with env vars specified in a `.env` file, or when set on the shell. 
+To change port, you will have to modify it in two places above - under `ports:` and under `command: `. Unfortunately docker-compose will not use environment variables specified within the file inside the `ports: ` section, so it must be set manually. It doesn't seem to work even with env vars specified in a `.env` file, or when set on the shell.
 
 #### Configuration for ldserver app
 
@@ -141,21 +141,7 @@ genotypes:
 
 #### Running the services
 
-The `docker-compose.yml` specifies services, where each flask app (ldserver, raremetal) are separate services.
-
-To launch all services:
-
-```bash
-docker-compose pull && docker-compose up -d
-```
-
-However, you may only wish to start a subset of services. For example, if you only wish to run raremetal:
-
-```bash
-docker-compose up -d redis raremetal
-```
-
-If you wish to run with an entirely different compose file, you can supply `-f` to docker-compose:
+Assuming you have created your own `docker-compose.prod.yml` file for production, you can run the services with:
 
 ```bash
 docker-compose -f docker-compose.prod.yml up -d
@@ -164,7 +150,7 @@ docker-compose -f docker-compose.prod.yml up -d
 To debug the container, the following command is very useful. It will start the raremetal service, using all of your configuration values from the docker-compose file, and drop you into a bash shell as root. From there, you can run the services manually to debug, and install any additional packages that could be useful. Obviously, you should not use this for production, as the container is not meant to be run as root.
 
 ```bash
-docker-compose run -u root raremetal bash
+docker-compose -f docker-compose.prod.yml run -u root raremetal bash
 ```
 
 ### Manual installation
