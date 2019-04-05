@@ -544,7 +544,10 @@ def add_phenotype_dataset(name, description, filepath, genotype_datasets, column
 
   try:
     genotype_datasets = [int(x) for x in genotype_datasets]
-  except:
+  except TypeError as e:
+    if not "'int' object is not iterable" == str(e):
+      raise Exception("Unexpected exception when parsing genotype dataset ID for phenotype dataset {}".format(args["id"]))
+
     genotype_datasets = [int(genotype_datasets)]
 
   for gd in genotype_datasets:
