@@ -396,7 +396,6 @@ def add_genotype_dataset(name, description, genome_build, samples_filename, geno
     r.samples.append(Sample(subset = 'ALL', sample = sample))
   db.session.add(r)
   db.session.commit()
-  print r.id
 
 def guess_type(values):
   guesses = []
@@ -569,7 +568,6 @@ def add_masks(name, description, filepath, genome_build, genotype_dataset_id, gr
   mask = Mask(**args)
   db.session.add(mask)
   db.session.commit()
-  print mask.id
 
 
 def create_subset(genome_build, genotype_dataset_name, subset_name, samples_filename):
