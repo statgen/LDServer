@@ -82,6 +82,11 @@ public:
     void set_phenotype(const string& p);
 
     /**
+     * Get list of samples for which the phenotype has complete data.
+     */
+     shared_ptr<vector<string>> get_complete_samples(const string& phenotype) const;
+
+    /**
      * Functions to enable/disable the cache.
      * Note: this is slightly different than LDServer, where a cache key is not used (these functions only open/close
      * the redis context.)

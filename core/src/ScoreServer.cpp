@@ -57,6 +57,11 @@ void ScoreServer::set_phenotype(const string& p) {
     phenotype = p;
 }
 
+
+shared_ptr<vector<string>> ScoreServer::get_complete_samples(const string& phenotype) const {
+  return phenotypes->get_complete_samples(phenotype);
+}
+
 void ScoreServer::set_samples(const std::string &name, const std::vector<std::string> &samples) {
     auto e = this->samples.emplace(name, std::vector<std::string>()).first;
     for (auto&& sample: samples) {
