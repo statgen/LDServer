@@ -97,8 +97,19 @@ void Segment::add(savvy::site_info& anno, savvy::compressed_vector<float>& allel
       n_haplotypes *= 2;
     }
 
-    unsigned int n_non_zero = alleles.non_zero_size();
-    if (n_non_zero > 0) {
+    // This is the number of non-zero OR NaN entries.
+    uint64_t n_non_zero = alleles.non_zero_size();
+
+    // This is the number of values that are non-missing and non-zero.
+    uint64_t n_nonzero_nonmissing = 0;
+    auto value_data = alleles.value_data();
+    for (uint64_t i = 0; i < alleles.non_zero_size(); i++) {
+      if (!std::isnan(value_data[i])) {
+        n_nonzero_nonmissing++;
+      }
+    }
+
+    if (n_nonzero_nonmissing > 0) {
         std::stringstream ss("");
         ss << anno.chromosome() << ":" << anno.position() << "_" << anno.ref() << "/" << anno.alt();
         names.emplace_back(ss.str());
@@ -114,7 +125,6 @@ void Segment::add(savvy::site_info& anno, savvy::compressed_vector<float>& allel
             case CSC:
                 {
                 sp_mat_colind.emplace_back(sp_mat_rowind.size());
-                auto value_data = alleles.value_data();
                 double sum = 0.0;
                 double value;
                 for (unsigned int i = 0u; i < n_non_zero; ++i) {
@@ -163,8 +173,19 @@ void Segment::add_genotypes(savvy::compressed_vector<float>& alleles) {
         n_haplotypes *= 2;
     }
 
-    unsigned int n_non_zero = alleles.non_zero_size();
-    if (n_non_zero > 0) {
+    // This is the number of non-zero OR NaN entries.
+    uint64_t n_non_zero = alleles.non_zero_size();
+
+    // This is the number of values that are non-missing and non-zero.
+    uint64_t n_nonzero_nonmissing = 0;
+    auto value_data = alleles.value_data();
+    for (uint64_t i = 0; i < alleles.non_zero_size(); i++) {
+      if (!std::isnan(value_data[i])) {
+        n_nonzero_nonmissing++;
+      }
+    }
+
+    if (n_nonzero_nonmissing > 0) {
         auto index_data = alleles.index_data();
         switch (store) {
             case CSC_ALL_ONES:
@@ -176,7 +197,6 @@ void Segment::add_genotypes(savvy::compressed_vector<float>& alleles) {
             case CSC:
                 {
                 sp_mat_colind.emplace_back(sp_mat_rowind.size());
-                auto value_data = alleles.value_data();
                 double sum = 0.0;
                 double value;
                 for (unsigned int i = 0u; i < n_non_zero; ++i) {
