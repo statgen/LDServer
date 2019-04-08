@@ -19,6 +19,7 @@
 #include "ScoreSegment.h"
 #include "Types.h"
 #include "Phenotypes.h"
+#include "LDServer.h"
 
 using namespace std;
 
@@ -127,5 +128,13 @@ public:
      */
     bool compute_scores(const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, struct ScoreStatQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY, SharedSegmentVector segments = nullptr) const;
 };
+
+/**
+ * Helper function to coordinate samples between the LDServer and ScoreServer.
+ * This function takes into account:
+ * - Eliminate samples where the phenotype is missing
+ * - Intersect with sample subset
+ */
+void coordinate_samples(ScoreServer& score_server, LDServer& ld_server, const string& genotype_file, const string& phenotype, const string& sample_subset, const vector<string>& samples = {});
 
 #endif

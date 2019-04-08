@@ -3,6 +3,45 @@
 
 const std::string ScoreServer::ALL_SAMPLES_KEY("ALL");
 
+void coordinate_samples(ScoreServer& score_server, LDServer& ld_server, const string& genotype_file, const string& phenotype, const string& sample_subset, const vector<string>& samples) {
+  // List of complete samples for this particular phenotype.
+  shared_ptr<vector<string>> complete_samples = score_server.get_complete_samples(phenotype);
+
+  // Get the list of all genotyped samples.
+  shared_ptr<Raw> raw = RawFactory::create(genotype_file);
+  vector<string> geno_samples = raw->get_samples();
+
+  // Final set of samples
+  shared_ptr<vector<string>> final_samples;
+
+  // Find intersection of genotyped samples
+  auto tmp_samples = make_shared<vector<string>>();
+  std::set_intersection(
+    complete_samples->begin(),
+    complete_samples->end(),
+    geno_samples.begin(),
+    geno_samples.end(),
+    back_inserter(*tmp_samples)
+  );
+
+  // Did we have a subset list of samples to use from the user? If so,
+  // we need the intersection.
+  if (sample_subset != "ALL" || !samples.empty()) {
+    std::set_intersection(
+      tmp_samples->begin(),
+      tmp_samples->end(),
+      samples.begin(),
+      samples.end(),
+      back_inserter(*final_samples)
+    );
+  } else {
+    final_samples = tmp_samples;
+  }
+
+  ld_server.force_samples(sample_subset, *final_samples);
+  score_server.force_samples(sample_subset, *final_samples);
+}
+
 ScoreServer::ScoreServer(uint32_t segment_size) : segment_size(segment_size), cache_enabled(false), cache_hostname(""), cache_port(0), cache_context(nullptr) {}
 
 ScoreServer::~ScoreServer() {

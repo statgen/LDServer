@@ -67,47 +67,28 @@ void ScoreSegment::compute_scores(const arma::vec &phenotype) {
 
   // Load genotypes.
   arma::fmat genotypes(this->get_genotypes());
-  //auto genotypes = arma::conv_to<arma::fmat>::from(this->get_genotypes());
 
-  // Figure out which phenotype rows have non-missing data,
-  // center, and calculate sigma2.
-  arma::uvec index_nonmiss = find_finite(phenotype);
-  arma::vec nonmiss_pheno = phenotype.elem(index_nonmiss);
-  nonmiss_pheno = nonmiss_pheno - arma::mean(nonmiss_pheno);
-  double sigma2 = arma::var(nonmiss_pheno, 1);
-
-  // Subset genotype matrix to only rows where we have a phenotype value.
-  // There will be no missing genotype values because we perform mean imputation.
-  genotypes = genotypes.rows(index_nonmiss);
+  // Center and calculate sigma2 from phenotype
+  double pheno_mean = arma::mean(phenotype);
+  arma::vec phenotype_centered = phenotype - pheno_mean;
+  double sigma2 = arma::var(phenotype_centered, 1);
 
   // Calculate statistics for each variant
   for (uint64_t col = 0; col < genotypes.n_cols; col++) {
     ScoreResult result;
+    result.variant = this->names[col];
     result.position = this->positions[col];
     result.chrom = this->chromosome;
 
-    if (this->freqs[col] == 0) {
-      // This is a monomorphic variant, so we can't compute scores for it.
-      result.pvalue = arma::datum::nan;
-      result.score_stat = arma::datum::nan;
-      result.alt_freq = 0;
-      score_results->emplace_back(result);
-      continue;
-    }
     arma::vec genotype_col = arma::conv_to<arma::vec>::from(genotypes.col(col));
-    double mean = means[col];
 
-    for (uint64_t i = 0; i < genotype_col.n_elem; i++) {
-      if (std::isnan(genotype_col[i])) {
-        genotype_col[i] = 0;
-      }
-      else {
-        genotype_col[i] = genotype_col[i] - mean;
-      }
-    }
+    // Mean center/impute
+    double mean = means[col];
+    genotype_col -= mean;
+    genotype_col.replace(arma::datum::nan, 0);
 
     // Score stat
-    double u = arma::dot(genotype_col, nonmiss_pheno);
+    double u = arma::dot(genotype_col, phenotype_centered);
 
     // Calculate denominator
     double denom = 0;
@@ -124,8 +105,7 @@ void ScoreSegment::compute_scores(const arma::vec &phenotype) {
 
     result.score_stat = u / sigma2; // match RAREMETAL convention
     result.pvalue = pvalue;
-    result.variant = this->names[col];
-    result.alt_freq = this->freqs[col];
+    result.alt_freq = this->freqs[col];;
 
     score_results->emplace_back(result);
   }

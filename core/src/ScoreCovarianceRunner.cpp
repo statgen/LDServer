@@ -78,11 +78,6 @@ void ScoreCovarianceRunner::run() {
     score_server.set_genotypes_file(genotype_file, config->genotype_dataset_id);
   }
 
-  if (config->sample_subset != "ALL") {
-    ld_server.set_samples(config->sample_subset, config->samples);
-    score_server.set_samples(config->sample_subset, config->samples);
-  }
-
   score_server.load_phenotypes_file(
     config->phenotype_file,
     config->phenotype_column_types,
@@ -92,6 +87,8 @@ void ScoreCovarianceRunner::run() {
     config->phenotype_dataset_id
   );
   score_server.set_phenotype(config->phenotype);
+
+  coordinate_samples(score_server, ld_server, config->genotype_files[0], config->phenotype, config->sample_subset, config->samples);
 
 //  if (!config->redis_hostname.empty()) {
 //    ld_server.enable_cache(config->genotype_dataset_id, config->redis_hostname, config->redis_port);
