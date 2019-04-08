@@ -180,7 +180,7 @@ def get_covariance():
     if mask["genome_build"] != build:
       raise FlaskException("Mask ID {} is invalid for genome build {}".format(mask_id, build), 400)
 
-    if mask["genotype_dataset_id"] != genotype_dataset_id:
+    if genotype_dataset_id not in [g.id for g in mask["genotypes"]]:
       raise FlaskException("Mask ID {} is invalid for genotype dataset ID {}".format(mask_id, genotype_dataset_id), 400)
 
     try:

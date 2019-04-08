@@ -36,7 +36,7 @@ class GenotypeDataset(db.Model):
   files = db.relationship('File', backref = 'genotype_datasets', lazy = True)
   samples = db.relationship('Sample', backref = 'genotype_datasets', lazy = True)
   phenotypes = db.relationship("PhenotypeDataset", secondary="genotype_phenotype", back_populates="genotypes")
-  masks = db.relationship("Mask", back_populates="genotypes")
+  masks = db.relationship("Mask", secondary="genotype_mask", back_populates="genotypes")
 
   __table_args__ = (
     db.UniqueConstraint('name', 'genome_build', name = 'name_build_uc'),
@@ -98,6 +98,11 @@ class PhenotypeColumn(db.Model):
   dataset = db.relationship("PhenotypeDataset", back_populates = "columns")
 
 
+genotype_mask = db.Table("genotype_mask",
+  db.Column("genotype_dataset_id", db.Integer, db.ForeignKey("genotype_datasets.id"), primary_key = True),
+  db.Column("mask_id", db.Integer, db.ForeignKey("masks.id"), primary_key = True)
+)
+
 class Mask(db.Model):
   __tablename__ = "masks"
   id = db.Column(db.Integer, primary_key = True)
@@ -107,9 +112,8 @@ class Mask(db.Model):
   genome_build = db.Column(db.String, unique = False, nullable = False)
   group_type = db.Column(Enum(*tuple(VariantGroupType.values[i].name for i in range(len(VariantGroupType.values)))), nullable = False, name = "group_type")
   identifier_type = db.Column(db.String, unique = False, nullable = False)
-  genotype_dataset_id = db.Column(db.Integer, db.ForeignKey('genotype_datasets.id'))
 
-  genotypes = db.relationship("GenotypeDataset", back_populates="masks")
+  genotypes = db.relationship("GenotypeDataset", secondary="genotype_mask", back_populates="masks")
 
 
 Index('genotype_dataset_index_1', GenotypeDataset.genome_build)
@@ -272,7 +276,7 @@ def get_mask_by_id(mask_id):
   if result is None:
     raise ValueError("No mask exists for ID {}".format(mask_id))
 
-  as_dict = {c.key: getattr(result, c.key) for c in inspect(result).mapper.column_attrs}
+  as_dict = {c.key: getattr(result, c.key) for c in inspect(result).mapper.attrs}
 
   as_dict["group_type"] = VariantGroupType.names.get(result.group_type)
   as_dict["identifier_type"] = GroupIdentifierType.names.get(result.identifier_type)
@@ -561,14 +565,31 @@ def add_phenotype_dataset(name, description, filepath, genotype_datasets, column
   db.session.commit()
 
 
-def add_masks(name, description, filepath, genome_build, genotype_dataset_id, group_type, identifier_type, mid=None):
+def add_masks(name, description, filepath, genome_build, genotype_datasets, group_type, identifier_type, mid=None):
   args = locals()
   if mid is not None:
     args["id"] = mid
 
   if "mid" in args: del args["mid"]
+  del args["genotype_datasets"]
+
+  try:
+    genotype_datasets = [int(x) for x in genotype_datasets]
+  except TypeError as e:
+    if not "'int' object is not iterable" == str(e):
+      raise Exception("Unexpected exception when parsing genotype dataset ID for phenotype dataset {}".format(args["id"]))
+
+    genotype_datasets = [int(genotype_datasets)]
 
   mask = Mask(**args)
+
+  for gd in genotype_datasets:
+    genotype_dataset = GenotypeDataset.query.filter_by(id = gd).first()
+    if genotype_dataset is not None:
+      mask.genotypes.append(genotype_dataset)
+    else:
+      raise ValueError("Genotype dataset with ID {} does not exist".format(gd))
+
   db.session.add(mask)
   db.session.commit()
 
