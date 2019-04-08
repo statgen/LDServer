@@ -64,6 +64,10 @@ void ScoreServer::set_samples(const std::string &name, const std::vector<std::st
     }
 }
 
+void ScoreServer::force_samples(const std::string &name, const std::vector<std::string> &samples) {
+    this->samples[name] = samples;
+}
+
 /**
  * Enable the cache
  * @param hostname

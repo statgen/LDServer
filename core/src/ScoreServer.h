@@ -60,6 +60,8 @@ public:
      */
     void set_samples(const string& name, const vector<string>& samples);
 
+    void force_samples(const std::string &name, const std::vector<std::string> &samples);
+
     /**
      * Load phenotypes from a file. This triggers a load of phenotypes into memory. Phenotype files are assumed to
      * typically be quite small. When UKBB gets metabolites, then maybe we will need to start loading only needed

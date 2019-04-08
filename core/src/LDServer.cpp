@@ -40,6 +40,10 @@ void LDServer::set_samples(const std::string &name, const std::vector<std::strin
     }
 }
 
+void LDServer::force_samples(const std::string &name, const std::vector<std::string> &samples) {
+    this->samples[name] = samples;
+}
+
 /**
  * Enable the cache
  * @param cache_key - This key gets hashed together with a number of other parameters to create segment and cell cache keys.

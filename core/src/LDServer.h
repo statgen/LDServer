@@ -46,6 +46,7 @@ public:
 
     void set_file(const string& file);
     void set_samples(const string& name, const vector<string>& samples);
+    void force_samples(const std::string &name, const std::vector<std::string> &samples);
     void enable_cache(uint32_t cache_key, const string& hostname, int port);
     void disable_cache();
 
