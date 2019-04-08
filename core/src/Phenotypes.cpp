@@ -351,6 +351,22 @@ shared_ptr<ScoreResult> Phenotypes::compute_score(arma::vec &genotypes, const st
   return result;
 }
 
+/**
+ * Get list of samples for which the phenotype has complete data.
+ */
+shared_ptr<vector<string>> Phenotypes::get_complete_samples(const string& phenotype) {
+  // Figure out which phenotype rows have non-missing data.
+  auto pheno_vec = as_vec(phenotype);
+  arma::uvec index_nonmiss = find_finite(*pheno_vec);
+  auto samples = make_shared<vector<string>>();
+
+  for (uint64_t i = 0; i < index_nonmiss.n_elem; i++) {
+    samples->emplace_back((*sample_ids)[index_nonmiss[i]]);
+  }
+
+  return samples;
+}
+
 double Phenotypes::compute_sigma2(const string &phenotype) {
   auto &pheno_vec = *as_vec(phenotype);
   arma::vec nonmiss_pheno = pheno_vec.elem(find_finite(pheno_vec));

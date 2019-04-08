@@ -80,6 +80,11 @@ public:
   double compute_sigma2(const string &phenotype);
 
   /**
+   * Get list of samples for which the phenotype has complete data.
+   */
+  shared_ptr<vector<string>> get_complete_samples(const string& phenotype);
+
+  /**
    * Get number of non-missing observations for phenotype.
    * @param phenotype
    * @return
