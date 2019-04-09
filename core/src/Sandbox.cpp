@@ -14,59 +14,40 @@
 using namespace std;
 
 void test1() {
-  LDServer ld_server(100);
-  LDQueryResult ld_result(1000);
-
-  ScoreServer score_server(100);
-  ScoreStatQueryResult score_results(1000);
-  auto segments = make_shared_segment_vector();
-
-  string genotype_file = "../../../data/chr22.test.vcf.gz";
-  ld_server.set_file(genotype_file);
-
-  score_server.set_genotypes_file(genotype_file, 1);
-
   ColumnTypeMap ctmap;
   ctmap.add("iid", ColumnType::TEXT);
   ctmap.add("sex", ColumnType::CATEGORICAL);
   ctmap.add("rand_binary", ColumnType::CATEGORICAL);
   ctmap.add("rand_qt", ColumnType::FLOAT);
 
-  string phenotype_file = "../../../data/chr22.test.tab";
-  score_server.load_phenotypes_file(phenotype_file, ctmap, 2504, "\t", "iid", 1);
-  score_server.set_phenotype("rand_qt");
-
   string chrom = "22";
   auto start = 50276998ul;
   auto stop = 50357719ul;
 
-  // try out mask
-  Mask mask("../../../data/mask.epacts.chr22.gencode-exons-AF01.tab.gz", 1, VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, chrom, start, stop);
-
-  // try out runner
-  vector<Mask> masks;
-  masks.emplace_back(mask);
-
   auto config = make_score_covariance_config();
-
   config->chrom = chrom;
   config->start = start;
   config->stop = stop;
   config->segment_size = 1000;
-  config->masks = masks;
   config->sample_subset = "ALL";
-  config->genotype_files = {genotype_file};
+  config->genotype_files = {"../../../data/chr22.monomorphic_test.vcf.gz"};
   config->genotype_dataset_id = 1;
-  config->phenotype_file = phenotype_file;
+  config->phenotype_file = "../../../data/chr22.test.missing_values.tab";
   config->phenotype_column_types = ctmap;
   config->phenotype_dataset_id = 1;
   config->phenotype = "rand_qt";
   config->phenotype_nrows = 2504;
   config->phenotype_sample_column = "iid";
   config->phenotype_delim = "\t";
-
   config->pprint();
 
+  // Load mask
+  Mask mask("../../../data/mask.epacts.chr22.gencode-exons-AF01.tab.gz", 1, VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, chrom, start, stop);
+  vector<Mask> masks;
+  masks.emplace_back(mask);
+  config->masks = masks;
+
+  // Execute runner
   ScoreCovarianceRunner runner(config);
   runner.run();
 
@@ -166,6 +147,7 @@ void test3() {
 }
 
 int main() {
-  test3();
+  test1();
+  //test3();
   return 0;
 }
