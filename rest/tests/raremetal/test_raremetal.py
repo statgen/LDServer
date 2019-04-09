@@ -152,7 +152,7 @@ def test_covar(client):
         assert "score" in variant
 
 def test_monomorphic(client):
-    resp = client.post("/aggregation/covariance", data = {
+    resp = client.post("/aggregation/covariance", json = {
         "chrom": "22",
         "start": 50276998,
         "stop": 50357719,

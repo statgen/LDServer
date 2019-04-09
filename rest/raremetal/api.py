@@ -85,6 +85,9 @@ def get_covariance():
   This endpoint returns covariance and score statistics within a given region.
   """
 
+  if request.content_type not in ("application/x-www-form-urlencoded", "application/json"):
+    raise FlaskException("Content-Type must be application/json or application/x-www-form-urlencoded", 415)
+
   args_defined = {
     'chrom': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'start': fields.Int(required=True, validate=lambda x: x >= 0, error_messages={'validator_failed': 'Value must be greater than or equal to 0.'}),
