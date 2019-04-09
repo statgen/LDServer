@@ -11,10 +11,14 @@ def test_status(client):
     sha = resp.json["data"]["sha"]
     assert sha == "no-git" or is_sha(sha)
 
+def test_trailing_slash(client):
+    resp = client.get("/aggregation/metadata/")
+    assert resp.status_code == 404
+
 def test_metadata(client):
     resp = client.get("/aggregation/metadata")
     assert resp.status_code == 200
-    
+
     for genotype_dataset in resp.json["data"]:
         assert "name" in genotype_dataset
         assert "masks" in genotype_dataset

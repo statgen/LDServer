@@ -1,6 +1,7 @@
 from __future__ import print_function
 import traceback
 import re
+import werkzeug
 from flask import current_app, request, jsonify
 
 class FlaskException(Exception):
@@ -42,6 +43,9 @@ def handle_all(error):
   if isinstance(error, FlaskException):
     message = error.message
     code = error.status_code
+  elif isinstance(error, werkzeug.exceptions.NotFound):
+    message = error.description
+    code = error.code
   else:
     message = "An exception was thrown while handling the request. If you believe this request should have succeeded, please create an issue: https://github.com/statgen/LDServer/issues"
     code = 500
