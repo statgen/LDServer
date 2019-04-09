@@ -11,6 +11,40 @@ def test_status(client):
     sha = resp.json["data"]["sha"]
     assert sha == "no-git" or is_sha(sha)
 
+def test_metadata(client):
+    resp = client.get("/aggregation/metadata")
+    assert resp.status_code == 200
+    
+    for genotype_dataset in resp.json["data"]:
+        assert "name" in genotype_dataset
+        assert "masks" in genotype_dataset
+        assert "description" in genotype_dataset
+        assert "genomeBuild" in genotype_dataset
+        assert "genotypeDataset" in genotype_dataset
+        assert "phenotypeDatasets" in genotype_dataset
+
+        for phenotype_dataset in genotype_dataset["phenotypeDatasets"]:
+            assert "description" in phenotype_dataset
+            assert "phenotypes" in phenotype_dataset
+            assert "name" in phenotype_dataset
+            assert "phenotypeDataset" in phenotype_dataset
+
+            for phenotype in phenotype_dataset["phenotypes"]:
+                assert "description" in phenotype
+                assert "name" in phenotype
+
+        for mask in genotype_dataset["masks"]:
+            assert "groupType" in mask
+            assert "identifierType" in mask
+            assert "description" in mask
+            assert "name" in mask
+            assert "id" in mask
+
+            assert mask["groupType"] == mask["groupType"].upper()
+            assert mask["identifierType"] == mask["identifierType"].upper()
+
+
+
 def test_malformed_chrom(client):
     resp = client.post("/aggregation/covariance", data = {
         "chrom": "22REERERFFAFA",

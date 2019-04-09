@@ -259,13 +259,12 @@ def get_phenotypes_for_genotypes(genotype_dataset_id):
 
 def get_masks_for_genotypes(genotype_dataset_id):
   masks = []
-  for row in db.session.query(Mask).filter_by(genotype_dataset_id = genotype_dataset_id):
+  for row in db.session.query(Mask).filter(Mask.genotypes.any(id=genotype_dataset_id)):
     as_dict = {c.key: getattr(row, c.key) for c in inspect(row).mapper.column_attrs}
     as_dict["groupType"] = as_dict.pop("group_type")
     as_dict["identifierType"] = as_dict.pop("identifier_type")
 
     del as_dict["genome_build"]
-    del as_dict["genotype_dataset_id"]
     del as_dict["filepath"]
     masks.append(as_dict)
 
