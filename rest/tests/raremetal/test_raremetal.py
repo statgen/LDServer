@@ -95,6 +95,8 @@ def test_covar(client):
     assert resp.status_code == 200
     assert resp.is_json
 
+    score_variants = [x["variant"] for x in resp.json["data"]["variants"]]
+
     for group in resp.json["data"]["groups"]:
         n_variants = len(group["variants"])
         n_covar = len(group["covariance"])
@@ -103,6 +105,41 @@ def test_covar(client):
         assert "group" in group
         assert "groupType" in group
         assert group["groupType"] in ("REGION", "GENE")
+        assert all([v in score_variants for v in group["variants"]])
+
+    for variant in resp.json["data"]["variants"]:
+        assert variant["altFreq"] > 0
+        assert variant["pvalue"] > 0
+        assert variant["pvalue"] <= 1
+        assert "score" in variant
+
+def test_monomorphic(client):
+    resp = client.post("/aggregation/covariance", data = {
+        "chrom": "22",
+        "start": 50276998,
+        "stop": 50357719,
+        "genotypeDataset": 2, # includes 3 monomorphic variants in chr22.monomorphic_test.vcf.gz
+        "phenotypeDataset": 1,
+        "phenotype": "rand_qt",
+        "samples": "ALL",
+        "genomeBuild": "GRCh37",
+        "masks": [1]
+    })
+
+    assert resp.status_code == 200
+    assert resp.is_json
+
+    score_variants = [x["variant"] for x in resp.json["data"]["variants"]]
+
+    for group in resp.json["data"]["groups"]:
+        n_variants = len(group["variants"])
+        n_covar = len(group["covariance"])
+        assert n_covar == (n_variants * (n_variants + 1) / 2)
+        assert isinstance(group["mask"], int)
+        assert "group" in group
+        assert "groupType" in group
+        assert group["groupType"] in ("REGION", "GENE")
+        assert all([v in score_variants for v in group["variants"]])
 
     for variant in resp.json["data"]["variants"]:
         assert variant["altFreq"] > 0

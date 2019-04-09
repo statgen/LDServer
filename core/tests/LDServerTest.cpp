@@ -417,6 +417,8 @@ TEST_F(LDServerTest, score_server_missing_pheno) {
     score_server.load_phenotypes_file(phenotype_file, ctmap, 2504, "\t", "iid", 1);
     score_server.set_phenotype("rand_qt");
 
+    coordinate_samples(score_server, ld_server, "chr21.test.vcf.gz", "rand_qt", "ALL");
+
     auto segments = make_shared_segment_vector();
 
     ASSERT_TRUE(ld_server.compute_region_ld("21", 9411239, 9411793, correlation::COV, ld_result, "ALL", true, segments));
@@ -460,6 +462,8 @@ TEST_F(LDServerTest, score_server_missing_genotypes_and_phenotypes) {
   string phenotype_file = "chr21.test.missing_values.tab";
   score_server.load_phenotypes_file(phenotype_file, ctmap, 2504, "\t", "iid", 1);
   score_server.set_phenotype("rand_qt");
+
+  coordinate_samples(score_server, ld_server, "chr21.test.missing_values.vcf.gz", "rand_qt", "ALL");
 
   auto segments = make_shared_segment_vector();
 
@@ -526,8 +530,80 @@ TEST_F(LDServerTest, score_covariance_runner) {
     // Tests
     ASSERT_EQ(doc["data"]["nSamples"].GetDouble(), 2504.0);
     ASSERT_NEAR(doc["data"]["sigmaSquared"].GetDouble(), 0.08188312, 0.0001);
-    ASSERT_EQ(doc["data"]["groups"][0]["variants"].Capacity(), 162);
-    ASSERT_EQ(doc["data"]["groups"][0]["covariance"].Capacity(), 13203);
+    ASSERT_EQ(doc["data"]["groups"][0]["variants"].Size(), 162);
+    ASSERT_EQ(doc["data"]["groups"][0]["covariance"].Size(), 13203);
+}
+
+TEST_F(LDServerTest, score_covariance_runner_monomorphic) {
+    ColumnTypeMap ctmap;
+    ctmap.add("iid", ColumnType::TEXT);
+    ctmap.add("sex", ColumnType::CATEGORICAL);
+    ctmap.add("rand_binary", ColumnType::CATEGORICAL);
+    ctmap.add("rand_qt", ColumnType::FLOAT);
+
+    string chrom = "22";
+    auto start = 50276998ul;
+    auto stop = 50357719ul;
+
+    auto config = make_score_covariance_config();
+    config->chrom = chrom;
+    config->start = start;
+    config->stop = stop;
+    config->segment_size = 1000;
+    config->sample_subset = "ALL";
+    config->genotype_files = {"chr22.monomorphic_test.vcf.gz"};
+    config->genotype_dataset_id = 1;
+    config->phenotype_file = "chr22.test.missing_values.tab";
+    config->phenotype_column_types = ctmap;
+    config->phenotype_dataset_id = 1;
+    config->phenotype = "rand_qt";
+    config->phenotype_nrows = 2504;
+    config->phenotype_sample_column = "iid";
+    config->phenotype_delim = "\t";
+    config->pprint();
+
+    // Load mask
+    Mask mask("mask.epacts.chr22.gencode-exons-AF01.tab.gz", 1, VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, chrom, start, stop);
+    vector<Mask> masks;
+    masks.emplace_back(mask);
+    config->masks = masks;
+
+    // Execute runner
+    ScoreCovarianceRunner runner(config);
+    runner.run();
+    string json = runner.getJSON();
+
+    // Parse back out JSON
+    rapidjson::Document doc;
+    doc.Parse(json.c_str());
+
+    // Tests
+    ASSERT_EQ(doc["data"]["nSamples"].GetDouble(), 2495.0);
+    ASSERT_NEAR(doc["data"]["sigmaSquared"].GetDouble(), 0.081971, 0.0001);
+    ASSERT_EQ(doc["data"]["variants"].Size(), 685);
+    ASSERT_EQ(doc["data"]["groups"][0]["variants"].Size(), 159);
+    ASSERT_EQ(doc["data"]["groups"][0]["covariance"].Size(), 12720);
+
+    auto& variants = doc["data"]["variants"];
+    set<string> all_variants;
+
+    for (auto&& vblock : variants.GetArray()) {
+      string variant = vblock.GetObject()["variant"].GetString();
+      all_variants.emplace(variant);
+    }
+
+    auto& groups = doc["data"]["groups"];
+    for (auto&& group : groups.GetArray()) {
+      uint64_t n_variants = group.GetObject()["variants"].Size();
+      uint64_t n_covar = group.GetObject()["covariance"].Size();
+      ASSERT_EQ(n_covar, n_variants * (n_variants + 1) / 2);
+
+      auto& group_variants = group.GetObject()["variants"];
+      for (auto&& vobj : group_variants.GetArray()) {
+        string variant = vobj.GetString();
+        ASSERT_TRUE(all_variants.find(variant) != all_variants.end());
+      }
+    }
 }
 
 TEST_F(LDServerTest, BCF_one_page) {

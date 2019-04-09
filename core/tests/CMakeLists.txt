@@ -36,6 +36,7 @@ install(FILES
         ../../data/chr22.test.sav
         ../../data/chr22.test.sav.s1r
         ../../data/chr22.test.tab
+        ../../data/chr22.test.missing_values.tab
         ../../data/chr22.test.ped
         ../../data/chr22.test.dat
         ../../data/chr22.test.frq
@@ -47,6 +48,8 @@ install(FILES
         ../../data/chr21.test.missing_values.tab
         ../../data/chr21.test.missing_values.vcf.gz
         ../../data/chr21.test.missing_values.vcf.gz.tbi
+        ../../data/chr22.monomorphic_test.vcf.gz
+        ../../data/chr22.monomorphic_test.vcf.gz.tbi
         ../../data/chrX.test.sav
         ../../data/chrX.test.sav.s1r
         ../../data/region_ld_22_51241101_51241385.hap.ld

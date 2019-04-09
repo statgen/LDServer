@@ -4,12 +4,18 @@ genotypes:
   description: "1000G chr22 Testing VCF"
   filepath: "data/chr22.test.vcf.gz"
   genome_build: "GRCh37"
+
+- id: 2
+  name: "1000G Monomorphic Test"
+  description: "1000G chr22 Testing VCF with 3 monomorphic variants"
+  filepath: "data/chr22.monomorphic_test.vcf.gz"
+  genome_build: "GRCh37"
   
 phenotypes:
 - id: 1
   name: "1000G random phenotypes"
   description: "An example set of randomly generated phenotypes for 1000G"
-  genotypes: 1
+  genotypes: [1, 2]
   filepath: "data/chr22.test.tab"
   delim: "\t"
   columns:
@@ -31,7 +37,7 @@ phenotypes:
 
 - id: 2
   name: "1000G random phenotypes II"
-  genotypes: 1
+  genotypes: [1, 2]
   filepath: "data/chr22.more_phenotypes.test.ped"
   description: "Adding a second set of phenotypes for 1000G"
   delim: "\t"
@@ -46,7 +52,7 @@ masks:
   description: "Variants with allele frequency < 1%"
   filepath: "data/mask.epacts.chr22.gencode-exons-AF01.tab.gz"
   genome_build: "GRCh37"
-  genotypes: 1
+  genotypes: [1, 2]
   group_type: "GENE"
   identifier_type: "ENSEMBL"
 
@@ -55,6 +61,6 @@ masks:
   description: "Variants with allele frequency < 5%"
   filepath: "data/mask.epacts.chr22.gencode-exons-AF05.tab.gz"
   genome_build: "GRCh37"
-  genotypes: 1
+  genotypes: [1, 2]
   group_type: "GENE"
   identifier_type: "ENSEMBL"
