@@ -534,6 +534,55 @@ TEST_F(LDServerTest, score_covariance_runner) {
     ASSERT_EQ(doc["data"]["groups"][0]["covariance"].Size(), 13203);
 }
 
+TEST_F(LDServerTest, score_no_testable_variants) {
+  ColumnTypeMap ctmap;
+  ctmap.add("iid", ColumnType::TEXT);
+  ctmap.add("sex", ColumnType::CATEGORICAL);
+  ctmap.add("rand_binary", ColumnType::CATEGORICAL);
+  ctmap.add("rand_qt", ColumnType::FLOAT);
+
+  string chrom = "22";
+  auto start = 50276998ul;
+  auto stop = 50357719ul;
+
+  auto config = make_score_covariance_config();
+  config->chrom = chrom;
+  config->start = start;
+  config->stop = stop;
+  config->segment_size = 1000;
+  config->sample_subset = "ALL";
+  config->genotype_files = {"test_no_testable_variants.vcf.gz"};
+  config->genotype_dataset_id = 1;
+  config->phenotype_file = "test_no_testable_variants.tab";
+  config->phenotype_column_types = ctmap;
+  config->phenotype_dataset_id = 1;
+  config->phenotype = "rand_qt";
+  config->phenotype_nrows = 2504;
+  config->phenotype_sample_column = "iid";
+  config->phenotype_delim = "\t";
+  config->pprint();
+
+  // Load mask
+  Mask mask("test_no_testable_variants.mask.tab.gz", 1, VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, chrom, start, stop);
+  vector<Mask> masks;
+  masks.emplace_back(mask);
+  config->masks = masks;
+
+  // Execute runner
+  ScoreCovarianceRunner runner(config);
+  runner.run();
+  string json = runner.getJSON();
+
+  // Parse back out JSON
+  rapidjson::Document doc;
+  doc.Parse(json.c_str());
+
+  // Tests
+  ASSERT_EQ(doc["data"]["groups"].Size(), 0);
+  ASSERT_EQ(doc["data"]["variants"].Size(), 0);
+  ASSERT_EQ(doc["data"]["nSamples"].GetDouble(), 2503.0);
+}
+
 TEST_F(LDServerTest, score_covariance_runner_monomorphic) {
     ColumnTypeMap ctmap;
     ctmap.add("iid", ColumnType::TEXT);

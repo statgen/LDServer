@@ -50,6 +50,11 @@ install(FILES
         ../../data/chr21.test.missing_values.vcf.gz.tbi
         ../../data/chr22.monomorphic_test.vcf.gz
         ../../data/chr22.monomorphic_test.vcf.gz.tbi
+        ../../data/test_no_testable_variants.mask.tab.gz
+        ../../data/test_no_testable_variants.tab
+        ../../data/test_no_testable_variants.vcf.gz.tbi
+        ../../data/test_no_testable_variants.mask.tab.gz.tbi
+        ../../data/test_no_testable_variants.vcf.gz
         ../../data/chrX.test.sav
         ../../data/chrX.test.sav.s1r
         ../../data/region_ld_22_51241101_51241385.hap.ld

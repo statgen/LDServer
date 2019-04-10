@@ -152,6 +152,12 @@ void ScoreCovarianceRunner::run() {
       ld_res.filter_by_variants(*group.get_variants());
       score_res.filter_by_variants(*group.get_variants());
 
+      if (score_res.data.size() == 0) {
+        // No variants in this group survived after processing samples for missing data (they became monomorphic and
+        // therefore could not be tested.
+        continue;
+      }
+
       ld_res.sort_by_variant();
       score_res.sort_by_variant();
 
