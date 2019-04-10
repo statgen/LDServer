@@ -218,6 +218,9 @@ void ScoreCovarianceRunner::run() {
   data.AddMember("groups", groups, alloc);
   data.AddMember("sigmaSquared", score_res.sigma2, alloc);
   data.AddMember("nSamples", score_res.nsamples, alloc);
+  data.AddMember("phenotypeDataset", config->phenotype_dataset_id, alloc);
+  data.AddMember("genotypeDataset", config->genotype_dataset_id, alloc);
+  data.AddMember("phenotype", Value(config->phenotype.c_str(), alloc), alloc);
   document->AddMember("data", data, alloc);
 }
 

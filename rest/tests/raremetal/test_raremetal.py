@@ -135,6 +135,10 @@ def test_covar(client):
 
     score_variants = [x["variant"] for x in resp.json["data"]["variants"]]
 
+    assert "phenotypeDataset" in resp.json["data"]
+    assert "genotypeDataset" in resp.json["data"]
+    assert "phenotype" in resp.json["data"]
+
     for group in resp.json["data"]["groups"]:
         n_variants = len(group["variants"])
         n_covar = len(group["covariance"])
