@@ -62,7 +62,7 @@ def test_malformed_chrom(client):
         "masks": [1]
     })
 
-    assert resp.status_code == 400
+    assert resp.status_code == 200
     assert resp.is_json
     assert re.search("Chromosome.*.not found",resp.json["error"]) is not None
 
