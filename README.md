@@ -370,7 +370,7 @@ There are two methods for inserting datasets:
 
 ##### CLI: Adding genotype datasets
 
-Genotype datasets may be in VCF, BCF, or [Savvy](https://github.com/statgen/savvy) formats. VCF files must be [bgzipped](http://www.htslib.org/doc/bgzip.html) and [tabixed](http://www.htslib.org/doc/tabix.html).
+Genotype datasets may be in VCF, BCF, or [Savvy](https://github.com/statgen/savvy) formats. VCF files must be [bgzipped](http://www.htslib.org/doc/bgzip.html) and [tabixed](http://www.htslib.org/doc/tabix.html). These two programs can be installed by downloading [htslib](http://www.htslib.org/download/) and compiling.
 
 To add the dataset to the server, use the `add-genotypes` command:
 
