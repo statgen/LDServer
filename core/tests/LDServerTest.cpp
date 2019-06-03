@@ -534,6 +534,76 @@ TEST_F(LDServerTest, score_covariance_runner) {
     ASSERT_EQ(doc["data"]["groups"][0]["covariance"].Size(), 13203);
 }
 
+TEST_F(LDServerTest, score_user_defined_masks) {
+  string genotype_file = "chr22.test.vcf.gz";
+  string phenotype_file = "chr22.test.tab";
+
+  ColumnTypeMap ctmap;
+  ctmap.add("iid", ColumnType::TEXT);
+  ctmap.add("sex", ColumnType::CATEGORICAL);
+  ctmap.add("rand_binary", ColumnType::CATEGORICAL);
+  ctmap.add("rand_qt", ColumnType::FLOAT);
+
+  // Region to analyze
+  string chrom = "22";
+  auto start = 50276998ul;
+  auto stop = 50357719ul;
+
+  // Setup mask (this would be user defined client-side via API)
+  uint64_t mask_id = 0;
+  vector<VariantGroup> vg_vec;
+  VariantGroup vg;
+  vg.chrom = "22";
+  vg.name = "PIM3";
+  vg.start = 50354416;
+  vg.stop = 50357667;
+  vg.variants = {VariantMeta("22:50354416_G/C"), VariantMeta("22:50355407_C/T"), VariantMeta("22:50356368_C/T"),
+                 VariantMeta("22:50356386_C/T"), VariantMeta("22:50356473_C/T"), VariantMeta("22:50356497_G/A"),
+                 VariantMeta("22:50356731_C/T"), VariantMeta("22:50356811_G/T"), VariantMeta("22:50356864_G/A"),
+                 VariantMeta("22:50356875_C/T"), VariantMeta("22:50356887_C/T"), VariantMeta("22:50356961_C/T"),
+                 VariantMeta("22:50356965_C/T"), VariantMeta("22:50356994_G/A"), VariantMeta("22:50357305_C/T"),
+                 VariantMeta("22:50357350_G/A"), VariantMeta("22:50357577_G/A"), VariantMeta("22:50357657_A/G"),
+                 VariantMeta("22:50357667_C/G")};
+  vg_vec.push_back(vg);
+  Mask mask(mask_id, VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, vg_vec);
+  vector<Mask> masks;
+  masks.emplace_back(mask);
+
+  // Setup ScoreCovarianceRunner configuration
+  auto config = make_score_covariance_config();
+  config->chrom = chrom;
+  config->start = start;
+  config->stop = stop;
+  config->segment_size = 1000;
+  config->masks = masks;
+  config->sample_subset = "ALL";
+  config->genotype_files = {genotype_file};
+  config->genotype_dataset_id = 1;
+  config->phenotype_file = phenotype_file;
+  config->phenotype_column_types = ctmap;
+  config->phenotype_dataset_id = 1;
+  config->phenotype = "rand_qt";
+  config->phenotype_nrows = 2504;
+  config->phenotype_sample_column = "iid";
+  config->phenotype_delim = "\t";
+
+  // Run score/covariance calculations
+  ScoreCovarianceRunner runner(config);
+  runner.run();
+  string json = runner.getJSON();
+
+  // Parse back out JSON
+  rapidjson::Document doc;
+  doc.Parse(json.c_str());
+
+  // Tests
+  ASSERT_EQ(doc["data"]["groups"][0]["variants"].Size(), 18);
+  ASSERT_EQ(doc["data"]["groups"][0]["covariance"].Size(), 171);
+  ASSERT_EQ(doc["data"]["variants"][0]["variant"], "22:50354416_G/C");
+  ASSERT_NEAR(doc["data"]["variants"][0]["score"].GetDouble(), -45.31790009565313, 0.0001);
+  ASSERT_NEAR(doc["data"]["groups"][0]["covariance"][0].GetDouble(), 0.39843530436, 0.0001);
+}
+
 TEST_F(LDServerTest, score_no_testable_variants) {
   ColumnTypeMap ctmap;
   ctmap.add("iid", ColumnType::TEXT);
