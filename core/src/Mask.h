@@ -68,8 +68,10 @@ public:
 
   /**
    * Print out each group and its variants, mainly for debugging purposes.
+   * @param group_limit Limit the number of groups printed in total.
+   * @param variant_limit Limit the number of variants printed out for each group.
    */
-  void print_groups() const;
+  void print_groups(const uint64_t& group_limit, const uint64_t& variant_limit) const;
 
   /**
    * Get a list of group names.

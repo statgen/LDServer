@@ -38,7 +38,7 @@ void ScoreCovarianceConfig::pprint() const {
   }
   else {
     for (auto&& m : masks) {
-      cout << ".. " << m.get_id() << endl;
+      m.print_groups(5, 5);
     }
   }
   cout << "Segment size: " << segment_size << endl;

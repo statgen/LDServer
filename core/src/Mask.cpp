@@ -85,16 +85,27 @@ Mask::Mask(const string &filepath, const uint64_t id, VariantGroupType group_typ
   load_file(filepath, chrom, start, stop);
 }
 
-void Mask::print_groups() const {
+void Mask::print_groups(const uint64_t& group_limit, const uint64_t& variant_limit) const {
+  uint64_t g = 0;
   for (auto&& kv : groups) {
     cout << kv.second.name << endl;
     cout << "Chrom: " << kv.second.chrom << endl;
     cout << "Start: " << kv.second.start << endl;
     cout << "Stop: " << kv.second.stop << endl;
     cout << "Variants: " << endl;
+    uint64_t v = 0;
     for (auto&& vmeta : kv.second.variants) {
       cout << "  " + vmeta.variant << endl;
+      if (v > variant_limit) {
+        break;
+      }
+      v++;
     }
+
+    if (g > group_limit) {
+      break;
+    }
+    g++;
   }
 }
 
