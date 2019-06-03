@@ -3,14 +3,17 @@ from flask_cors import CORS
 from flask_compress import Compress
 from .errors import FlaskException
 from webargs.flaskparser import parser
+from marshmallow import Schema
 from webargs import fields, ValidationError
 from functools import partial
 from raven.versioning import fetch_git_sha
 import model
 import os
 import re
-from core.pywrapper import StringVec, ColumnType, ColumnTypeMap, Mask, MaskVec, VariantGroupType, \
-                         ScoreCovarianceRunner, ScoreCovarianceConfig, GroupIdentifierType
+from core.pywrapper import (
+  StringVec, ColumnType, ColumnTypeMap, Mask, MaskVec, VariantGroupType,
+  ScoreCovarianceRunner, ScoreCovarianceConfig, GroupIdentifierType, VariantGroup, VariantGroupVector
+)
 
 API_VERSION = "1.0"
 MAX_UINT32 = 4294967295
@@ -79,6 +82,46 @@ def return_error(error_message, http_code):
   response = {"data": None, "error": error_message}
   return make_response(jsonify(response), http_code)
 
+class VariantField(fields.String):
+  alleles = ("A","C","G","T","N","U")
+
+  def _serialize(self, value, attr, obj):
+    validated = str(self._validated(value)) if value is not None else None
+    return super(fields.String, self)._serialize(validated, attr, obj)
+
+  def _deserialize(self, value, attr, data):
+    return self._validated(value)
+
+  def _validated(self, value):
+    try:
+      s1 = value.split(":")
+      chrom = s1[0]
+      pos, alleles = s1[1].split("_")
+      pos = int(pos)
+      ref, alt = alleles.split("/")
+    except:
+      raise ValidationError("Invalid variant {}, should be of format: CHROM:POS_REF/ALT".format(value))
+
+    if chrom.startswith("chr"):
+      raise ValidationError("Variant chromosome should not contain 'chr': " + value)
+
+    if not all((x in VariantField.alleles for x in ref)):
+      raise ValidationError("Variant {} had invalid alleles".format(value))
+
+    if not all((x in VariantField.alleles for x in alt)):
+      raise ValidationError("Variant {} had invalid alleles".format(value))
+
+    return value
+
+class MaskSchema(Schema):
+  id = fields.Int(required=True)
+  name = fields.Str(required=True)
+  description = fields.Str(required=True)
+  genome_build = fields.Str(required=True)
+  group_type = fields.Str(required=True)
+  identifier_type = fields.Str(required=True)
+  groups = fields.Dict(keys=fields.Str(), values=fields.List(VariantField))
+
 @bp.route('/aggregation/covariance', methods = ['POST'])
 def get_covariance():
   """
@@ -96,7 +139,8 @@ def get_covariance():
     'phenotypeDataset': fields.Int(required=True, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'phenotype': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'samples': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
-    'masks': fields.DelimitedList(fields.Int(), required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': "Must provide at least 1 mask ID"}),
+    'masks': fields.DelimitedList(fields.Int(), validate=lambda x: len(x) > 0, error_messages={'validator_failed': "Must provide at least 1 mask ID"}),
+    'maskDefinitions': fields.Nested(MaskSchema, many=True),
     'genomeBuild': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
   }
 
@@ -107,6 +151,9 @@ def get_covariance():
       all_fields = ['chrom', 'start', 'stop']
     )
   )
+
+  if not (bool(args.get("masks")) ^ bool(args.get("maskDefinitions"))):
+    raise FlaskException("Must provide either 'masks' or 'maskDefinitions' in request, and not both.", 400)
 
   config = ScoreCovarianceConfig()
   config.segment_size = current_app.config["SEGMENT_SIZE_BP"]
@@ -119,7 +166,8 @@ def get_covariance():
   phenotype_dataset_id = args["phenotypeDataset"]
   sample_subset = str(args["samples"])
   phenotype = str(args["phenotype"])
-  masks = args["masks"]
+  masks = args.get("masks")
+  mask_definitions = args.get("maskDefinitions")
 
   config.chrom = chrom
   config.start = start
@@ -169,36 +217,67 @@ def get_covariance():
   # Determine regions in which to compute LD/scores.
   # This is determined by the mask file, and the overall window requested.
   mask_vec = MaskVec()
-  for mask_id in masks:
-    try:
-      mask = model.get_mask_by_id(mask_id)
-    except ValueError as e:
-      raise FlaskException(str(e), 400)
+  if masks:
+    for mask_id in masks:
+      try:
+        mask = model.get_mask_by_id(mask_id)
+      except ValueError as e:
+        raise FlaskException(str(e), 400)
 
-    mask_path = model.find_file(mask["filepath"])
+      mask_path = model.find_file(mask["filepath"])
 
-    if not os.path.isfile(mask_path):
-      raise FlaskException("Could not find mask file on server for mask ID {}".format(mask_id), 400)
+      if not os.path.isfile(mask_path):
+        raise FlaskException("Could not find mask file on server for mask ID {}".format(mask_id), 400)
 
-    if mask["genome_build"] != build:
-      raise FlaskException("Mask ID {} is invalid for genome build {}".format(mask_id, build), 400)
+      if mask["genome_build"] != build:
+        raise FlaskException("Mask ID {} is invalid for genome build {}".format(mask_id, build), 400)
 
-    if genotype_dataset_id not in [g.id for g in mask["genotypes"]]:
-      raise FlaskException("Mask ID {} is invalid for genotype dataset ID {}".format(mask_id, genotype_dataset_id), 400)
+      if genotype_dataset_id not in [g.id for g in mask["genotypes"]]:
+        raise FlaskException("Mask ID {} is invalid for genotype dataset ID {}".format(mask_id, genotype_dataset_id), 400)
 
-    try:
-      tb = Mask(str(mask_path), mask_id, mask["group_type"], mask["identifier_type"], chrom, start, stop)
-    except RuntimeError as e:
-      msg = str(e)
-      if msg.startswith("No groups loaded within genomic region"):
-        raise FlaskException(msg, 200)
-      elif re.search("Chromosome.*not found.*", msg):
-        raise FlaskException(msg, 200)
-      else:
-        # Re-raising exception leads to general error message that does not contain a risk of leaking server-side details
-        raise
+      try:
+        tb = Mask(str(mask_path), mask_id, mask["group_type"], mask["identifier_type"], chrom, start, stop)
+      except RuntimeError as e:
+        msg = str(e)
+        if msg.startswith("No groups loaded within genomic region"):
+          raise FlaskException(msg, 200)
+        elif re.search("Chromosome.*not found.*", msg):
+          raise FlaskException(msg, 200)
+        else:
+          # Re-raising exception leads to general error message that does not contain a risk of leaking server-side details
+          raise
 
-    mask_vec.append(tb)
+      mask_vec.append(tb)
+
+  elif mask_definitions:
+    for mask in mask_definitions:
+      try:
+        vg_vec = VariantGroupVector()
+        for group_name, variants in mask["groups"].iteritems():
+          vg = VariantGroup()
+          vg.name = str(group_name)
+          for v in variants:
+            vg.add_variant(str(v))
+
+          vg_vec.append(vg)
+
+        tb = Mask(
+          mask["id"],
+          VariantGroupType.names.get(mask["group_type"]),
+          GroupIdentifierType.names.get(mask["identifier_type"]),
+          vg_vec
+        )
+      except RuntimeError as e:
+        msg = str(e)
+        if msg.startswith("No groups loaded within genomic region"):
+          raise FlaskException(msg, 200)
+        elif re.search("Chromosome.*not found.*", msg):
+          raise FlaskException(msg, 200)
+        else:
+          # Re-raising exception leads to general error message that does not contain a risk of leaking server-side details
+          raise
+
+      mask_vec.append(tb)
 
   config.masks = mask_vec
 
