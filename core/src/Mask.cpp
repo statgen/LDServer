@@ -79,6 +79,15 @@ void Mask::load_file(const string &filepath, const string &chrom, uint64_t start
   }
 }
 
+Mask::Mask(const uint64_t id, VariantGroupType group_type, GroupIdentifierType ident_type, const std::vector<VariantGroup>& groups) {
+  this->id = id;
+  this->group_type = group_type;
+  this->identifier_type = ident_type;
+  for (auto&& g : groups) {
+    this->groups.emplace(make_pair(g.name, g));
+  }
+}
+
 Mask::Mask(const string& filepath, const uint64_t id, VariantGroupType group_type, GroupIdentifierType ident_type) {
   this->id = id;
   this->group_type = group_type;

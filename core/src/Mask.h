@@ -70,6 +70,16 @@ public:
   Mask(const std::string &filepath, const uint64_t id, VariantGroupType group_type, GroupIdentifierType ident_type, const std::string &chrom, uint64_t start, uint64_t stop);
 
   /**
+   * Constructor to pass in defined variant groups directly, instead of loading from a file.
+   * @param filepath
+   * @param id
+   * @param group_type
+   * @param ident_type
+   * @param groups
+   */
+  Mask(const uint64_t id, VariantGroupType group_type, GroupIdentifierType ident_type, const std::vector<VariantGroup>& groups);
+
+  /**
    * Print out each group and its variants, mainly for debugging purposes.
    * @param group_limit Limit the number of groups printed in total.
    * @param variant_limit Limit the number of variants printed out for each group.
