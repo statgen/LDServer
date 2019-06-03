@@ -44,7 +44,10 @@ struct VariantGroup {
   uint64_t stop;
   SortedVariantSet variants;
 
+  VariantGroup() : name(""), chrom(""), start(-1), stop(-1) {};
   std::shared_ptr<std::set<std::string>> get_variants() const;
+  void add_variant(const std::string& variant);
+  bool operator==(const VariantGroup& other) { return (name == other.name) && (variants == other.variants); }
 };
 
 class Mask {

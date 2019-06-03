@@ -42,6 +42,14 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .value("ENSEMBL", ENSEMBL)
             ;
 
+    boost::python::class_<VariantGroup, shared_ptr<VariantGroup>, boost::noncopyable>("VariantGroup")
+            .def("get_variants", &VariantGroup::get_variants)
+            .def("add_variant", &VariantGroup::add_variant)
+            .def_readwrite("name", &VariantGroup::name)
+            .def_readwrite("chrom", &VariantGroup::chrom)
+            .def_readwrite("start", &VariantGroup::start)
+            .def_readwrite("stop", &VariantGroup::stop);
+
     boost::python::class_<VariantsPair>("VariantsPair", boost::python::init<const char*, const char*, unsigned long int, const char*, const char*, unsigned long int , double>())
             .def_readonly("variant1", &VariantsPair::variant1)
             .def_readonly("chromosome1", &VariantsPair::chromosome1)
@@ -58,6 +66,9 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def_readonly("pvalue", &ScoreResult::pvalue)
             .def_readonly("alt_freq", &ScoreResult::alt_freq)
             ;
+
+    boost::python::class_<std::vector<VariantGroup>>("VariantGroupVector")
+            .def(boost::python::vector_indexing_suite<std::vector<VariantGroup>>());
 
     boost::python::class_<std::vector<ScoreResult>>("ScoreResultVector")
             .def(boost::python::vector_indexing_suite<std::vector<ScoreResult>>())

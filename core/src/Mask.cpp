@@ -14,6 +14,14 @@ shared_ptr<set<string>> VariantGroup::get_variants() const {
   return vs;
 }
 
+void VariantGroup::add_variant(const std::string& variant) {
+  VariantMeta vm(variant);
+  variants.emplace(vm);
+  this->chrom = vm.chromosome;
+  this->start = this->start == -1 ? vm.position : std::min(this->start, vm.position);
+  this->stop = this->stop == -1 ? vm.position : std::max(this->stop, vm.position);
+}
+
 void Mask::load_file(const string &filepath, const string &chrom, uint64_t start, uint64_t stop) {
   if (start <= 0) { throw std::invalid_argument("Mask starting position was < 0"); }
   if (stop <= 0) { throw std::invalid_argument("Mask stop position was < 0"); }
