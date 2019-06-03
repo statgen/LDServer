@@ -745,6 +745,8 @@ This tells the covariance endpoint to compute within the region 22:50276998-5035
 
 Typically you will always set `samples` to `ALL`. The server supports arbitrary subsets of samples, such as sub-populations, that can be specified with the `flask create-sample-subset` command.
 
+Rather than using a server-side mask and supplying an ID (as in the above example), alternatively you can send your own [mask definitions](https://github.com/statgen/raremetal.js/commit/da5fa3ab8d168b459b96e4cf63135dfa23c82fcd?short_path=3811df8#diff-3811df89c8df81ca2221ad8fb821f96c) created in the browser/client to the server.
+
 The response will look like:
 
 ```json
