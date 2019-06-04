@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y \
   cmake \
   python \
   python-pip \
+  zlib1g-dev \
   liblzma-dev \
   libopenblas-base \
   libopenblas-dev \
