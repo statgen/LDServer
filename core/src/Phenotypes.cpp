@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/format.hpp>
 
 using namespace std;
 
@@ -112,86 +113,90 @@ void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_
     copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
     for (int j = 0; j < tokens.size(); j++) {
       col = header[j];
-      switch (vec_types[j]) {
-        case ColumnType::INTEGER:
-          // For now store integers as doubles (as if they were floating point).
-          // If we need space for some reason later, can make a separate storage for smaller ints.
-        case ColumnType::FLOAT: {
-          if ((tokens[j] == "NA") || (tokens[j] == ".") || (tokens[j] == "")) {
-            (*columns_float[col])(i) = arma::datum::nan;
-          }
-          else {
-            (*columns_float[col])(i) = stod(tokens[j]);
-          }
-          break;
-        }
-        case ColumnType::TEXT: {
-          columns_text[col]->emplace_back(tokens[j]);
-          break;
-        }
-        case ColumnType::CATEGORICAL: {
-          // If it's a NA value, we can skip parsing.
-          if ((tokens[j] == "NA") || (tokens[j] == ".") || (tokens[j] == "")) {
-            (*columns_float[col])(i) = arma::datum::nan;
-            continue;
-          }
-          else if (is_ped && ((tokens[j] == "0") || (tokens[j] == "-9"))) {
-            // Binary traits in PED format specify 0 or -9 as missing value.
-            (*columns_float[col])(i) = arma::datum::nan;
-            continue;
-          }
+      string& val = tokens[j];
 
-          // Have we seen this category before?
-          auto it = map_level[col].find(tokens[j]);
-
-          if (it != map_level[col].end()) {
-            // We've seen this category before. Get its value.
-            (*columns_float[col])(i) = it->second;
+      try {
+        switch (vec_types[j]) {
+          case ColumnType::INTEGER:
+            // For now store integers as doubles (as if they were floating point).
+            // If we need space for some reason later, can make a separate storage for smaller ints.
+          case ColumnType::FLOAT: {
+            if ((val == "NA") || (val == ".") || (val == "")) {
+              (*columns_float[col])(i) = arma::datum::nan;
+            } else {
+              (*columns_float[col])(i) = stod(val);
+            }
+            break;
           }
-          else {
-            // New category level found.
-            // Find the next category level.
-            double cat_level = 0;
+          case ColumnType::TEXT: {
+            columns_text[col]->emplace_back(val);
+            break;
+          }
+          case ColumnType::CATEGORICAL: {
+            // If it's a NA value, we can skip parsing.
+            if ((val == "NA") || (val == ".") || (val == "")) {
+              (*columns_float[col])(i) = arma::datum::nan;
+              continue;
+            } else if (is_ped && ((val == "0") || (val == "-9"))) {
+              // Binary traits in PED format specify 0 or -9 as missing value.
+              (*columns_float[col])(i) = arma::datum::nan;
+              continue;
+            }
 
-            if (is_integer(tokens[j])) {
-              if (is_ped) {
-                auto tmp = stoull(tokens[j]);
-                if (tmp > 2) {
-                  throw std::range_error(
-                    "Categorical variables in PED files are expected to be coded 0=missing,1=unaffected,2=affected, found value: " +
-                    tokens[j]);
-                } else if (tmp == 1) {
-                  cat_level = 0;
-                } else if (tmp == 2) {
-                  cat_level = 1;
+            // Have we seen this category before?
+            auto it = map_level[col].find(val);
+
+            if (it != map_level[col].end()) {
+              // We've seen this category before. Get its value.
+              (*columns_float[col])(i) = it->second;
+            } else {
+              // New category level found.
+              // Find the next category level.
+              double cat_level = 0;
+
+              if (is_integer(val)) {
+                if (is_ped) {
+                  auto tmp = stoull(val);
+                  if (tmp > 2) {
+                    throw std::range_error(
+                      "Categorical variables in PED files are expected to be coded 0=missing,1=unaffected,2=affected, found value: " +
+                      val);
+                  } else if (tmp == 1) {
+                    cat_level = 0;
+                  } else if (tmp == 2) {
+                    cat_level = 1;
+                  }
+                } else {
+                  // If the value is an integer, we'll just assume we should use their encoding.
+                  cat_level = stod(val);
+                }
+              } else {
+                if (!map_level[col].empty()) {
+                  cat_level = (*max_element(
+                    map_level[col].begin(),
+                    map_level[col].end(),
+                    [](const auto &v1, const auto &v2) {
+                      return v1.second < v2.second;
+                    }
+                  )).second + 1;
                 }
               }
-              else {
-                // If the value is an integer, we'll just assume we should use their encoding.
-                cat_level = stod(tokens[j]);
-              }
-            }
-            else {
-              if (!map_level[col].empty()) {
-                cat_level = (*max_element(
-                  map_level[col].begin(),
-                  map_level[col].end(),
-                  [](const auto &v1, const auto &v2) {
-                    return v1.second < v2.second;
-                  }
-                )).second + 1;
-              }
-            }
 
-            // Assign next level.
-            (*columns_float[col])(i) = cat_level;
+              // Assign next level.
+              (*columns_float[col])(i) = cat_level;
 
-            // Remember level encoding
-            map_level[col][tokens[j]] = cat_level;
-            map_cat[col][cat_level] = tokens[j];
+              // Remember level encoding
+              map_level[col][val] = cat_level;
+              map_cat[col][cat_level] = val;
+            }
+            break;
           }
-          break;
         }
+      }
+      catch (std::exception& e) {
+        auto fmt = boost::format("Error reading line %i, column %i (%s) in phenotype file (%s), invalid value: %s. Original exception was %s: %s");
+        auto s = boost::str(fmt % i % j % header[j] % path % val % typeid(e).name() % e.what());
+        throw PhenotypeParseException(s);
       }
     }
 

@@ -7,6 +7,7 @@
 #include <armadillo>
 #include "boost/variant.hpp"
 #include "Types.h"
+#include <stdexcept>
 
 using namespace std;
 
@@ -26,6 +27,8 @@ public:
   inline auto begin() const { return types.begin(); }
   inline auto end() const { return types.end(); }
 };
+
+class PhenotypeParseException : public std::runtime_error { using std::runtime_error::runtime_error; };
 
 class Phenotypes {
 protected:
