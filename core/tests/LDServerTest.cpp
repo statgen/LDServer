@@ -1372,8 +1372,6 @@ TEST_F(LDServerTest, pheno_bad_float) {
   catch (PhenotypeParseException& e) {
     EXPECT_THAT(e.what(), HasSubstr("Error reading line 3, column 3 (rand_qt) in phenotype file"));
     EXPECT_THAT(e.what(), HasSubstr("invalid value: something"));
-    EXPECT_THAT(e.what(), HasSubstr("stod: no conversion"));
-
   }
   catch (...) {
     FAIL() << "Expected std::runtime_error";
