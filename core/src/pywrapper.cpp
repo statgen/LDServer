@@ -11,6 +11,17 @@
 #include "Mask.h"
 #include "ScoreCovarianceRunner.h"
 #include "Raw.h"
+using namespace boost::python;
+
+// https://stackoverflow.com/a/37799535
+//template <class E, class... Policies, class... Args>
+//class_<E, Policies...> exception_(Args&&... args) {
+//  class_<E, Policies...> cls(std::forward<Args>(args)...);
+//  register_exception_translator<E>([ptr=cls.ptr()](E const& e){
+//    PyErr_SetObject(ptr, object(e).ptr());
+//  });
+//  return cls;
+//}
 
 // This means generate a thin set of wrappers for versions of this function with or without default arguments
 // 2nd to last argument is minimum number of arguments the function should accept
@@ -19,6 +30,12 @@
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(compute_region_ld_overloads, compute_region_ld, 5, 8)
 
 BOOST_PYTHON_MODULE(pywrapper) {
+
+    // This came very close to working, but there appears to be possibly a CPython bug preventing it from working, and
+    // we're currently stuck on CPython 2.7. Worth revisiting when we upgrade to the latest python.
+    // However, it still works out that if you derive your exception from std::runtime_error, or at least std::exception,
+    // boost python will do a reasonable job at translating your exception. See PhenotypeParseException in Phenotypes.cpp.
+    // exception_<PhenotypeParseException>("PhenotypeParseException", init<std::string>());
 
     boost::python::enum_<correlation>("correlation")
             .value("ld_r", LD_R)
