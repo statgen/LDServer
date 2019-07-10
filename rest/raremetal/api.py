@@ -10,6 +10,7 @@ from raven.versioning import fetch_git_sha
 import model
 import os
 import re
+import traceback
 from core.pywrapper import (
   StringVec, ColumnType, ColumnTypeMap, Mask, MaskVec, VariantGroupType,
   ScoreCovarianceRunner, ScoreCovarianceConfig, GroupIdentifierType, VariantGroup, VariantGroupVector
@@ -282,7 +283,20 @@ def get_covariance():
   config.masks = mask_vec
 
   runner = ScoreCovarianceRunner(config)
-  runner.run()
+  try:
+    runner.run()
+  except RuntimeError as e:
+    if str(e).startswith("Error reading line"):
+      # This is an unsafe exception to throw back to the user, but we still want the console to see it.
+      traceback.print_exc()
+
+      # Now through a standard error to the user
+      raise FlaskException("An error occurred parsing a phenotype file on the server. Please ask the server admin to consult the logs for more information.", 500)
+    else:
+      # If we don't recognize the exception, we still want to raise it. The custom error handler we have defined (errors.handle_error)
+      # will raise a generic exception message and the user will not see the actual exception message.
+      raise e
+
   json = runner.getJSON()
 
   resp = make_response(json, 200)
