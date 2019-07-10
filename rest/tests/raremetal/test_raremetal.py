@@ -155,6 +155,22 @@ def test_covar(client):
         assert variant["pvalue"] <= 1
         assert "score" in variant
 
+def test_pheno_bad_float(client):
+    resp = client.post("/aggregation/covariance", data = {
+        "chrom": "22",
+        "start": 50276998,
+        "stop": 50357719,
+        "genotypeDataset": 1,
+        "phenotypeDataset": 3,
+        "phenotype": "rand_qt",
+        "samples": "ALL",
+        "genomeBuild": "GRCh37",
+        "masks": [1]
+    })
+
+    assert resp.status_code == 500
+    assert "An error occurred parsing a phenotype file" in resp.json["error"]
+
 def test_user_masks(client):
     resp = client.post("/aggregation/covariance", json = {
         "chrom": "22",

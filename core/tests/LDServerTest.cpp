@@ -1355,6 +1355,31 @@ TEST_F(LDServerTest, pheno_read_tab) {
     ASSERT_EQ(phenos_loaded[0], "iid");
 }
 
+TEST_F(LDServerTest, pheno_bad_float) {
+  using ::testing::HasSubstr;
+
+  Phenotypes pheno;
+  ColumnTypeMap ctmap;
+  ctmap.add("iid", ColumnType::TEXT);
+  ctmap.add("sex", ColumnType::CATEGORICAL);
+  ctmap.add("rand_binary", ColumnType::CATEGORICAL);
+  ctmap.add("rand_qt", ColumnType::FLOAT);
+
+  try {
+    pheno.load_file("chr22.test.bad_float.tab", ctmap, 2504, "\t", "iid");
+    FAIL() << "Expected std::runtime_error";
+  }
+  catch (PhenotypeParseException& e) {
+    EXPECT_THAT(e.what(), HasSubstr("Error reading line 3, column 3 (rand_qt) in phenotype file"));
+    EXPECT_THAT(e.what(), HasSubstr("invalid value: something"));
+    EXPECT_THAT(e.what(), HasSubstr("stod: no conversion"));
+
+  }
+  catch (...) {
+    FAIL() << "Expected std::runtime_error";
+  }
+}
+
 TEST_F(LDServerTest, pheno_read_ped) {
     Phenotypes pheno;
     ColumnTypeMap ctmap;

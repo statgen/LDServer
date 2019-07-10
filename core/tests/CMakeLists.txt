@@ -36,6 +36,7 @@ install(FILES
         ../../data/chr22.test.sav
         ../../data/chr22.test.sav.s1r
         ../../data/chr22.test.tab
+        ../../data/chr22.test.bad_float.tab
         ../../data/chr22.test.missing_values.tab
         ../../data/chr22.test.ped
         ../../data/chr22.test.dat
