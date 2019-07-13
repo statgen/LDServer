@@ -4,7 +4,7 @@ from sqlalchemy.types import Enum
 from flask.cli import with_appcontext
 from flask import current_app
 from collections import Counter, OrderedDict
-from core.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType, GroupIdentifierType, extract_samples
+from core.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType, GroupIdentifierType, extract_samples, StringVec
 from tabulate import tabulate
 from glob import glob
 import os
@@ -215,6 +215,10 @@ def get_column_types(phenotype_dataset_id):
     mapping.add(str(row.column_name), ColumnType.names.get(row.column_type))
 
   return mapping
+
+def get_analysis_columns(phenotype_dataset_id):
+  cols = [str(x.column_name) for x in PhenotypeColumn.query.filter_by(phenotype_dataset_id = phenotype_dataset_id, for_analysis = True)]
+  return cols
 
 # TODO: clean this up, should just get object all at once
 def get_phenotype_nrows(phenotype_dataset_id):

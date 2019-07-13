@@ -46,7 +46,7 @@ inline bool is_integer(const std::string &s) {
 //  return most_common;
 //}
 
-void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_t nrows, const string& delim, const string& sample_column) {
+void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_t nrows, const string& delim, const string& sample_column, SharedVector<string> analysis_cols) {
   ifstream input_file(path);
   string line;
   auto separator = regex(delim);
@@ -65,15 +65,42 @@ void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_
     getline(input_file, line);
   }
 
-  vector<string> header;
-  transform(types.begin(), types.end(), back_inserter(header), [](const auto& p) { return p.first; });
+  // TODO: this can be cleaned up by just using the ColumnTypeMap directly and implementing the [] operator
 
-  // Create vectors as necessary.
+  // If analysis_cols is empty, it means load all columns.
+  if (analysis_cols == nullptr) {
+    analysis_cols = make_shared<vector<string>>();
+    transform(types.begin(), types.end(), back_inserter(*analysis_cols), [](const auto& p) { return p.first; });
+  }
+  else if (analysis_cols->empty()) {
+    transform(types.begin(), types.end(), back_inserter(*analysis_cols), [](const auto& p) { return p.first; });
+  }
+
+  // Sample column must always be loaded
+  if (find(analysis_cols->begin(), analysis_cols->end(), sample_column) == analysis_cols->end()) {
+    analysis_cols->emplace_back(sample_column);
+  }
+
+    // Create vectors as necessary.
+  vector<string> header;
+  vector<uint64_t> parse_cols;
+  ColumnTypeMap new_types;
   ColumnType ct;
   string col;
+  uint64_t col_counter = -1;
   for (auto& kv : types) {
     col = kv.first;
     ct = kv.second;
+    col_counter++;
+
+    // We still want to know the name of every column in order in the file, even if we may not use them.
+    header.emplace_back(col);
+
+    if (find(analysis_cols->begin(), analysis_cols->end(), col) == analysis_cols->end()) {
+      // Column is not meant to be analyzed
+      continue;
+    }
+
     switch (ct) {
       case ColumnType::INTEGER: {
         // Lazily store integer variables as floating point for now, can move to other storage later
@@ -94,9 +121,13 @@ void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_
         break;
       }
     }
+
+    new_types.add(col, ct);
+    parse_cols.emplace_back(col_counter);
   }
 
   // Convenience to lookup column type by index.
+  // Note this maps to every single column possible, not just the "for analysis" columns.
   vector<ColumnType> vec_types;
   transform(types.begin(), types.end(), back_inserter(vec_types), [](const auto& p) { return p.second; });
 
@@ -111,7 +142,7 @@ void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_
 
     // Parse line.
     copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
-    for (int j = 0; j < tokens.size(); j++) {
+    for (auto&& j : parse_cols) {
       col = header[j];
       string& val = tokens[j];
 
@@ -211,7 +242,7 @@ void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_
   }
 
   // Store a copy of the column types.
-  column_types = types;
+  column_types = new_types;
 }
 
 SharedVector<string> Phenotypes::as_text(const string &colname) {

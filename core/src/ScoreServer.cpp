@@ -73,7 +73,8 @@ void ScoreServer::set_genotypes_file(const std::string &file, const uint32_t& ge
 }
 
 void ScoreServer::load_phenotypes_file(const string &path, const ColumnTypeMap &types, size_t nrows,
-                                       const string& delim, const string& sample_column, const uint32_t &phenotype_dataset_id) {
+                                       const string& delim, const string& sample_column, const uint32_t &phenotype_dataset_id,
+                                       shared_ptr<vector<string>> analysis_columns) {
     // Release previous phenotypes object.
     phenotypes.reset();
 
@@ -81,7 +82,7 @@ void ScoreServer::load_phenotypes_file(const string &path, const ColumnTypeMap &
     phenotypes = make_shared<Phenotypes>();
 
     // Load phenotypes into memory.
-    phenotypes->load_file(path, types, nrows, delim, sample_column);
+    phenotypes->load_file(path, types, nrows, delim, sample_column, analysis_columns);
 
     // Store ID for use in cache key.
     this->phenotype_dataset_id = phenotype_dataset_id;

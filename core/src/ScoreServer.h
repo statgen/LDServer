@@ -74,7 +74,7 @@ public:
      * @param pedpath
      * @param phenotype_dataset_id (see genotype_dataset_id above)
      */
-    void load_phenotypes_file(const string &path, const ColumnTypeMap &types, size_t nrows, const string& delim, const string& sample_column, const uint32_t &phenotype_dataset_id);
+    void load_phenotypes_file(const string &path, const ColumnTypeMap &types, size_t nrows, const string& delim, const string& sample_column, const uint32_t &phenotype_dataset_id, shared_ptr<vector<string>> analysis_columns = nullptr);
 
     /**
      * Set the phenotype that will be used for score/p-value calculations.

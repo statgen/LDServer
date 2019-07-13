@@ -61,6 +61,26 @@ phenotypes:
       column_type: "FLOAT"
       description: "QT with bad float value in 5th line"
 
+- id: 4
+  name: "Test for_analysis"
+  description: "Test case for skipping column with incorrect data type"
+  genotypes: [1, 2]
+  filepath: "data/chr22.test.tab"
+  delim: "\t"
+  columns:
+    iid:
+      column_type: "TEXT"
+      sample_column: true
+
+    sex:
+      column_type: "FLOAT"
+      description: "This column isn't float, and would fail to load, but for_analysis should skip it"
+      for_analysis: false
+
+    rand_qt:
+      column_type: "FLOAT"
+      description: "Random QT that is truly floating point"
+
 masks:
 - id: 1
   name: "AF < 0.01"

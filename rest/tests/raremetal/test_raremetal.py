@@ -171,6 +171,21 @@ def test_pheno_bad_float(client):
     assert resp.status_code == 500
     assert "An error occurred parsing a phenotype file" in resp.json["error"]
 
+def test_for_analysis_skip_incorrect_datatype(client):
+    resp = client.post("/aggregation/covariance", data = {
+        "chrom": "22",
+        "start": 50276998,
+        "stop": 50357719,
+        "genotypeDataset": 1,
+        "phenotypeDataset": 4,
+        "phenotype": "rand_qt",
+        "samples": "ALL",
+        "genomeBuild": "GRCh37",
+        "masks": [1]
+    })
+
+    assert resp.status_code == 200
+
 def test_user_masks(client):
     resp = client.post("/aggregation/covariance", json = {
         "chrom": "22",

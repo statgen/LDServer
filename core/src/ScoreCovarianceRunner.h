@@ -28,6 +28,7 @@ public:
   uint32_t phenotype_dataset_id;
   std::string phenotype;
   ColumnTypeMap phenotype_column_types;
+  std::vector<std::string> phenotype_analysis_columns;
   uint64_t phenotype_nrows;
   std::string phenotype_delim;
   std::string phenotype_sample_column;

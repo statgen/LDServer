@@ -52,9 +52,11 @@ public:
    * @param path Path to tab or PED file.
    * @param types
    * @param nrows
-   * @param columns Name of each column, in the order they appear in the file.
+   * @param delim File delimiter
+   * @param sample_column Name of the column that contains the sample identifiers
+   * @param analysis_cols Optional list of columns to actually parse (i.e. these columns will be used for analysis.)
    */
-  void load_file(const string &path, const ColumnTypeMap &types, size_t nrows, const string& delim, const string& sample_column);
+  void load_file(const string &path, const ColumnTypeMap &types, size_t nrows, const string& delim, const string& sample_column, SharedVector<string> analysis_cols = nullptr);
 
   SharedArmaVec as_vec(const string &colname);
   SharedVector<string> as_text(const string &colname);

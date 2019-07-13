@@ -1,5 +1,5 @@
 from raremetal.model import add_yaml_command, get_genotype_dataset, get_phenotype_dataset, \
-                            get_phenotype_column_objects, get_mask_by_id
+                            get_phenotype_column_objects, get_mask_by_id, get_analysis_columns
 from core.pywrapper import VariantGroupType, GroupIdentifierType
 
 def test_add_yaml(app, db):
@@ -31,3 +31,6 @@ def test_add_yaml(app, db):
     assert mdata["identifier_type"] == GroupIdentifierType.ENSEMBL
 
     assert get_phenotype_dataset(2)["sample_column"] == "IID"
+
+    analysis_cols = get_analysis_columns(1)
+    assert len(analysis_cols) == 2

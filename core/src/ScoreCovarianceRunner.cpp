@@ -29,6 +29,10 @@ void ScoreCovarianceConfig::pprint() const {
   for (auto&& kv : phenotype_column_types) {
     cout << ".. " << "column " << kv.first << " of type " << kv.second << endl;
   }
+  cout << "Phenotype analysis columns: " << endl;
+  for (auto&& v : phenotype_analysis_columns) {
+    cout << ".. " << v << endl;
+  }
   cout << "# rows: " << phenotype_nrows << endl;
   cout << "Sample subset key: " << sample_subset << endl;
   cout << "Samples provided? " << !samples.empty() << endl;
@@ -78,13 +82,16 @@ void ScoreCovarianceRunner::run() {
     score_server.set_genotypes_file(genotype_file, config->genotype_dataset_id);
   }
 
+  auto analysis_cols = make_shared<vector<string>>(config->phenotype_analysis_columns.begin(), config->phenotype_analysis_columns.end());
+
   score_server.load_phenotypes_file(
     config->phenotype_file,
     config->phenotype_column_types,
     config->phenotype_nrows,
     config->phenotype_delim,
     config->phenotype_sample_column,
-    config->phenotype_dataset_id
+    config->phenotype_dataset_id,
+    analysis_cols
   );
   score_server.set_phenotype(config->phenotype);
 

@@ -7,6 +7,7 @@
 #include <fstream>
 #include <regex>
 #include <map>
+#include <memory>
 #include <boost/process/system.hpp>
 #include "../src/LDServer.h"
 #include "../src/ScoreServer.h"
@@ -1353,6 +1354,20 @@ TEST_F(LDServerTest, pheno_read_tab) {
 
     auto phenos_loaded = *pheno.get_phenotypes();
     ASSERT_EQ(phenos_loaded[0], "iid");
+}
+
+TEST_F(LDServerTest, pheno_for_analysis_columns) {
+  Phenotypes pheno;
+  ColumnTypeMap ctmap;
+  ctmap.add("iid", ColumnType::TEXT);
+  ctmap.add("sex", ColumnType::FLOAT); // if this column is parsed, it will fail b/c set to float when it is "male"/"female"
+  ctmap.add("rand_binary", ColumnType::CATEGORICAL);
+  ctmap.add("rand_qt", ColumnType::FLOAT);
+
+  auto analysis_cols = make_shared<vector<string>>(initializer_list<string>{"rand_qt", "rand_binary"});
+  pheno.load_file("chr22.test.tab", ctmap, 2504, "\t", "iid", analysis_cols);
+  auto phenotypes = pheno.get_phenotypes();
+  ASSERT_EQ(phenotypes->size(), 3);
 }
 
 TEST_F(LDServerTest, pheno_bad_float) {

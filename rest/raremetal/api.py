@@ -24,6 +24,11 @@ CORS(bp)
 
 compress = Compress()
 
+def makeStringVec(arr=[]):
+  s = StringVec()
+  s.extend(arr)
+  return s
+
 @parser.error_handler
 def handle_parsing_error(error, request, schema, status_code=None, headers=None):
   for field, message in error.messages.iteritems():
@@ -210,6 +215,8 @@ def get_covariance():
   config.phenotype_delim = str(model.get_phenotype_delim(phenotype_dataset_id))
   config.phenotype_dataset_id = phenotype_dataset_id
   config.phenotype = phenotype
+  analysis_cols = model.get_analysis_columns(phenotype_dataset_id)
+  config.phenotype_analysis_columns = makeStringVec(analysis_cols)
 
   if current_app.config["CACHE_ENABLED"]:
     config.redis_hostname = current_app.config["CACHE_REDIS_HOSTNAME"]

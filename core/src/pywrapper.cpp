@@ -28,6 +28,7 @@ using namespace boost::python;
 // last argument is the maximum number of arguments the function should accept
 // compute_region_ld()'s last argument has a default argument of nullptr
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(compute_region_ld_overloads, compute_region_ld, 5, 8)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(phenotype_load_file_overloads, Phenotypes::load_file, 5, 6)
 
 BOOST_PYTHON_MODULE(pywrapper) {
 
@@ -179,6 +180,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def_readwrite("phenotype_nrows", &ScoreCovarianceConfig::phenotype_nrows)
             .def_readwrite("phenotype_delim", &ScoreCovarianceConfig::phenotype_delim)
             .def_readwrite("phenotype_sample_column", &ScoreCovarianceConfig::phenotype_sample_column)
+            .def_readwrite("phenotype_analysis_columns", &ScoreCovarianceConfig::phenotype_analysis_columns)
             .def_readwrite("masks", &ScoreCovarianceConfig::masks)
             .def_readwrite("sample_subset", &ScoreCovarianceConfig::sample_subset)
             .def_readwrite("samples", &ScoreCovarianceConfig::samples)
