@@ -1,0 +1,19 @@
+phenotypes:
+- id: 5
+  name: "Test for_analysis"
+  description: "Test case for column with incorrect data type"
+  genotypes: [1, 2]
+  filepath: "data/chr22.test.tab"
+  delim: "\t"
+  columns:
+    iid:
+      column_type: "TEXT"
+      sample_column: true
+
+    sex:
+      column_type: "FLOAT"
+      description: "This column should fail, because it cannot be coerced to float"
+
+    rand_qt:
+      column_type: "FLOAT"
+      description: "Random QT that is truly floating point"

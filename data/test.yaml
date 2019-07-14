@@ -63,7 +63,7 @@ phenotypes:
 
 - id: 4
   name: "Test for_analysis"
-  description: "Test case for skipping column with incorrect data type"
+  description: "Test case for skipping column"
   genotypes: [1, 2]
   filepath: "data/chr22.test.tab"
   delim: "\t"
@@ -73,13 +73,10 @@ phenotypes:
       sample_column: true
 
     sex:
-      column_type: "FLOAT"
-      description: "This column isn't float, and would fail to load, but for_analysis should skip it"
       for_analysis: false
 
     rand_qt:
       column_type: "FLOAT"
-      description: "Random QT that is truly floating point"
 
 masks:
 - id: 1

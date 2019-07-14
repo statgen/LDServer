@@ -528,6 +528,11 @@ def add_phenotype_dataset(name, description, filepath, genotype_datasets, column
         if col not in column_types:
           raise ValueError("Column '{}' was specified in YAML, but it does not exist in phenotype dataset '{}'".format(col, name))
 
+        if k == "column_type":
+          if v == ColumnType.FLOAT.name and column_types[col]["column_type"] == ColumnType.TEXT.name:
+            # When we guessed the type, it was "TEXT", which means it can't be a number of any kind.
+            raise ValueError("Column {} for phenotype dataset {} was declared in YAML to be type FLOAT, but it cannot be coerced to float".format(col, name))
+
         column_types[col][k] = v
 
   if ".ped" in filepath or ".dat" in filepath:
