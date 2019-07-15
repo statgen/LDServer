@@ -1,6 +1,7 @@
 from raremetal.model import add_yaml_command, get_genotype_dataset, get_phenotype_dataset, \
                             get_phenotype_column_objects, get_mask_by_id, get_analysis_columns
 from core.pywrapper import VariantGroupType, GroupIdentifierType
+import traceback
 
 def test_add_yaml(app, db):
   with app.app_context():
@@ -9,6 +10,10 @@ def test_add_yaml(app, db):
 
     runner = app.test_cli_runner()
     result = runner.invoke(add_yaml_command, ["../data/test.yaml"])
+    if isinstance(result.exception, Exception):
+      traceback.print_tb(result.exc_info[2])
+      raise result.exception
+
     gdata = get_genotype_dataset(1)
     assert gdata["name"] == "1000G"
     assert gdata["genome_build"] == "GRCh37"
