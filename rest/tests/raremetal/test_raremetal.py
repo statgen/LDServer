@@ -171,7 +171,7 @@ def test_pheno_bad_float(client):
     assert resp.status_code == 500
     assert "An error occurred parsing a phenotype file" in resp.json["error"]
 
-def test_for_analysis_skip_incorrect_datatype(client):
+def test_for_analysis_skip_column(client):
     resp = client.post("/aggregation/covariance", data = {
         "chrom": "22",
         "start": 50276998,

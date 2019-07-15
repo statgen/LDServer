@@ -13,6 +13,8 @@ import json
 import yaml
 import gzip
 
+MISSING_DATA_REPS = ("NaN", ".", "", "NA")
+
 db = SQLAlchemy()
 
 class Correlation(db.Model):
@@ -404,10 +406,23 @@ def add_genotype_dataset(name, description, genome_build, samples_filename, geno
   db.session.add(r)
   db.session.commit()
 
+def is_float(x):
+  try:
+    float(x)
+    return True
+  except:
+    return False
+
 def guess_type(values):
   guesses = []
 
   for v in values:
+    if v in MISSING_DATA_REPS:
+      # This value can't really tell us anything about the type of column
+      # Although NaN should theoretically mean it's float, sometimes people may misuse this so it's safer to assume
+      # it's just "missing data" and check the rest of the values for their type
+      continue
+
     try:
       f = float(v)
     except ValueError:
@@ -437,35 +452,68 @@ def _load_phenotype_ped(ped_file, dat_file):
   nrows = 0
   with fp_ped, fp_dat:
     column_types = OrderedDict()
+    type_index = []
 
     # We know some of the column types already in a PED file
-    column_types["FID"] = {"column_type": ColumnType.TEXT.name}
-    column_types["IID"] = {"column_type": ColumnType.TEXT.name}
-    column_types["PID"] = {"column_type": ColumnType.TEXT.name}
-    column_types["MID"] = {"column_type": ColumnType.TEXT.name}
-    column_types["SEX"] = {"column_type": ColumnType.CATEGORICAL.name}
+    meta_fid = {"column_type": ColumnType.TEXT.name, "column_name": "FID", "for_analysis": False}
+    column_types["FID"] = meta_fid
+    type_index.append(meta_fid)
 
-    for k, v in column_types.items():
-      v["column_name"] = k
-      v["for_analysis"] = False
+    meta_iid = {"column_type": ColumnType.TEXT.name, "column_name": "IID", "for_analysis": False}
+    column_types["IID"] = meta_iid
+    type_index.append(meta_iid)
+
+    meta_PID = {"column_type": ColumnType.TEXT.name, "column_name": "PID", "for_analysis": False}
+    column_types["PID"] = meta_PID
+    type_index.append(meta_PID)
+
+    meta_MID = {"column_type": ColumnType.TEXT.name, "column_name": "MID", "for_analysis": False}
+    column_types["MID"] = meta_MID
+    type_index.append(meta_MID)
+
+    meta_SEX = {"column_type": ColumnType.CATEGORICAL.name, "column_name": "SEX", "for_analysis": False}
+    column_types["SEX"] = meta_SEX
+    type_index.append(meta_SEX)
 
     for i, line in enumerate(fp_dat):
       ctype, pheno = line.split()
       if ctype == "A":
-        column_types.setdefault(pheno, {})["column_type"] = ColumnType.CATEGORICAL.name
-        column_types.setdefault(pheno, {})["column_name"] = pheno
+        meta = {
+          "column_type": ColumnType.CATEGORICAL.name,
+          "column_name": pheno
+        }
+        column_types.setdefault(pheno, {}).update(meta)
+        type_index.append(meta)
       elif ctype == "T":
-        column_types.setdefault(pheno, {})["column_type"] = ColumnType.FLOAT.name
-        column_types.setdefault(pheno, {})["column_name"] = pheno
+        meta = {
+          "column_type": ColumnType.FLOAT.name,
+          "column_name": pheno
+        }
+        column_types.setdefault(pheno, {}).update(meta)
+        type_index.append(meta)
       elif ctype == "M":
-        continue
+        type_index[i] = {
+          "column_type": None,
+          "column_name": pheno
+        }
+        type_index.append(meta)
       else:
         ValueError("Unrecognized DAT data type: " + ctype)
 
     for line in fp_ped:
       if not line.startswith("#"):
         nrows += 1
-        break
+
+      ls = line.split()
+      for j, v in enumerate(ls):
+        if v in MISSING_DATA_REPS:
+          continue
+
+        elif not is_float(v):
+          col_name = type_index[j]["column_name"]
+          col_type = type_index[j]["column_type"]
+          if col_type == ColumnType.FLOAT.name:
+            raise ValueError("Column {} for PED {} was declared to be type T (float), but it cannot be coerced to float".format(col_name, ped_file))
 
     nrows += sum(1 for i in fp_ped)
 

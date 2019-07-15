@@ -1,0 +1,7 @@
+phenotypes:
+- id: 6
+  name: "Test case for column with incorrect data type"
+  description: "Test PED file with incorrect float column type specified in DAT"
+  genotypes: [1, 2]
+  filepath: "data/test_not_float.ped"
+  delim: "\t"

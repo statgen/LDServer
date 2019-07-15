@@ -40,13 +40,23 @@ def test_add_yaml(app, db):
     analysis_cols = get_analysis_columns(1)
     assert len(analysis_cols) == 2
 
-def test_incorrect_type(app, db):
+def test_tab_incorrect_float(app, db):
   with app.app_context():
     db.create_all()
     runner = app.test_cli_runner()
-    result = runner.invoke(add_yaml_command, ["../data/test_pheno_incorrect_type.yaml"])
+    result = runner.invoke(add_yaml_command, ["../data/test_tab_incorrect_float.yaml"])
 
     assert isinstance(result.exception, ValueError)
     assert result.exception.message.startswith("Column sex for phenotype dataset")
     assert result.exception.message.startswith("Column sex for phenotype dataset")
+    assert result.exception.message.endswith("cannot be coerced to float")
+
+def test_ped_incorrect_float(app, db):
+  with app.app_context():
+    db.create_all()
+    runner = app.test_cli_runner()
+    result = runner.invoke(add_yaml_command, ["../data/test_ped_incorrect_float.yaml"])
+
+    assert isinstance(result.exception, ValueError)
+    assert result.exception.message.startswith("Column ANCESTRY for PED")
     assert result.exception.message.endswith("cannot be coerced to float")
