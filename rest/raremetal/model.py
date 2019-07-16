@@ -388,6 +388,9 @@ def add_genotype_dataset(name, description, genome_build, samples_filename, geno
       if len(f_samples) == 0:
         raise ValueError("Extracted 0 samples from {} - is the file missing?".format(f))
 
+      if not os.path.isfile(f + ".tbi"):
+        raise ValueError("Cannot find tabix index for VCF file: {}".format(f))
+
       if len(samples) == 0:
         samples = f_samples
       else:

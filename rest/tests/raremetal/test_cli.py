@@ -60,3 +60,12 @@ def test_ped_incorrect_float(app, db):
     assert isinstance(result.exception, ValueError)
     assert result.exception.message.startswith("Column ANCESTRY for PED")
     assert result.exception.message.endswith("cannot be coerced to float")
+
+def test_vcf_missing_tabix(app, db):
+  with app.app_context():
+    db.create_all()
+    runner = app.test_cli_runner()
+    result = runner.invoke(add_yaml_command, ["../data/test_no_tabix.yaml"])
+
+    assert isinstance(result.exception, ValueError)
+    assert result.exception.message.startswith("Cannot find tabix index for VCF file")

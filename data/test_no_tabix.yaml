@@ -1,0 +1,6 @@
+genotypes:
+- id: 9999
+  name: "Test no tabix"
+  description: "Test adding VCF with missing tabix index"
+  filepath: "data/test_no_tabix.vcf.gz"
+  genome_build: "GRCh37"
