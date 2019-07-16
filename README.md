@@ -21,39 +21,44 @@ This project contains multiple components that work together to provide these fe
 
 ## Documentation
 
-<!-- TOC depthFrom:1 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+<!-- code_chunk_output -->
 
-- [LDServer](#ldserver)
-	- [Documentation](#documentation)
-	- [Installation](#installation)
-		- [Docker](#docker)
-			- [Configuration for ldserver app](#configuration-for-ldserver-app)
-			- [Configuration for raremetal app](#configuration-for-raremetal-app)
-			- [Running the services](#running-the-services)
-		- [Manual installation](#manual-installation)
-	- [Updating](#updating)
-	- [Configuring & running the flask apps](#configuring-running-the-flask-apps)
-		- [ldserver app](#ldserver-app)
-			- [Configuring the ldserver app](#configuring-the-ldserver-app)
-				- [Add new reference](#add-new-reference)
-				- [Add new (sub-)population to the reference](#add-new-sub-population-to-the-reference)
-				- [List loaded references](#list-loaded-references)
-				- [List loaded genotype files](#list-loaded-genotype-files)
-				- [List loaded population samples](#list-loaded-population-samples)
-			- [Running the rest app](#running-the-rest-app)
-		- [playground app](#playground-app)
-			- [Running the playground app](#running-the-playground-app)
-		- [raremetal app](#raremetal-app)
-			- [Configuring the raremetal app](#configuring-the-raremetal-app)
-				- [CLI: Adding genotype datasets](#cli-adding-genotype-datasets)
-				- [CLI: Adding phenotype datasets](#cli-adding-phenotype-datasets)
-				- [CLI: Adding masks of genetic variants](#cli-adding-masks-of-genetic-variants)
-				- [CLI: Listing available datasets](#cli-listing-available-datasets)
-				- [YAML: Adding multiple datasets with one YAML config file](#yaml-adding-multiple-datasets-with-one-yaml-config-file)
-			- [Running the raremetal app](#running-the-raremetal-app)
-			- [APIs](#apis)
+- [ LDServer](#ldserver)
+  - [ Documentation](#documentation)
+  - [ Installation](#installation)
+    - [ Docker](#docker)
+      - [ Configuration for ldserver app](#configuration-for-ldserver-app)
+      - [ Configuration for raremetal app](#configuration-for-raremetal-app)
+      - [ Running the services](#running-the-services)
+    - [ Manual installation](#manual-installation)
+  - [ Updating](#updating)
+  - [ Configuring & running the flask apps](#configuring-running-the-flask-apps)
+    - [ ldserver app](#ldserver-app)
+      - [ Configuring the ldserver app](#configuring-the-ldserver-app)
+        - [ Add new reference](#add-new-reference)
+        - [ Add new (sub-)population to the reference](#add-new-sub-population-to-the-reference)
+        - [ List loaded references](#list-loaded-references)
+        - [ List loaded genotype files](#list-loaded-genotype-files)
+        - [ List loaded population samples](#list-loaded-population-samples)
+      - [ Running the rest app](#running-the-rest-app)
+    - [ playground app](#playground-app)
+      - [ Running the playground app](#running-the-playground-app)
+    - [ raremetal app](#raremetal-app)
+      - [ Required data and formats](#required-data-and-formats)
+        - [ Genotype data](#genotype-data)
+        - [ Phenotype data](#phenotype-data)
+        - [ Masks](#masks)
+      - [ Configuring the raremetal app](#configuring-the-raremetal-app)
+        - [ YAML: Adding multiple datasets with one YAML config file](#yaml-adding-multiple-datasets-with-one-yaml-config-file)
+        - [ CLI: Adding genotype datasets](#cli-adding-genotype-datasets)
+        - [ CLI: Adding phenotype datasets](#cli-adding-phenotype-datasets)
+        - [ CLI: Adding masks of genetic variants](#cli-adding-masks-of-genetic-variants)
+        - [ CLI: Listing available datasets](#cli-listing-available-datasets)
+      - [ Running the raremetal app](#running-the-raremetal-app)
+      - [ Exposed API endpoints](#exposed-api-endpoints)
 
-<!-- /TOC -->
+<!-- /code_chunk_output -->
 
 ## Installation
 
@@ -351,54 +356,26 @@ This app serves a more specialized [REST API](https://github.com/statgen/raremet
 
 These statistics can be used by the [raremetal.js](https://github.com/statgen/raremetal.js) package to perform the aggregation tests. That package also provides documentation on the methodology.
 
-In addition to genotype files (VCFs, BCFs, Savvy), the raremetal app also requires phenotypes. Phenotype files are typically PED format, or an ad-hoc tab-delimited format.
+Note: at times, we may refer to this also as the **raremetal server**.
 
-#### Configuring the raremetal app
+#### Required data and formats
 
-Before running the following commands, you should set the appropriate flask app by doing:
+The server has 2 required types of data:
 
-```bash
-export FLASK_APP="rest/raremetal"
-```
+1. Genotype files (VCF, BCF, or Savvy format)
+2. Phenotype files (TAB-delimited, or PED/DAT)
 
-There are two methods for inserting datasets:
+There is one optional type of data, which are mask files that group together variants and assign them to a particular gene or region. This data is optional if you wish to send your definitions of masks directly to the server via the covariance API request.
 
-1. Quickly add datasets with the command-line interface (CLI) commands
-2. Provide metadata about all of your datasets at once in a YAML file
+##### Genotype data
 
-**The second option is our recommendation for production**, but to get up and running quickly or for testing, the first option works well.
+Genotype datasets may be in [VCF, BCF](https://github.com/samtools/hts-specs/blob/master/VCFv4.3.pdf), or [Savvy](https://github.com/statgen/savvy) formats.
 
-##### CLI: Adding genotype datasets
+VCF files **must** be [bgzipped](http://www.htslib.org/doc/bgzip.html) and [tabixed](http://www.htslib.org/doc/tabix.html). In order to create a tabix-index for your VCF, it **must** be bgzipped first. Gzip is not sufficient. The `bgzip` program is included with `tabix` typically.
 
-Genotype datasets may be in VCF, BCF, or [Savvy](https://github.com/statgen/savvy) formats. VCF files must be [bgzipped](http://www.htslib.org/doc/bgzip.html) and [tabixed](http://www.htslib.org/doc/tabix.html). These two programs can be installed by downloading [htslib](http://www.htslib.org/download/) and compiling.
+These two programs can be installed by downloading [htslib](http://www.htslib.org/download/) and compiling. They can also be installed via Ubuntu package: `sudo apt-get install tabix`, though this package may not be up to date at times depending on your Ubuntu version.
 
-To add the dataset to the server, use the `add-genotypes` command:
-
-```bash
-flask add-genotypes <short label> <long description> <genome build> <VCF/BCF/Savvy file>
-```
-
-The parameters:
-
-* `<short label>` is a short description of the dataset, often a study abbreviation.
-* `<long description>` a longer description that may include the genotyping platform or sequencing.
-* `<genome build>` is the genome build of the positions in the file.
-* `<VCF/BCF/Savvy file>` the file containing genotypes for variants over a number of samples. We recommend placing these files (or symbolic links) to these files in the `data/` directory under the application root. You may also provide a glob of files, in the event your genotypes are separated into files by chromosome.
-
-Optional parameters:
-
-* `--samples <file>` provide a file with a list of samples to use, if you do not wish to use all of the samples in the genotype file. One sample per line.
-
-As an example:
-
-```bash
-gid=`flask add-genotypes "1000G" "1000G Test VCF" "GRCh37" data/chr*.test.vcf.gz`
-```
-
-With the command above, you can capture the genotype dataset ID that was assigned in the database, and use it in later commands.
-
-
-##### CLI: Adding phenotype datasets
+##### Phenotype data
 
 Phenotype datasets are files containing a number of phenotypes (such as BMI, fasting glucose, heart rate, etc.) collected on a set of samples. Each row is a sample/individual, and each column is a phenotype.
 
@@ -421,30 +398,7 @@ Categorical variables such as `sex` can be given labels as above. `rand_binary` 
 
 Missing values should be encoded as `NA`.
 
-To add a phenotype dataset:
-
-```bash
-flask add-phenotypes <short label> <long label> <path to ped or tab file> <genotype dataset ID>
-```
-
-The parameters:
-
-* `<short label>` is a short description of the dataset, often a study abbreviation.
-* `<long description>` a longer description that may describe the set of phenotypes.
-* `<path to ped or tab file>` path to either the PED or tab file. If a PED file is supplied, it is assumed there is an accompanying DAT file. If supplying a tab-delimited file, it must end with a `.tab`.
-* `<genotype dataset ID>` ID of the genotype dataset to connect this phenotype dataset with.
-
-As an example:
-
-```bash
-flask add-phenotypes Test "Test 1" "data/chr22.test.tab" $gid
-```
-
-Where `$gid` was set above when adding the genotype dataset for these phenotypes.
-
-Each phenotype dataset added should correspond to a genotype dataset (and hence supplying the genotype dataset ID.) This allows the server to know which phenotypes are available (and valid) for each dataset.
-
-##### CLI: Adding masks of genetic variants
+##### Masks
 
 A mask file maps genetic variants to "groups", which are typically genes (though they could also be arbitrary genomic regions.) Typically mask files are created using variant filters, such as "allele frequency < 0.01" or "protein truncating variants AND loss-of-function variants".
 
@@ -471,37 +425,17 @@ bgzip my_mask_file.tab
 tabix -s 2 -b 3 -e 4 my_mask_file.tab.gz
 ```
 
-To add your mask file to the server:
+#### Configuring the raremetal app
+
+Before running the following commands, you should set the appropriate flask app by doing:
 
 ```bash
-flask add-masks <name> <description> <path to mask file> <genome build> <genotype dataset ID> <group type> <identifier type>
+export FLASK_APP="rest/raremetal"
 ```
 
-The parameters:
+To add datasets to the server, we recommend using [the YAML config approach](#yaml-adding-multiple-datasets-with-one-yaml-config-file). This allows you to specify all of your datasets in a single file, and to maintain them across server restarts.
 
-* `<name>` the name of the mask which will be used in queries. This should ideally be short, for example "AF<0.01 & PTV & LoF".
-* `<description>` a longer description of what went into creating the mask. For example: "Allele frequency < 1% and all protein truncating & loss-of-function variants".
-* `<path to mask file>` path to the mask file. A tabix-index is assumed to reside next to the file. For example, the mask file is `mask.tab.gz` and this is the file you would provide, there should also be `mask.tab.gz.tbi` as well.
-* `<genome build>` genome build the positions are anchored to
-* `<genotype dataset ID>` provide the genotype dataset ID this mask corresponds to. Masks are typically generated for a specific set of variants provided in a genotype file.
-* `<group type>` can be "GENE", or "REGION"
-* `<identifier type>` what is the identifier for each group? Currently only "ENSEMBL" is supported.
-
-For example:
-
-```bash
-flask add-masks "AF < 0.01" "Variants with alternate allele freq < 0.01" "data/mask.epacts.chr22.gencode-exons-AF01.tab.gz" "GRCh37" $gid "GENE" "ENSEMBL"
-```
-
-Where `$gid` was the genotype dataset ID generated after using the `add-genotypes` command earlier.
-
-##### CLI: Listing available datasets
-
-You can see the list of phenotypes, genotypes, and masks that have been given to the server using:
-
-* `flask show-genotypes`
-* `flask show-phenotypes`
-* `flask show-masks`
+You can also add datasets via CLI commands for quick testing, but we do not recommend this for production usage.
 
 ##### YAML: Adding multiple datasets with one YAML config file
 
@@ -636,6 +570,94 @@ To add the datasets specified by the YAML file:
 flask add-yaml <path/to/yamlfile>
 ```
 
+##### CLI: Adding genotype datasets
+
+
+To add the dataset to the server, use the `add-genotypes` command:
+
+```bash
+flask add-genotypes <short label> <long description> <genome build> <VCF/BCF/Savvy file>
+```
+
+The parameters:
+
+* `<short label>` is a short description of the dataset, often a study abbreviation.
+* `<long description>` a longer description that may include the genotyping platform or sequencing.
+* `<genome build>` is the genome build of the positions in the file.
+* `<VCF/BCF/Savvy file>` the file containing genotypes for variants over a number of samples. We recommend placing these files (or symbolic links) to these files in the `data/` directory under the application root. You may also provide a glob of files, in the event your genotypes are separated into files by chromosome.
+
+Optional parameters:
+
+* `--samples <file>` provide a file with a list of samples to use, if you do not wish to use all of the samples in the genotype file. One sample per line.
+
+As an example:
+
+```bash
+gid=`flask add-genotypes "1000G" "1000G Test VCF" "GRCh37" data/chr*.test.vcf.gz`
+```
+
+With the command above, you can capture the genotype dataset ID that was assigned in the database, and use it in later commands.
+
+
+##### CLI: Adding phenotype datasets
+
+To add a phenotype dataset:
+
+```bash
+flask add-phenotypes <short label> <long label> <path to ped or tab file> <genotype dataset ID>
+```
+
+The parameters:
+
+* `<short label>` is a short description of the dataset, often a study abbreviation.
+* `<long description>` a longer description that may describe the set of phenotypes.
+* `<path to ped or tab file>` path to either the PED or tab file. If a PED file is supplied, it is assumed there is an accompanying DAT file. If supplying a tab-delimited file, it must end with a `.tab`.
+* `<genotype dataset ID>` ID of the genotype dataset to connect this phenotype dataset with.
+
+As an example:
+
+```bash
+flask add-phenotypes Test "Test 1" "data/chr22.test.tab" $gid
+```
+
+Where `$gid` was set above when adding the genotype dataset for these phenotypes.
+
+Each phenotype dataset added should correspond to a genotype dataset (and hence supplying the genotype dataset ID.) This allows the server to know which phenotypes are available (and valid) for each dataset.
+
+##### CLI: Adding masks of genetic variants
+
+To add your mask file to the server:
+
+```bash
+flask add-masks <name> <description> <path to mask file> <genome build> <genotype dataset ID> <group type> <identifier type>
+```
+
+The parameters:
+
+* `<name>` the name of the mask which will be used in queries. This should ideally be short, for example "AF<0.01 & PTV & LoF".
+* `<description>` a longer description of what went into creating the mask. For example: "Allele frequency < 1% and all protein truncating & loss-of-function variants".
+* `<path to mask file>` path to the mask file. A tabix-index is assumed to reside next to the file. For example, the mask file is `mask.tab.gz` and this is the file you would provide, there should also be `mask.tab.gz.tbi` as well.
+* `<genome build>` genome build the positions are anchored to
+* `<genotype dataset ID>` provide the genotype dataset ID this mask corresponds to. Masks are typically generated for a specific set of variants provided in a genotype file.
+* `<group type>` can be "GENE", or "REGION"
+* `<identifier type>` what is the identifier for each group? Currently only "ENSEMBL" is supported.
+
+For example:
+
+```bash
+flask add-masks "AF < 0.01" "Variants with alternate allele freq < 0.01" "data/mask.epacts.chr22.gencode-exons-AF01.tab.gz" "GRCh37" $gid "GENE" "ENSEMBL"
+```
+
+Where `$gid` was the genotype dataset ID generated after using the `add-genotypes` command earlier.
+
+##### CLI: Listing available datasets
+
+You can see the list of phenotypes, genotypes, and masks that have been given to the server using:
+
+* `flask show-genotypes`
+* `flask show-phenotypes`
+* `flask show-masks`
+
 #### Running the raremetal app
 
 For quickly starting a server:
@@ -653,7 +675,7 @@ For production, use `gunicorn`:
 gunicorn -b 127.0.0.1:[port] -w [n workers] -k gevent --pythonpath rest "raremetal:create_app()"
 ```
 
-#### APIs
+#### Exposed API endpoints
 
 The [full API specification](https://github.com/statgen/raremetal.js/blob/master/docs/portal-api.pdf) can be found in the [raremetal.js](https://github.com/statgen/raremetal.js) package.
 
