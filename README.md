@@ -1,6 +1,6 @@
 # LDServer
 
-[![Build Status](https://travis-ci.com/statgen/LDServer.svg?branch=master)](https://travis-ci.com/statgen/LDServer)
+[![Build Status](https://travis-ci.com/statgen/LDServer.svg?branch=master)](https://travis-ci.com/statgen/LDServer) [![Docker Pulls](https://img.shields.io/docker/pulls/statgen/ldserver.svg)](https://cloud.docker.com/u/statgen/repository/docker/statgen/ldserver)
 
 LDServer is a fast implementation of various metrics of linkage disequilibrium (LD) between genetic variants.
 
