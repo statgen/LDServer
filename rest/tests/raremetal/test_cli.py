@@ -69,3 +69,12 @@ def test_vcf_missing_tabix(app, db):
 
     assert isinstance(result.exception, ValueError)
     assert result.exception.message.startswith("Cannot find tabix index for VCF file")
+
+def test_sav_missing_index(app, db):
+  with app.app_context():
+    db.create_all()
+    runner = app.test_cli_runner()
+    result = runner.invoke(add_yaml_command, ["../data/test_no_sav_index.yaml"])
+
+    assert isinstance(result.exception, ValueError)
+    assert result.exception.message.startswith("Cannot find savvy index")

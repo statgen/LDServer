@@ -1,0 +1,6 @@
+genotypes:
+- id: 9999
+  name: "Test no savvy index"
+  description: "Test adding savvy file with no s1r index"
+  filepath: "data/test_no_sav_index.sav"
+  genome_build: "GRCh37"
