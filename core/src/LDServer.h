@@ -28,6 +28,7 @@ private:
     unordered_map<string, shared_ptr<Raw>> raw;
 
     uint32_t segment_size;
+    set<uint64_t> allowed_segments;
 
     bool cache_enabled;
     uint32_t cache_key;
@@ -44,6 +45,12 @@ public:
     LDServer(uint32_t segment_size = 1000);
     virtual ~LDServer();
 
+    /**
+     * Specify variant positions directly to the server, so that only segments containing these positions
+     * are loaded (this is useful for sparse queries with a large range, but few variants.)
+     * @param pos Starting position of the variant
+     */
+    void add_overlap_position(const uint64_t& pos);
     void set_file(const string& file);
     void set_samples(const string& name, const vector<string>& samples);
     void force_samples(const std::string &name, const std::vector<std::string> &samples);

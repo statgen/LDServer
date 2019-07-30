@@ -179,6 +179,16 @@ vector<string> LDServer::get_chromosomes() {
     return chromosomes;
 }
 
+void LDServer::add_overlap_position(const uint64_t& pos) {
+  uint64_t seg_i = pos / segment_size;
+  allowed_segments.insert(seg_i);
+}
+
+template<template <typename...> class C, typename T>
+bool contains(const C<T>& container, const T& v) {
+  return container.find(v) != container.end();
+}
+
 /**
  * Function to compute LD within a region.
  * @param region_chromosome
@@ -239,10 +249,19 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
     CellFactory factory;
 
     while (z <= z_max) {
-        string key = make_cell_cache_key(cache_key, samples_name, correlation_type, region_chromosome, z);
-
         // This converts from the linear index (morton code) z into coordinates i and j (and stores to them directly.)
         from_morton_code(z, i, j);
+
+        // If the server was given specific positions (of variants), we need to check if either of these segments
+        // actually has them.
+        if (!allowed_segments.empty()) {
+          if (!contains(allowed_segments, i) || !contains(allowed_segments, j)) {
+            z = get_next_z(segment_i, segment_j, z_min, z_max, ++z);
+            continue;
+          }
+        }
+
+        string key = make_cell_cache_key(cache_key, samples_name, correlation_type, region_chromosome, z);
 
         shared_ptr<Cell> cell = factory.create(correlation_type, i, j);
         if (cache_enabled) {
