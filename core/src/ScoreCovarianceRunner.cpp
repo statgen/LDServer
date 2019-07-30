@@ -136,6 +136,9 @@ void ScoreCovarianceRunner::run() {
 
       SharedSegmentVector segments = make_shared_segment_vector();
 
+      auto group_positions = group.get_positions();
+      for_each(group_positions->begin(), group_positions->end(), [&ld_server](const uint64_t& p) { ld_server.add_overlap_position(p); });
+
       ld_server.compute_region_ld(
         group.chrom,
         group.start,
