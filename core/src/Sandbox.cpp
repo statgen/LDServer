@@ -240,8 +240,112 @@ void test4() {
   cout << "Time required: " << elapsed.count() << endl;
 }
 
+void perf_sav_55k() {
+  string genotype_file = "../../../private/55k.clean.chr8.sav";
+  string phenotype_file = "../../../private/55kQTsRemoved.ped";
+
+  ColumnTypeMap ctmap;
+  ctmap.add("fid", ColumnType::TEXT);
+  ctmap.add("iid", ColumnType::TEXT);
+  ctmap.add("patid", ColumnType::TEXT);
+  ctmap.add("matid", ColumnType::TEXT);
+  ctmap.add("sex", ColumnType::CATEGORICAL);
+  ctmap.add("t2d", ColumnType::CATEGORICAL);
+  ctmap.add("Age", ColumnType::FLOAT);
+  ctmap.add("DBP_ADJ", ColumnType::FLOAT);
+  ctmap.add("DBP", ColumnType::FLOAT);
+  ctmap.add("SBP_ADJ", ColumnType::FLOAT);
+  ctmap.add("SBP", ColumnType::FLOAT);
+  ctmap.add("FAST_GLU_ADJ", ColumnType::FLOAT);
+  ctmap.add("FAST_GLU", ColumnType::FLOAT);
+  ctmap.add("FAST_INS_ADJ", ColumnType::FLOAT);
+  ctmap.add("FAST_INS", ColumnType::FLOAT);
+  ctmap.add("HDL_ADJ", ColumnType::FLOAT);
+  ctmap.add("HDL", ColumnType::FLOAT);
+  ctmap.add("LDL_ADJ", ColumnType::FLOAT);
+  ctmap.add("LDL", ColumnType::FLOAT);
+  ctmap.add("BMI_ADJ", ColumnType::FLOAT);
+  ctmap.add("BMI", ColumnType::FLOAT);
+  ctmap.add("SERUM_CREATININE_ADJ", ColumnType::FLOAT);
+  ctmap.add("SERUM_CREATININE", ColumnType::FLOAT);
+  ctmap.add("HR2_GLU_ADJ", ColumnType::FLOAT);
+  ctmap.add("HR2_GLU", ColumnType::FLOAT);
+  ctmap.add("HR2_INS_ADJ", ColumnType::FLOAT);
+  ctmap.add("HR2_INS", ColumnType::FLOAT);
+  ctmap.add("CHOL_ADJ", ColumnType::FLOAT);
+  ctmap.add("CHOL", ColumnType::FLOAT);
+  ctmap.add("TG_ADJ", ColumnType::FLOAT);
+  ctmap.add("TG", ColumnType::FLOAT);
+  ctmap.add("ANCESTRY", ColumnType::CATEGORICAL);
+  ctmap.add("origin", ColumnType::CATEGORICAL);
+  ctmap.add("C1", ColumnType::FLOAT);
+  ctmap.add("C2", ColumnType::FLOAT);
+  ctmap.add("C3", ColumnType::FLOAT);
+  ctmap.add("C4", ColumnType::FLOAT);
+  ctmap.add("C5", ColumnType::FLOAT);
+  ctmap.add("C6", ColumnType::FLOAT);
+  ctmap.add("C7", ColumnType::FLOAT);
+  ctmap.add("C8", ColumnType::FLOAT);
+  ctmap.add("C9", ColumnType::FLOAT);
+  ctmap.add("C10", ColumnType::FLOAT);
+
+  // Region to analyze
+  string chrom = "8";
+  auto start = 117862462ul;
+  auto stop = 118289003ul;
+
+  // Setup mask (this would be user defined client-side via API)
+  uint64_t mask_id = 0;
+  vector<VariantGroup> vg_vec;
+  VariantGroup vg;
+  vg.chrom = "8";
+  vg.name = "TEST";
+  vg.start = 117950768;
+  vg.stop = 118184783;
+  vg.variants = {VariantMeta("8:118184783_C/T"), VariantMeta("8:118170004_C/T"), VariantMeta("8:117950768_G/C")};
+  vg_vec.push_back(vg);
+  Mask mask(mask_id, VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, vg_vec);
+  vector<Mask> masks;
+  masks.emplace_back(mask);
+
+  // Setup ScoreCovarianceRunner configuration
+  auto config = make_score_covariance_config();
+  config->chrom = chrom;
+  config->start = start;
+  config->stop = stop;
+  config->segment_size = 1000;
+  config->masks = masks;
+  config->sample_subset = "ALL";
+  config->genotype_files = {genotype_file};
+  config->genotype_dataset_id = 1;
+  config->phenotype_file = phenotype_file;
+  config->phenotype_column_types = ctmap;
+  config->phenotype_dataset_id = 1;
+  config->phenotype = "FAST_GLU";
+  config->phenotype_nrows = 43125;
+  config->phenotype_sample_column = "iid";
+  config->phenotype_delim = "\t";
+
+  // Run score/covariance calculations
+  ScoreCovarianceRunner runner(config);
+  runner.run();
+  string json = runner.getJSON();
+
+  // Parse back out JSON
+  rapidjson::Document doc;
+  doc.Parse(json.c_str());
+
+  int x = 0;
+  // Tests
+//  ASSERT_EQ(doc["data"]["groups"][0]["variants"].Size(), 18);
+//  ASSERT_EQ(doc["data"]["groups"][0]["covariance"].Size(), 171);
+//  ASSERT_EQ(doc["data"]["variants"][0]["variant"], "22:50354416_G/C");
+//  ASSERT_NEAR(doc["data"]["variants"][0]["score"].GetDouble(), -45.31790009565313, 0.0001);
+//  ASSERT_NEAR(doc["data"]["groups"][0]["covariance"][0].GetDouble(), 0.39843530436, 0.0001);
+}
+
 int main() {
-  test4();
+  perf_sav_55k();
   //test3();
   return 0;
 }
