@@ -14,6 +14,19 @@ shared_ptr<set<string>> VariantGroup::get_variants() const {
   return vs;
 }
 
+shared_ptr<vector<uint64_t>> VariantGroup::get_positions() const {
+  auto pos = make_shared<vector<uint64_t>>();
+  transform(
+    variants.begin(),
+    variants.end(),
+    inserter(*pos, pos->begin()),
+    [](const VariantMeta& vm) {
+      return vm.position;
+    }
+  );
+  return pos;
+}
+
 void VariantGroup::add_variant(const std::string& variant) {
   VariantMeta vm(variant);
   variants.emplace(vm);
