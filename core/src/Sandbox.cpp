@@ -241,6 +241,8 @@ void test4() {
 }
 
 void perf_sav_55k() {
+  auto time_start = std::chrono::system_clock::now();
+
   string genotype_file = "../../../private/55k.clean.chr8.sav";
   string phenotype_file = "../../../private/55kQTsRemoved.ped";
 
@@ -330,6 +332,9 @@ void perf_sav_55k() {
   ScoreCovarianceRunner runner(config);
   runner.run();
   string json = runner.getJSON();
+
+  std::chrono::duration<double> elapsed = std::chrono::system_clock::now() - time_start;
+  cout << "Time required: " << elapsed.count() << endl;
 
   // Parse back out JSON
   rapidjson::Document doc;
