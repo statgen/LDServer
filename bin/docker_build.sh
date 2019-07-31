@@ -11,4 +11,5 @@ fi
 docker build -t ldserver:${LDSERVER_VERSION} --build-arg BUILD_DATE=${BUILD_DATE} --build-arg GIT_SHA=${GIT_SHA} --build-arg LDSERVER_VERSION=${LDSERVER_VERSION} . && \
   docker tag ldserver:${LDSERVER_VERSION} ldserver:latest && \
   docker tag ldserver:${LDSERVER_VERSION} statgen/ldserver:latest && \
-  docker tag ldserver:${LDSERVER_VERSION} statgen/ldserver:${LDSERVER_VERSION}
+  docker tag ldserver:${LDSERVER_VERSION} statgen/ldserver:${LDSERVER_VERSION} && \
+  docker tag ldserver:${LDSERVER_VERSION} portaldev/ldserver:latest
