@@ -95,6 +95,7 @@ public:
      * @param port
      */
     void enable_cache(const string& hostname, int port);
+    void enable_cache(redisContext* context);
     void disable_cache();
 
     /**
@@ -109,6 +110,13 @@ public:
      * @return
      */
     static string make_segment_cache_key(uint32_t genotype_dataset_id, uint32_t phenotype_dataset_id, const string& phenotype_name, const string& samples_name, const string& chromosome, uint64_t start_bp, uint64_t stop_bp);
+
+    /**
+     * Create a cache key for a phenotype dataset.
+     * @param phenotype_dataset_id - ID of phenotype dataset
+     * @return string cache key to be used with redis
+     */
+    static string make_phenotype_cache_key(uint32_t phenotype_dataset_id);
 
     vector<string> get_chromosomes();
     uint32_t get_segment_size() const;

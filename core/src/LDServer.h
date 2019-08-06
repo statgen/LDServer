@@ -55,6 +55,7 @@ public:
     void set_samples(const string& name, const vector<string>& samples);
     void force_samples(const std::string &name, const std::vector<std::string> &samples);
     void enable_cache(uint32_t cache_key, const string& hostname, int port);
+    void enable_cache(uint32_t cache_key, redisContext* context);
     void disable_cache();
 
     static string make_cell_cache_key(uint32_t cache_key, const string& samples_name, correlation correlation_type, const string& chromosome, uint64_t morton_code);

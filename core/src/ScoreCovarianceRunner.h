@@ -10,6 +10,7 @@
 #include <cereal/external/rapidjson/prettywriter.h>
 #include <cereal/external/rapidjson/writer.h>
 #include <cereal/external/rapidjson/stringbuffer.h>
+#include <hiredis/hiredis.h>
 #include "Mask.h"
 #include "LDServer.h"
 #include "ScoreServer.h"
@@ -48,8 +49,10 @@ class ScoreCovarianceRunner {
 protected:
   std::shared_ptr<rapidjson::Document> document;
   std::shared_ptr<ScoreCovarianceConfig> config;
+  redisContext* cache_context;
 public:
   ScoreCovarianceRunner(std::shared_ptr<ScoreCovarianceConfig> config);
+  virtual ~ScoreCovarianceRunner();
   void run();
   std::string getJSON() const;
   std::string getPrettyJSON() const;

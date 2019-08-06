@@ -131,6 +131,16 @@ void ScoreServer::enable_cache(const string& hostname, int port) {
     }
 }
 
+void ScoreServer::enable_cache(redisContext* context) {
+  if (context != nullptr) {
+    cache_context = context;
+    cache_enabled = true;
+  }
+  else {
+    throw invalid_argument("Must pass non-null redis cache context");
+  }
+}
+
 void ScoreServer::disable_cache() {
     if (cache_enabled) {
         if (cache_context != nullptr) {
@@ -152,6 +162,14 @@ string ScoreServer::make_segment_cache_key(uint32_t genotype_dataset_id, uint32_
     os.write(reinterpret_cast<const char*>(&stop_bp), sizeof(stop_bp));
     os.flush();
     return os.str();
+}
+
+string ScoreServer::make_phenotype_cache_key(uint32_t phenotype_dataset_id) {
+  stringstream os(ios::binary | ios::out);
+  os << "pheno";
+  os.write(reinterpret_cast<const char*>(&phenotype_dataset_id), sizeof(phenotype_dataset_id));
+  os.flush();
+  return os.str();
 }
 
 void ScoreServer::parse_variant(const std::string& variant, std::string& chromosome, uint64_t& position, std::string& ref_allele, std::string& alt_allele) {

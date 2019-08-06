@@ -65,6 +65,17 @@ void LDServer::enable_cache(uint32_t cache_key, const string& hostname, int port
     }
 }
 
+void LDServer::enable_cache(uint32_t cache_key, redisContext* context) {
+  if (context != nullptr) {
+    this->cache_key = cache_key;
+    this->cache_context = context;
+    this->cache_enabled = true;
+  }
+  else {
+    throw invalid_argument("Must pass non-null redis cache context");
+  }
+}
+
 void LDServer::disable_cache() {
     if (cache_enabled) {
         if (cache_context != nullptr) {

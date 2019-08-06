@@ -61,6 +61,22 @@ ScoreCovarianceRunner::ScoreCovarianceRunner(std::shared_ptr<ScoreCovarianceConf
   if (config->phenotype_file.empty()) { throw std::invalid_argument("Must provide phenotype file"); }
   if (config->genotype_files.empty()) { throw std::invalid_argument("Must provide genotype file"); }
   if (config->segment_size <= 0) { throw std::invalid_argument("Segment size must be non-zero"); }
+
+  // Did they want to use caching?
+  if (!config->redis_hostname.empty()) {
+    struct timeval timeout = {1, 500000}; // 1.5 seconds
+    cache_context = redisConnectWithTimeout(config->redis_hostname.c_str(), config->redis_port, timeout);
+    if (cache_context == nullptr) {
+      throw runtime_error("Could not create redis cache context (is the server online?)");
+    }
+  }
+}
+
+ScoreCovarianceRunner::~ScoreCovarianceRunner() {
+  if (cache_context != nullptr) {
+    redisFree(cache_context);
+    cache_context = nullptr;
+  }
 }
 
 // TODO: fix copies below, make shared_ptr
@@ -72,6 +88,11 @@ void ScoreCovarianceRunner::run() {
 
   LDServer ld_server(config->segment_size);
   ScoreServer score_server(config->segment_size);
+
+  if (!config->redis_hostname.empty()) {
+    ld_server.enable_cache(config->genotype_dataset_id, this->cache_context);
+    score_server.enable_cache(this->cache_context);
+  }
 
   for (auto&& genotype_file : config->genotype_files) {
     if (!is_file(genotype_file)) {
@@ -96,11 +117,6 @@ void ScoreCovarianceRunner::run() {
   score_server.set_phenotype(config->phenotype);
 
   coordinate_samples(score_server, ld_server, config->genotype_files[0], config->phenotype, config->sample_subset, config->samples);
-
-//  if (!config->redis_hostname.empty()) {
-//    ld_server.enable_cache(config->genotype_dataset_id, config->redis_hostname, config->redis_port);
-//    score_server.enable_cache(config->redis_hostname, config->redis_port);
-//  }
 
   document = make_shared<Document>();
   document->SetObject();

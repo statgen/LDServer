@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 #include <armadillo>
+#include <hiredis/hiredis.h>
+#include <cereal/archives/binary.hpp>
 #include "boost/variant.hpp"
 #include "Types.h"
 #include <stdexcept>
@@ -37,6 +39,7 @@ protected:
   map<string, map<double, string>> map_cat;
   map<string, map<string, double>> map_level;
 
+  bool cached;
   string file_path;
   ColumnTypeMap column_types;
   SharedVector<string> sample_ids;
@@ -101,6 +104,27 @@ public:
    * primarly for debugging purposes.
    */
   void pprint() const;
+
+  /**
+   * Serialization
+   */
+   template <class Archive>
+   void load(Archive& ar) {
+     ar(columns_float, columns_text, map_cat, map_level, column_types, sample_ids, sample_id_index, file_path);
+   }
+
+   template <class Archive>
+   void save(Archive& ar) {
+     ar(columns_float, columns_text, map_cat, map_level, column_types, sample_ids, sample_id_index, file_path);
+   }
+
+   /**
+    * Redis load/save
+    */
+   virtual void load(redisContext* redis_cache, const string& key);
+   virtual void save(redisContext* redis_cache, const string& key);
+
+   inline bool is_cached() const { return cached; }
 };
 
 #endif //LDSERVER_PHENOTYPES_H

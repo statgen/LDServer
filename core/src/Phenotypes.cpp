@@ -463,3 +463,46 @@ void Phenotypes::pprint() const {
     cout << endl;
   }
 }
+
+void Phenotypes::load(redisContext *redis_cache, const string& key) {
+  redisReply *reply = nullptr;
+  reply = (redisReply *) redisCommand(redis_cache, "GET %b", key.c_str(), key.length());
+  if (reply == nullptr) {
+    throw runtime_error("Error while reading a phenotype dataset from Redis cache");
+  }
+  if (reply->type == REDIS_REPLY_ERROR) {
+    throw runtime_error("Error while reading a phenotype dataset from Redis cache: " + string(reply->str));
+  }
+  if (reply->len > 0) {
+    stringbuf buffer(string(reply->str, reply->len), ios::binary | ios::in);
+    basic_istream<char> is(&buffer);
+    {
+      cereal::BinaryInputArchive iarchive(is);
+      load(iarchive);
+    }
+    this->cached = true;
+  } else {
+    this->cached = false;
+  }
+  freeReplyObject(reply);
+}
+
+void Phenotypes::save(redisContext *redis_cache, const string& key) {
+  redisReply *reply = nullptr;
+  stringstream os(ios::binary | ios::out);
+  {
+    cereal::BinaryOutputArchive oarchive(os);
+    save(oarchive);
+  }
+  string temp = os.str();
+  size_t temp_size = os.tellp();
+  reply = (redisReply *) redisCommand(redis_cache, "SET %b %b", key.c_str(), key.length(), temp.c_str(), temp_size);
+  if (reply == nullptr) {
+    throw runtime_error("Error while writing a phenotype dataset to Redis cache");
+  }
+  if (reply->type == REDIS_REPLY_ERROR) {
+    throw runtime_error("Error while writing a phenotype dataset to Redis cache: " + string(reply->str));
+  }
+  this->cached = true;
+  freeReplyObject(reply);
+}
