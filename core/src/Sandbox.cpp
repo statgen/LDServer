@@ -243,7 +243,7 @@ void test4() {
 void perf_sav_55k() {
   auto time_start = std::chrono::system_clock::now();
 
-  string genotype_file = "../../../private/55k.clean.chr8.sav";
+  string genotype_file = "../../../private/55k.clean.chrX.sav";
   string phenotype_file = "../../../private/55kQTsRemoved.ped";
 
   ColumnTypeMap ctmap;
@@ -293,18 +293,27 @@ void perf_sav_55k() {
 
   // Region to analyze
   string chrom = "8";
-  auto start = 117862462ul;
-  auto stop = 118289003ul;
+  auto start = 31144764ul;
+  auto stop = 33146263ul;
 
   // Setup mask (this would be user defined client-side via API)
   uint64_t mask_id = 0;
   vector<VariantGroup> vg_vec;
   VariantGroup vg;
-  vg.chrom = "8";
+  vg.chrom = "X";
   vg.name = "TEST";
-  vg.start = 117950768;
-  vg.stop = 118184783;
-  vg.variants = {VariantMeta("8:118184783_C/T"), VariantMeta("8:118170004_C/T"), VariantMeta("8:117950768_G/C")};
+  vg.start = 31144764;
+  vg.stop = 33146263;
+  vg.variants = {
+    VariantMeta("X:33146263_C/A"),
+    VariantMeta("X:31196048_C/T"),
+    VariantMeta("X:32662370_T/TTC"),
+    VariantMeta("X:32459433_T/A"),
+    VariantMeta("X:31144764_T/A"),
+    VariantMeta("X:32662247_A/C"),
+    VariantMeta("X:32429867_G/A"),
+    VariantMeta("X:32591646_C/T")
+  };
   vg_vec.push_back(vg);
   Mask mask(mask_id, VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, vg_vec);
   vector<Mask> masks;
@@ -315,7 +324,7 @@ void perf_sav_55k() {
   config->chrom = chrom;
   config->start = start;
   config->stop = stop;
-  config->segment_size = 1000;
+  config->segment_size = 10;
   config->masks = masks;
   config->sample_subset = "ALL";
   config->genotype_files = {genotype_file};
