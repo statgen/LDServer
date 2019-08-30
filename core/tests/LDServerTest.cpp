@@ -535,6 +535,77 @@ TEST_F(LDServerTest, score_covariance_runner) {
     ASSERT_EQ(doc["data"]["groups"][0]["covariance"].Size(), 13203);
 }
 
+/**
+ * Edge case of a group that spans a long range (2 MB) and has variants only at the ends, making many segment loads
+ * unnecessary. To make it worse, we shorten the segment sizes.
+ */
+TEST_F(LDServerTest, scorecov_long_group_short_segments) {
+  string genotype_file = "chr22.test.vcf.gz";
+  string phenotype_file = "chr22.test.tab";
+
+  ColumnTypeMap ctmap;
+  ctmap.add("iid", ColumnType::TEXT);
+  ctmap.add("sex", ColumnType::CATEGORICAL);
+  ctmap.add("rand_binary", ColumnType::CATEGORICAL);
+  ctmap.add("rand_qt", ColumnType::FLOAT);
+
+  // Region to analyze
+  string chrom = "22";
+  auto start = 50244251ul;
+  auto stop = 51244237ul;
+
+  // Setup mask (this would be user defined client-side via API)
+  uint64_t mask_id = 0;
+  vector<VariantGroup> vg_vec;
+  VariantGroup vg;
+  vg.chrom = "22";
+  vg.name = "TEST";
+  vg.start = start;
+  vg.stop = stop;
+  vg.variants = {
+    VariantMeta("22:50244251_G/A"),
+    VariantMeta("22:50244265_C/A"),
+    VariantMeta("22:51244237_C/T")
+  };
+  vg_vec.push_back(vg);
+  Mask mask(mask_id, VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, vg_vec);
+  vector<Mask> masks;
+  masks.emplace_back(mask);
+
+  // Setup ScoreCovarianceRunner configuration
+  auto config = make_score_covariance_config();
+  config->chrom = chrom;
+  config->start = start;
+  config->stop = stop;
+  config->segment_size = 10;
+  config->masks = masks;
+  config->sample_subset = "ALL";
+  config->genotype_files = {genotype_file};
+  config->genotype_dataset_id = 1;
+  config->phenotype_file = phenotype_file;
+  config->phenotype_column_types = ctmap;
+  config->phenotype_dataset_id = 1;
+  config->phenotype = "rand_qt";
+  config->phenotype_nrows = 2504;
+  config->phenotype_sample_column = "iid";
+  config->phenotype_delim = "\t";
+
+  // Run score/covariance calculations
+  ScoreCovarianceRunner runner(config);
+  runner.run();
+  string json = runner.getJSON();
+
+  // Parse back out JSON
+  rapidjson::Document doc;
+  doc.Parse(json.c_str());
+
+  // Tests
+  ASSERT_EQ(doc["data"]["nSamples"].GetDouble(), 2504.0);
+  ASSERT_NEAR(doc["data"]["sigmaSquared"].GetDouble(), 0.08188312, 0.0001);
+  ASSERT_EQ(doc["data"]["groups"][0]["variants"].Size(), 3);
+  ASSERT_EQ(doc["data"]["groups"][0]["covariance"].Size(), 6);
+}
+
 TEST_F(LDServerTest, score_user_defined_masks) {
   string genotype_file = "chr22.test.vcf.gz";
   string phenotype_file = "chr22.test.tab";
