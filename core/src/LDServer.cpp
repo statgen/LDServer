@@ -190,6 +190,27 @@ bool contains(const C<T>& container, const T& v) {
 }
 
 /**
+ * Return a vector of 2-tuples for the cartesian product of a container with itself.
+ * For example, a container with elements A, B, C would result in: (A, A), (A, B), (A, C), (B, B), (B, C), (C, C)
+ * @tparam C container type
+ * @tparam T element type
+ * @param container of elements of type T
+ * @return shared pointer to a vector of tuples<T, T>, one tuple per combination
+ */
+template<template <typename...> class C, typename T>
+shared_ptr<vector<tuple<T, T>>> product(const C<T>& container) {
+  auto result = make_shared<vector<tuple<T, T>>>();
+  for (auto it1 = container.begin(); it1 != container.end(); it1++) {
+    auto it2(it1);
+    for (; it2 != container.end(); it2++) {
+      auto t = make_tuple(*it1, *it2);
+      result->emplace_back(t);
+    }
+  }
+  return result;
+}
+
+/**
  * Function to compute LD within a region.
  * @param region_chromosome
  * @param region_start_bp
@@ -248,18 +269,23 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
 
     CellFactory factory;
 
+    // If there's only a few segments to be used for computation, we only need to evaluate cells at morton codes
+    // for each combination of those segments.
+    set<uint64_t> allowed_z;
+    if (!allowed_segments.empty()) {
+      auto segment_combos = product(allowed_segments);
+      for (auto&& pair : *segment_combos) {
+        uint64_t zi = to_morton_code(get<0>(pair), get<1>(pair));
+        if (zi >= z) {
+          allowed_z.emplace(zi);
+        }
+      }
+    }
+
+    auto zit = allowed_z.begin();
     while (z <= z_max) {
         // This converts from the linear index (morton code) z into coordinates i and j (and stores to them directly.)
         from_morton_code(z, i, j);
-
-        // If the server was given specific positions (of variants), we need to check if either of these segments
-        // actually has them.
-        if (!allowed_segments.empty()) {
-          if (!contains(allowed_segments, i) || !contains(allowed_segments, j)) {
-            z = get_next_z(segment_i, segment_j, z_min, z_max, ++z);
-            continue;
-          }
-        }
 
         string key = make_cell_cache_key(cache_key, samples_name, correlation_type, region_chromosome, z);
 
@@ -289,9 +315,24 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
         }
 
         // We didn't fill up the result object yet, so we can continue to another cell.
-        // This function finds the next morton code to use, with the knowledge that we only need the upper triangle
-        // of the matrix.
-        z = get_next_z(segment_i, segment_j, z_min, z_max, ++z);
+        if (!allowed_z.empty()) {
+          // We're iterating over a known series of morton codes, probably because we only wanted to calculate
+          // over certain segments (like aggregation test covariance matrices.)
+          zit++;
+          if (zit != allowed_z.end()) {
+            // There are more morton codes to iterate over
+            z = *zit;
+          }
+          else {
+            // We're done.
+            z = z_max + 1;
+          }
+        }
+        else {
+          // This function finds the next morton code to use, with the knowledge that we only need the upper triangle
+          // of the matrix.
+          z = get_next_z(segment_i, segment_j, z_min, z_max, ++z);
+        }
 
         if (result.data.size() >= result.limit) {
             // If we reach this point, the following is true:
