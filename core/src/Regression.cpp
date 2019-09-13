@@ -76,9 +76,9 @@ shared_ptr<vec> LogisticRegression::getPvalues() {
     throw runtime_error("Call fit() before getting p-values for logistic regression");
   }
 
-  for (int j = 0; j < beta.n_cols; j++) {
+  for (int j = 0; j < beta.n_elem; j++) {
     double zstat = beta[j] * beta[j] / cov_beta(j, j);
-    pvalue[j] = pchisq(zstat, 1.0, 1, 0);
+    pvalue[j] = pchisq(zstat, 1.0, 0, 0);
   }
 
   auto ret = make_shared<vec>(pvalue);
