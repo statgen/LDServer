@@ -26,13 +26,13 @@
  */
 
 class Regression {
-private:
-  arma::vec beta;
-  virtual void reset(const arma::mat& x, const arma::vec& y) = 0;
 public:
-  virtual void fit(const arma::vec& y, const arma::mat& x, int niter=100) = 0;
+  virtual void fit(const arma::vec& y, const arma::mat& x) = 0;
   virtual std::shared_ptr<arma::vec> getResiduals() const = 0;
   virtual std::shared_ptr<arma::vec> getBetas() const = 0;
+  virtual std::shared_ptr<arma::vec> getStandardErrors() const = 0;
+  virtual std::shared_ptr<arma::mat> getCovBetas() const = 0;
+  virtual std::shared_ptr<arma::vec> getPvalues() = 0;
 };
 
 class LinearRegression : public Regression {};
