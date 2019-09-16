@@ -23,7 +23,7 @@ double LogisticRegression::getDeviance() {
   return -2.0 * arma::sum((Y % arma::log(p)) + ((1 - Y) % arma::log(1 - p)));
 }
 
-void LogisticRegression::fit(const vec& y, const mat& x, int niter) {
+void LogisticRegression::fit(const vec& y, const mat& x) {
   // Check number of iterations.
   if (niter <= 0) {
     throw std::invalid_argument("niter must be > 0");
@@ -100,3 +100,11 @@ std::shared_ptr<arma::vec> LogisticRegression::getBetas() const {
 std::shared_ptr<arma::vec> LogisticRegression::getStandardErrors() const {
   return make_shared<vec>(arma::sqrt(diagvec(cov_beta)));
 }
+
+std::shared_ptr<arma::mat> LogisticRegression::getCovBetas() const {
+  return make_shared<mat>(cov_beta);
+}
+
+LogisticRegression::LogisticRegression() : niter(100) { }
+
+LogisticRegression::LogisticRegression(int niter) : niter(niter) { }

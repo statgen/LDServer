@@ -52,20 +52,25 @@ private:
   arma::mat info;       // information matrix
   arma::vec delta_beta; // amount to update beta on each iteration
   arma::vec resid;      // residual vector (Y - p) where p is vec of fitted probs
+  int niter;            // max number of newton-raphson iterations (default is 100)
   void reset(const arma::mat& x, const arma::vec& y);
 public:
+  LogisticRegression();
+  LogisticRegression(int niter);
+
   /**
    * Fit a logistic regression model using Newton-Raphson method.
    * @param y Vector of outcome variable.
    * @param x Matrix of covariates.
    * @param niter Max number of iterations to attempt for convergence.
    */
-  void fit(const arma::vec& y, const arma::mat& x, int niter=100);
-  std::shared_ptr<arma::vec> getPvalues();
+  void fit(const arma::vec& y, const arma::mat& x) override;
+  std::shared_ptr<arma::vec> getPvalues() override;
   std::shared_ptr<arma::vec> getPredictedProb() const;
-  std::shared_ptr<arma::vec> getResiduals() const;
-  std::shared_ptr<arma::vec> getBetas() const;
-  std::shared_ptr<arma::vec> getStandardErrors() const;
+  std::shared_ptr<arma::vec> getResiduals() const override;
+  std::shared_ptr<arma::vec> getBetas() const override;
+  std::shared_ptr<arma::vec> getStandardErrors() const override;
+  std::shared_ptr<arma::mat> getCovBetas() const override;
   double getDeviance();
 };
 
