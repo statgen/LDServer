@@ -52,9 +52,8 @@ private:
   arma::mat info;       // information matrix
   arma::vec delta_beta; // amount to update beta on each iteration
   arma::vec resid;      // residual vector (Y - p) where p is vec of fitted probs
-public:
   void reset(const arma::mat& x, const arma::vec& y);
-
+public:
   /**
    * Fit a logistic regression model using Newton-Raphson method.
    * @param y Vector of outcome variable.
