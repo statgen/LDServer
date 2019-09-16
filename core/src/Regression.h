@@ -17,8 +17,12 @@
  * rvtests was based upon.
  * https://github.com/statgen/bamUtil/blob/c2dd61fe642bca209b0f5be032f50481b990552b/src/LogisticRegression.cpp
  *
- * For background on how the method works, see page 194 (section 5.5.4) in "Categorical Data Analysis"
- * by Alan Agresti (Second Edition). Section 4.6.1 is also useful.
+ * For background on how the method works, see the following sections in the book "Categorical Data Analysis" by
+ * Alan Agresti:
+ *   - 4.6: Fitting Generalized Linear Models
+ *     - 4.6.1 Newton-Raphson Method
+ *   - 5.5: Fitting Logistic Regression Models
+ *     - 5.5.4: Newton-Raphson Method Applied to Logistic Regression
  */
 
 class Regression {
