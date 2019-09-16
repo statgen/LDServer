@@ -35,7 +35,33 @@ public:
   virtual std::shared_ptr<arma::vec> getPvalues() = 0;
 };
 
-class LinearRegression : public Regression {};
+class LinearRegression : public Regression {
+private:
+  arma::vec beta;       // model coefficients, one per column in X
+  arma::mat cov_beta;   // asymptotic covariance matrix of betas
+  arma::vec pvalue;     // asymptotic wald p-values for each beta
+
+  arma::mat X;          // matrix of covariates, one per column
+  arma::mat X_T;        // store transpose of X to avoid re-calculation
+  arma::vec Y;          // dependent variable Y
+  arma::vec resid;      // residual vector (Y - p) where p is vec of fitted probs
+  double sigma2;
+  void reset(const arma::mat& x, const arma::vec& y);
+public:
+  /**
+   * Fit linear regression model with OLS.
+   * @param y Vector of outcome variable.
+   * @param x Matrix of covariates.
+   * @param niter Max number of iterations to attempt for convergence.
+   */
+  void fit(const arma::vec& y, const arma::mat& x) override;
+  std::shared_ptr<arma::vec> getPvalues() override;
+  std::shared_ptr<arma::vec> getResiduals() const override;
+  std::shared_ptr<arma::vec> getBetas() const override;
+  std::shared_ptr<arma::vec> getStandardErrors() const override;
+  std::shared_ptr<arma::mat> getCovBetas() const override;
+  double getSigmaSquared() const;
+};
 
 class LogisticRegression : public Regression {
 private:

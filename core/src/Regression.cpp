@@ -2,6 +2,46 @@
 using namespace arma;
 using namespace std;
 
+void LinearRegression::reset(const arma::mat& x, const arma::vec& y) {
+  X = x;
+  Y = y;
+  pvalue.zeros(x.n_cols);
+}
+
+void LinearRegression::fit(const arma::vec& y, const arma::mat& x) {
+  reset(x, y);
+
+  X_T = arma::trans(x);
+  mat X_T_X = X_T * x;
+  mat X_T_Xinv = arma::inv(X_T_X);
+
+  // OLS closed form solution for betas in Y = X*beta is (X'X)^-1 * X' * y.
+  beta = X_T_Xinv * X_T * y;
+  vec predicted = x * beta;
+  resid = y - predicted;
+
+  // This follows R's convention in sigma.default, where
+  // sigma = sqrt(deviance) / (nobs - nbetas)
+  // rvtest only divides by nobs
+  sigma2 = arma::sum(vec(arma::pow(resid, 2))) / (y.n_elem - beta.n_elem);
+  cov_beta = X_T_Xinv * sigma2;
+}
+
+std::shared_ptr<arma::vec> LinearRegression::getPvalues() {
+  if (beta.n_elem <= 0 || sum(beta) == 0.0) {
+    throw runtime_error("Call fit() before getting p-values for linear regression");
+  }
+
+  double resid_df = Y.n_elem - beta.n_elem;
+  for (int j = 0; j < beta.n_elem; j++) {
+    double zstat = beta[j] / sqrt(cov_beta(j, j));
+    pvalue[j] = 2 * pt(abs(zstat), resid_df, 0, 0);
+  }
+
+  auto ret = make_shared<vec>(pvalue);
+  return ret;
+}
+
 void LogisticRegression::reset(const mat& x, const vec& y) {
   int nrows = x.n_rows;
   int ncols = x.n_cols;
@@ -17,6 +57,26 @@ void LogisticRegression::reset(const mat& x, const vec& y) {
   X = mat(x);
   X_T = arma::trans(X);
   Y = vec(y);
+}
+
+double LinearRegression::getSigmaSquared() const {
+  return sigma2;
+}
+
+std::shared_ptr<arma::vec> LinearRegression::getResiduals() const {
+  return make_shared<vec>(resid);
+}
+
+std::shared_ptr<arma::vec> LinearRegression::getBetas() const {
+  return make_shared<vec>(beta);
+}
+
+std::shared_ptr<arma::vec> LinearRegression::getStandardErrors() const {
+  return make_shared<vec>(arma::sqrt(diagvec(cov_beta)));
+}
+
+std::shared_ptr<arma::mat> LinearRegression::getCovBetas() const {
+  return make_shared<mat>(cov_beta);
 }
 
 double LogisticRegression::getDeviance() {
