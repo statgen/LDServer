@@ -39,7 +39,19 @@ COPY rest/requirements.txt /
 RUN pip install -r requirements.txt
 
 # Create a group and user to execute as, then drop root
-RUN adduser --gecos "User for running LDServer as non-root" --shell /bin/bash --disabled-password ldserver
+ARG UID
+ARG GID
+RUN \
+  if [ -n "$GID" ]; then \
+    addgroup --gid $GID ldserver; \
+  else \
+    addgroup ldserver; \
+  fi && \
+  if [ -n "$UID" ]; then \
+    adduser --gecos "User for running LDServer as non-root" --shell /bin/bash --disabled-password --uid $UID --ingroup ldserver ldserver; \
+  else \
+    adduser --gecos "User for running LDServer as non-root" --shell /bin/bash --disabled-password --ingroup ldserver ldserver; \
+  fi
 
 WORKDIR /home/ldserver
 USER ldserver
