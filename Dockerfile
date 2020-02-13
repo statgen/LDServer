@@ -29,7 +29,13 @@ RUN apt-get update && apt-get install -y \
   liblapack-dev \
   libarpack2 \
   libarpack2-dev \
-  redis
+  redis \
+  locales \
+  && rm -rf /var/lib/apt/lists/* \
+  && locale-gen en_US.UTF-8
+
+ENV LC_ALL en_US.UTF-8
+ENV LANG en_US.UTF-8
 
 # Install necessary python packages (backports.lzma needed for cget to extract .xz archives)
 RUN pip install backports.lzma cget pytest invoke tox
