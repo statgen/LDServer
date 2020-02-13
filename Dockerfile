@@ -5,14 +5,11 @@ ARG GIT_SHA
 ARG LDSERVER_VERSION
 
 LABEL org.label-schema.name="LDServer"
-LABEL org.label-schema.version=$LDSERVER_VERSION
 LABEL org.label-schema.description="LDServer for calculating linkage disequilibrium of genetic variants"
 LABEL org.label-schema.vendor="University of Michigan, Center for Statistical Genetics"
 LABEL org.label-schema.url="https://github.com/statgen/LDServer"
 LABEL org.label-schema.usage="https://github.com/statgen/LDServer#docker"
 LABEL org.label-schema.vcs-url="https://github.com/statgen/LDServer"
-LABEL org.label-schema.vcs-ref=$GIT_SHA
-LABEL org.label-schema.build-date=$BUILD_DATE
 LABEL org.label-schema.schema-version="1.0"
 
 # Install required packages for swiss to install. Many of swiss' dependencies
@@ -68,3 +65,8 @@ COPY --chown=ldserver:ldserver . /home/ldserver/
 # This executes a compile, then runs C++ and python tests
 # We want the docker build to fail if the tests fail
 RUN invoke test
+
+# Frequently changing metadata here to avoid cache misses
+LABEL org.label-schema.version=$LDSERVER_VERSION
+LABEL org.label-schema.vcs-ref=$GIT_SHA
+LABEL org.label-schema.build-date=$BUILD_DATE
