@@ -6,13 +6,15 @@ services:
       - FLASK_APP=rest/ldserver
       - LDSERVER_CONFIG_SCRIPT
       - LDSERVER_WORKERS
+      - LDSERVER_PORT
+    env_file: .env
     ports:
-      - "5001:5001"
+      - "${LDSERVER_PORT}:${LDSERVER_PORT}"
     depends_on:
       - redis
     restart: "on-failure"
     working_dir: /home/ldserver
-    command: /bin/bash -c "source $$LDSERVER_CONFIG_SCRIPT && gunicorn -b 0.0.0.0:5001 -w $$LDSERVER_WORKERS -k gevent --pythonpath rest 'ldserver:create_app()'"
+    command: /bin/bash -c "source $$LDSERVER_CONFIG_SCRIPT && gunicorn -b 0.0.0.0:$$LDSERVER_PORT -w $$LDSERVER_WORKERS -k gevent --pythonpath rest 'ldserver:create_app()'"
 
   raremetal:
     image: "statgen/ldserver:latest"
@@ -20,13 +22,15 @@ services:
       - FLASK_APP=rest/raremetal
       - RAREMETAL_CONFIG_DATA
       - RAREMETAL_WORKERS
+      - RAREMETAL_PORT
+    env_file: .env
     ports:
-      - "5000:5000"
+      - "${RAREMETAL_PORT}:${RAREMETAL_PORT}"
     depends_on:
       - redis
     restart: "on-failure"
     working_dir: /home/ldserver
-    command: /bin/bash -c "flask add-yaml $$RAREMETAL_CONFIG_DATA && gunicorn -b 0.0.0.0:5000 -w $$RAREMETAL_WORKERS -k gevent --pythonpath rest 'raremetal:create_app()'"
+    command: /bin/bash -c "flask add-yaml $$RAREMETAL_CONFIG_DATA && gunicorn -b 0.0.0.0:$$RAREMETAL_PORT -w $$RAREMETAL_WORKERS -k gevent --pythonpath rest 'raremetal:create_app()'"
 
   redis:
     image: "redis:alpine"
