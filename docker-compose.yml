@@ -4,9 +4,6 @@ services:
     build: .
     environment:
       - FLASK_APP=rest/ldserver
-      - LDSERVER_CONFIG_SCRIPT
-      - LDSERVER_WORKERS
-      - LDSERVER_PORT
     env_file: .env
     ports:
       - "${LDSERVER_PORT}:${LDSERVER_PORT}"
@@ -19,9 +16,6 @@ services:
     build: .
     environment:
       - FLASK_APP=rest/raremetal
-      - RAREMETAL_CONFIG_DATA
-      - RAREMETAL_WORKERS
-      - RAREMETAL_PORT
     env_file: .env
     ports:
       - "${RAREMETAL_PORT}:${RAREMETAL_PORT}"
