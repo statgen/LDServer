@@ -1,7 +1,7 @@
 version: '3'
 services:
   ldserver:
-    image: "statgen/ldserver:latest"
+    build: .
     environment:
       - FLASK_APP=rest/ldserver
       - LDSERVER_CONFIG_SCRIPT
@@ -16,7 +16,7 @@ services:
     command: /bin/bash -c "source $$LDSERVER_CONFIG_SCRIPT && gunicorn -b 0.0.0.0:$$LDSERVER_PORT -w $$LDSERVER_WORKERS -k gevent --pythonpath rest 'ldserver:create_app()'"
 
   raremetal:
-    image: "statgen/ldserver:latest"
+    build: .
     environment:
       - FLASK_APP=rest/raremetal
       - RAREMETAL_CONFIG_DATA
