@@ -24,39 +24,39 @@ This project contains multiple components that work together to provide these fe
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 <!-- code_chunk_output -->
 
-- [ LDServer](#ldserver)
-  - [ Documentation](#documentation)
-  - [ Installation](#installation)
-    - [ Docker](#docker)
-      - [ Configuration for ldserver app](#configuration-for-ldserver-app)
-      - [ Configuration for raremetal app](#configuration-for-raremetal-app)
-      - [ Running the services](#running-the-services)
-    - [ Manual installation](#manual-installation)
-  - [ Updating](#updating)
-  - [ Configuring & running the flask apps](#configuring-running-the-flask-apps)
-    - [ ldserver app](#ldserver-app)
-      - [ Configuring the ldserver app](#configuring-the-ldserver-app)
-        - [ Add new reference](#add-new-reference)
-        - [ Add new (sub-)population to the reference](#add-new-sub-population-to-the-reference)
-        - [ List loaded references](#list-loaded-references)
-        - [ List loaded genotype files](#list-loaded-genotype-files)
-        - [ List loaded population samples](#list-loaded-population-samples)
-      - [ Running the rest app](#running-the-rest-app)
-    - [ playground app](#playground-app)
-      - [ Running the playground app](#running-the-playground-app)
-    - [ raremetal app](#raremetal-app)
-      - [ Required data and formats](#required-data-and-formats)
-        - [ Genotype data](#genotype-data)
-        - [ Phenotype data](#phenotype-data)
-        - [ Masks](#masks)
-      - [ Configuring the raremetal app](#configuring-the-raremetal-app)
-        - [ YAML: Adding multiple datasets with one YAML config file](#yaml-adding-multiple-datasets-with-one-yaml-config-file)
-        - [ CLI: Adding genotype datasets](#cli-adding-genotype-datasets)
-        - [ CLI: Adding phenotype datasets](#cli-adding-phenotype-datasets)
-        - [ CLI: Adding masks of genetic variants](#cli-adding-masks-of-genetic-variants)
-        - [ CLI: Listing available datasets](#cli-listing-available-datasets)
-      - [ Running the raremetal app](#running-the-raremetal-app)
-      - [ Exposed API endpoints](#exposed-api-endpoints)
+- [LDServer](#ldserver)
+  - [Documentation](#documentation)
+  - [Installation](#installation)
+    - [Docker](#docker)
+      - [Configuration for ldserver app](#configuration-for-ldserver-app)
+      - [Configuration for raremetal app](#configuration-for-raremetal-app)
+      - [Running the services](#running-the-services)
+    - [Manual installation](#manual-installation)
+  - [Updating](#updating)
+  - [Configuring & running the flask apps](#configuring-running-the-flask-apps)
+    - [ldserver app](#ldserver-app)
+      - [Configuring the ldserver app](#configuring-the-ldserver-app)
+        - [Add new reference](#add-new-reference)
+        - [Add new (sub-)population to the reference](#add-new-sub-population-to-the-reference)
+        - [List loaded references](#list-loaded-references)
+        - [List loaded genotype files](#list-loaded-genotype-files)
+        - [List loaded population samples](#list-loaded-population-samples)
+      - [Running the rest app](#running-the-rest-app)
+    - [playground app](#playground-app)
+      - [Running the playground app](#running-the-playground-app)
+    - [raremetal app](#raremetal-app)
+      - [Required data and formats](#required-data-and-formats)
+        - [Genotype data](#genotype-data)
+        - [Phenotype data](#phenotype-data)
+        - [Masks](#masks)
+      - [Configuring the raremetal app](#configuring-the-raremetal-app)
+        - [YAML: Adding multiple datasets with one YAML config file](#yaml-adding-multiple-datasets-with-one-yaml-config-file)
+        - [CLI: Adding genotype datasets](#cli-adding-genotype-datasets)
+        - [CLI: Adding phenotype datasets](#cli-adding-phenotype-datasets)
+        - [CLI: Adding masks of genetic variants](#cli-adding-masks-of-genetic-variants)
+        - [CLI: Listing available datasets](#cli-listing-available-datasets)
+      - [Running the raremetal app](#running-the-raremetal-app)
+      - [Exposed API endpoints](#exposed-api-endpoints)
 
 <!-- /code_chunk_output -->
 
@@ -64,52 +64,61 @@ This project contains multiple components that work together to provide these fe
 
 ### Docker
 
-We provide a docker image and example docker-compose configuration to deploy the LDServer. Using our provided image bypasses the need to perform the compilation steps, which can sometimes be problematic on older servers.
+To run LDServer in production, we recommend using [docker-compose](https://docs.docker.com/compose/install/). We provide a base configuration `docker-compose.yml` that specifies the core services.
 
-First, pull our docker image:
+To customize the config to your environment, either create a [docker-compose.override.yml](https://docs.docker.com/compose/extends/#example-use-case) file, or copy the base `docker-compose.yml` to a new file to edit, for example `docker-compose.prod.yml`.
 
-```bash
-docker pull statgen/ldserver:latest
-```
+Using an override file is convenient because you can continue using `docker-compose <command>` as you normally would. Using a new compose file, such as `docker-compose.prod.yml` requires an additional flag upon each invocation: `docker-compose -f docker-compose.prod.yml <command>`.
 
-You can start a barebones container to begin exploring:
+You will also want to create a `.env` file to specify additional settings. For example:
 
 ```bash
-docker run -it ldserver:latest /bin/bash
+LDSERVER_PORT=4546
+LDSERVER_CONFIG_SCRIPT=/home/ldserver/startup.sh
+LDSERVER_WORKERS=4
+RAREMETAL_CONFIG_DATA=var/config.yaml
+RAREMETAL_WORKERS=4
+RAREMETAL_PORT=4545
 ```
 
-For configuring in production, we recommend using [docker-compose](https://docs.docker.com/compose/install/). We provide a base configuration `docker-compose.yml` that specifies the core services.
-
-To customize the config to your environment, copy `docker-compose.yml` to a file `docker-compose.prod.yml`. You can then modify the file as needed. For example, you can change the port mapping, as well as the user uid/gid running inside the container (this is important when mounting files into the container.) For example:
+In your override file, you can provide your own settings. For example:
 
 ```YAML
 version: '3'
 services:
+  ldserver:
+    restart: "on-failure"
+    command: >
+      /bin/bash -c "
+      source $$LDSERVER_CONFIG_SCRIPT &&
+      gunicorn -b 0.0.0.0 -w $$LDSERVER_WORKERS -k gevent \
+        --access-logfile /data/logs/gunicorn.access.log \
+        --error-logfile /data/logs/gunicorn.error.log \
+        --pythonpath rest 'ldserver:create_app()'"
+
   raremetal:
-    user: "ldserver:1234"
-    image: "statgen/ldserver:latest"
-    environment:
-      - FLASK_APP=rest/raremetal
-      - RAREMETAL_CONFIG_DATA=var/config.yaml
-      - RAREMETAL_WORKERS=4
-    ports:
-      - "4545:4545"
+    build:
+      args:
+        UID: 1000
+        GID: 1001
     volumes:
       - /data/raremetal:/home/ldserver/var
       - /data/raremetal/config.py:/home/ldserver/rest/instance/config.py
-    depends_on:
-      - redis
     restart: "on-failure"
-    working_dir: /home/ldserver
-    command: /bin/bash -c "flask add-yaml $$RAREMETAL_CONFIG_DATA && gunicorn -b 0.0.0.0:4545 -w $$RAREMETAL_WORKERS -k gevent --pythonpath rest 'raremetal:create_app()'"
 
   redis:
-    image: "redis:alpine"
+    restart: "on-failure"
 ```
 
-Volumes have the format `/path/to/data`:`/path/to/mount/in/container`.
+In the above example, we overrode a few pieces of the various services:
 
-To change port, you will have to modify it in two places above - under `ports:` and under `command: `. Unfortunately docker-compose will not use environment variables specified within the file inside the `ports: ` section, so it must be set manually. It doesn't seem to work even with env vars specified in a `.env` file, or when set on the shell.
+* For the `ldserver` service:
+  * We overrode the command that is executed when the container first runs to pass additional arguments to gunicorn, which starts the `ldserver` flask app. In this case we've added new logfile arguments `--access-logfile` and `--error-logfile`.
+* For the `raremetal` service:
+  * We decided to override the UID and GID of the user inside the docker image.
+  * We're also mounting a directory `/data/raremetal` and config file `/data/raremetal/config.py` from the host when the container runs. Volumes have the format `/path/to/data`:`/path/to/mount/in/container`.
+* For both services:
+  * We've turned on `restart: "on-failure"`. This means the services will be restarted if they fail, or if the docker daemon is restarted. They will not restart if they are manually stopped.
 
 #### Configuration for ldserver app
 
@@ -146,7 +155,22 @@ genotypes:
 
 #### Running the services
 
-Assuming you have created your own `docker-compose.prod.yml` file for production, you can run the services with:
+Assuming you have created your own `docker-compose.override.yml` file for production, first build the docker images using:
+
+```bash
+bin/docker_build_compose.sh
+```
+
+You don't have to use the above script, and could instead directly run `docker-compose build`, but it does set a few extra labels on the resulting docker image that can be useful.
+
+Now, you can run all services once the build is finished using:
+
+```bash
+# -d runs services detached in background
+docker-compose up -d
+```
+
+If you instead chose to use a copied production yaml file, you would do the following. Remember to include this `-f` flag in all docker-compose commands. We will not include it from here onwards.
 
 ```bash
 docker-compose -f docker-compose.prod.yml up -d
@@ -155,8 +179,10 @@ docker-compose -f docker-compose.prod.yml up -d
 To debug the container, the following command is very useful. It will start the raremetal service, using all of your configuration values from the docker-compose file, and drop you into a bash shell as root. From there, you can run the services manually to debug, and install any additional packages that could be useful. Obviously, you should not use this for production, as the container is not meant to be run as root.
 
 ```bash
-docker-compose -f docker-compose.prod.yml run -u root raremetal bash
+docker-compose run -u root ldserver bash
 ```
+
+If you've already started services, replace `run` with `exec` to jump into the already running container.
 
 ### Manual installation
 
