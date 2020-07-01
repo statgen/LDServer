@@ -49,12 +49,18 @@ This project contains multiple components that work together to provide these fe
         - [Genotype data](#genotype-data)
         - [Phenotype data](#phenotype-data)
         - [Masks](#masks)
+        - [Summary statistics](#summary-statistics)
       - [Configuring the raremetal app](#configuring-the-raremetal-app)
         - [YAML: Adding multiple datasets with one YAML config file](#yaml-adding-multiple-datasets-with-one-yaml-config-file)
-        - [CLI: Adding genotype datasets](#cli-adding-genotype-datasets)
-        - [CLI: Adding phenotype datasets](#cli-adding-phenotype-datasets)
-        - [CLI: Adding masks of genetic variants](#cli-adding-masks-of-genetic-variants)
-        - [CLI: Listing available datasets](#cli-listing-available-datasets)
+          - [Genotype records](#genotype-records)
+          - [Phenotype records](#phenotype-records)
+          - [Mask records](#mask-records)
+          - [Summary statistic records](#summary-statistic-records)
+        - [CLI: Quickly add data for testing purposes](#cli-quickly-add-data-for-testing-purposes)
+          - [Adding genotype datasets](#adding-genotype-datasets)
+          - [Adding phenotype datasets](#adding-phenotype-datasets)
+          - [Adding masks of genetic variants](#adding-masks-of-genetic-variants)
+          - [Listing available datasets](#listing-available-datasets)
       - [Running the raremetal app](#running-the-raremetal-app)
       - [Exposed API endpoints](#exposed-api-endpoints)
 
@@ -451,6 +457,19 @@ bgzip my_mask_file.tab
 tabix -s 2 -b 3 -e 4 my_mask_file.tab.gz
 ```
 
+##### Summary statistics
+
+Some studies are not able or willing to share their genotypes and/or phenotype data. In such cases, they provide summary statistics instead, which can be used to run various association analyses or meta-analysis.
+
+The LDServer can directly serve these summary statistics (score statistics, covariance matrices) rather than computing them on the fly.
+
+Common programs for computing summary statistics as a frame of reference:
+
+* [rvtests](https://github.com/zhanxw/rvtests#meta-analysis-models)
+* [RAREMETALWORKER](https://genome.sph.umich.edu/wiki/RAREMETALWORKER)
+
+Both programs produce two files, one containing score statistics for single variants, the other file containing the covariance of the score statistics. You can add these files to a [Summary statistic record](#summary-statistic-records) under the `score_path` and `cov_path` keys.
+
 #### Configuring the raremetal app
 
 Before running the following commands, you should set the appropriate flask app by doing:
@@ -534,9 +553,26 @@ masks:
   genotypes: 1
   group_type: "GENE"
   identifier_type: "ENSEMBL"
+
+- id: 3
+  name: "All exomic variants"
+  description: "All variants falling within exomic regions in TOPMed"
+  summary_stats: 1
+  genome_build: "GRCh37"
+  group_type: "GENE"
+  identifier_type: "ENSEMBL"
+
+summary_stats:
+- id: 1
+  name: "TOPMed 70K Exomes - T2D"
+  description: "TOPMed 70K exomes score statistics and covariance matrices for T2D"
+  score_path: "topmed.metascore.txt.gz"
+  cov_path: "topmed.metacov.txt.gz"
 ```
 
-The file has 3 "blocks": `genotypes`, `phenotypes`, and `masks`.
+The file has 4 possible "blocks": `genotypes`, `phenotypes`, `masks`, and `summary-stats`.
+
+###### Genotype records
 
 Each record under `genotypes` looks like:
 
@@ -547,6 +583,8 @@ Each record under `genotypes` looks like:
   filepath: <path to VCF, BCF, or Savvy file>
   genome_build: <genome build, e.g. GRCh37 or GRCh38>
 ```
+
+###### Phenotype records
 
 Each record under `phenotypes` looks like:
 
@@ -575,6 +613,8 @@ Also, specifying columns is entirely optional itself. Column names and types wil
 
 For PED files, you do not need to specify anything about the first 5 columns (family ID, individual ID, paternal ID, maternal ID, sex) - they are part of the format and automatically handled. If you specify information for the remaining phenotypes in the file, note that they must match the phenotype as specified in the DAT file.
 
+###### Mask records
+
 Each record under `masks` looks like:
 
 ```YAML
@@ -588,7 +628,28 @@ Each record under `masks` looks like:
   identifier_type: <identifier type, currently only "ENSEMBL" supported>
 ```
 
-The YAML file may have genotype, phenotype, and mask blocks specified in any order, however there may only be 1 block for each type. Additionally, genotypes will always be processed first, followed by phenotypes, and finally mask files. This is because the latter two are dependent on having at least 1 genotype dataset available.
+###### Summary statistic records
+
+Each record under `summary_stats` looks like:
+
+```YAML
+summary_stats:
+- id: 1
+  name: "TOPMED-70K-EXOMES"
+  description: "TOPMed pre-computed covariance for 70K exomes"
+  score_path: "topmed.metascore.txt.gz"
+  cov_path: "topmed.metacov.txt.gz"
+```
+
+This section is for pre-calculated meta-analysis summary statistics, usually generated by a program such as RAREMETALWORKER or rvtests.
+
+For example, in rvtests: https://github.com/zhanxw/rvtests#meta-analysis-models
+
+The YAML file may have genotype, phenotype, mask, and summary-stats blocks specified in any order, however there may only be 1 block for each type.
+
+Additionally, genotypes will always be processed first, followed by phenotypes, and finally mask files. This is because the latter two are dependent on having at least 1 genotype dataset available.
+
+Summary statistics are
 
 To add the datasets specified by the YAML file:
 
@@ -596,8 +657,9 @@ To add the datasets specified by the YAML file:
 flask add-yaml <path/to/yamlfile>
 ```
 
-##### CLI: Adding genotype datasets
+##### CLI: Quickly add data for testing purposes
 
+###### Adding genotype datasets
 
 To add the dataset to the server, use the `add-genotypes` command:
 
@@ -624,8 +686,7 @@ gid=`flask add-genotypes "1000G" "1000G Test VCF" "GRCh37" data/chr*.test.vcf.gz
 
 With the command above, you can capture the genotype dataset ID that was assigned in the database, and use it in later commands.
 
-
-##### CLI: Adding phenotype datasets
+###### Adding phenotype datasets
 
 To add a phenotype dataset:
 
@@ -650,7 +711,7 @@ Where `$gid` was set above when adding the genotype dataset for these phenotypes
 
 Each phenotype dataset added should correspond to a genotype dataset (and hence supplying the genotype dataset ID.) This allows the server to know which phenotypes are available (and valid) for each dataset.
 
-##### CLI: Adding masks of genetic variants
+###### Adding masks of genetic variants
 
 To add your mask file to the server:
 
@@ -676,7 +737,7 @@ flask add-masks "AF < 0.01" "Variants with alternate allele freq < 0.01" "data/m
 
 Where `$gid` was the genotype dataset ID generated after using the `add-genotypes` command earlier.
 
-##### CLI: Listing available datasets
+###### Listing available datasets
 
 You can see the list of phenotypes, genotypes, and masks that have been given to the server using:
 
