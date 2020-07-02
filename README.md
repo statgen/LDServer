@@ -764,7 +764,7 @@ gunicorn -b 127.0.0.1:[port] -w [n workers] -k gevent --pythonpath rest "raremet
 
 #### Exposed API endpoints
 
-The [full API specification](https://github.com/statgen/raremetal.js/blob/master/docs/portal-api.pdf) can be found in the [raremetal.js](https://github.com/statgen/raremetal.js) package.
+The full API specification can be found in [a separate document](docs/raremetal-api.md).
 
 [raremetal.js] and [locuszoom.js] have built-in support for these APIs. You may only need to parse the `/aggregation/metadata` endpoint below to provide UI for users selecting which genotypes/phenotypes/masks they would like to use. After that, locuszoom can leverage raremetal.js to make the appropriate calls and parse the response accordingly.
 
