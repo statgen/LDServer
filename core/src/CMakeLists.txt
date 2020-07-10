@@ -20,7 +20,7 @@ if(NOT MKL_RT_LIB)
 endif()
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-set(SOURCE_FILES LDServer.cpp LDServer.h ScoreServer.cpp ScoreServer.h Raw.h Raw.cpp Segment.cpp Segment.h ScoreSegment.cpp ScoreSegment.h Cell.cpp Cell.h Types.h Morton.cpp Morton.h Phenotypes.h Phenotypes.cpp Mask.cpp Mask.h ScoreCovarianceRunner.cpp ScoreCovarianceRunner.h)
+set(SOURCE_FILES LDServer.cpp LDServer.h ScoreServer.cpp ScoreServer.h Raw.h Raw.cpp Segment.cpp Segment.h ScoreSegment.cpp ScoreSegment.h Cell.cpp Cell.h Types.h Morton.cpp Morton.h Phenotypes.h Phenotypes.cpp Mask.cpp Mask.h SummaryStatisticsLoader.h SummaryStatisticsLoader.cpp ScoreCovarianceRunner.cpp ScoreCovarianceRunner.h)
 add_library(LDServer ${SOURCE_FILES})
 target_link_libraries(LDServer ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${TABIXPP_LIB})
 
