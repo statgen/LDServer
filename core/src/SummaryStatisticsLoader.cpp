@@ -81,7 +81,7 @@ ScoreCovFormat SummaryStatisticsLoader::detectFormat(const std::string& filepath
 }
 
 void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start, uint64_t stop) {
-  cov_result.erase();
+  cov_result->erase();
 
   Tabix tbfile(const_cast<string&>(cov_path));
   ScoreCovFormat format = SummaryStatisticsLoader::detectFormat(cov_path);

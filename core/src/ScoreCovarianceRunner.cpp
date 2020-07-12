@@ -58,9 +58,73 @@ ScoreCovarianceRunner::ScoreCovarianceRunner(std::shared_ptr<ScoreCovarianceConf
   // Perform some basic checking of the configuration object to make sure we can actually complete this run.
   if (config->chrom.empty()) { throw std::invalid_argument("Must provide chromosome"); }
   if (config->start <= 0) { throw std::invalid_argument("Invalid starting position " + to_string(config->start)); }
-  if (config->phenotype_file.empty()) { throw std::invalid_argument("Must provide phenotype file"); }
-  if (config->genotype_files.empty()) { throw std::invalid_argument("Must provide genotype file"); }
   if (config->segment_size <= 0) { throw std::invalid_argument("Segment size must be non-zero"); }
+
+  if (config->genotype_files.empty() && config->summary_stat_score_file.empty()) {
+    throw std::invalid_argument("Must provide either genotype/phenotype files, or score stat/covariance files");
+  }
+
+  if (!config->genotype_files.empty() || !config->phenotype_file.empty()) {
+    run_mode = ScoreCovRunMode::COMPUTE;
+
+    if (config->phenotype_file.empty()) {
+      throw std::invalid_argument("Must provide phenotype file when genotype files are given");
+    }
+    else if (config->genotype_files.empty()) {
+      throw std::invalid_argument("Must provide genotype files when a phenotype file is given");
+    }
+  }
+
+  if (!config->summary_stat_score_file.empty() || !config->summary_stat_cov_file.empty()) {
+    run_mode = ScoreCovRunMode::PRECOMPUTE;
+
+    if (config->summary_stat_score_file.empty()) {
+      throw std::invalid_argument("Must provide score statistic file in addition to covariance file");
+    }
+    else if (config->summary_stat_cov_file.empty()) {
+      throw std::invalid_argument("Must provide covariance file in addition to score statistic file");
+    }
+  }
+
+  if (run_mode == ScoreCovRunMode::COMPUTE) {
+    // We're in LDServer/ScoreServer mode. In this mode, we compute score stats and covariance on-the-fly
+    // from genotype and phenotype files.
+    ld_server = make_shared<LDServer>(config->segment_size);
+    score_server = make_shared<ScoreServer>(config->segment_size);
+
+    for (auto&& genotype_file : config->genotype_files) {
+      if (!is_file(genotype_file)) {
+        throw std::invalid_argument("Genotype file not accessible: " + genotype_file);
+      }
+
+      ld_server->set_file(genotype_file);
+      score_server->set_genotypes_file(genotype_file, config->genotype_dataset_id);
+    }
+
+    auto analysis_cols = make_shared<vector<string>>(config->phenotype_analysis_columns.begin(), config->phenotype_analysis_columns.end());
+
+    score_server->load_phenotypes_file(
+      config->phenotype_file,
+      config->phenotype_column_types,
+      config->phenotype_nrows,
+      config->phenotype_delim,
+      config->phenotype_sample_column,
+      config->phenotype_dataset_id,
+      analysis_cols
+    );
+    score_server->set_phenotype(config->phenotype);
+
+    coordinate_samples(*score_server, *ld_server, config->genotype_files[0], config->phenotype, config->sample_subset, config->samples);
+
+    //  if (!config->redis_hostname.empty()) {
+    //    ld_server.enable_cache(config->genotype_dataset_id, config->redis_hostname, config->redis_port);
+    //    score_server.enable_cache(config->redis_hostname, config->redis_port);
+    //  }
+  }
+  else {
+    // We have pre-computed score/covariance and just need to serve them from files.
+    summary_stat_loader = make_shared<SummaryStatisticsLoader>(config->summary_stat_score_file, config->summary_stat_cov_file);
+  }
 }
 
 // TODO: fix copies below, make shared_ptr
@@ -69,38 +133,6 @@ void ScoreCovarianceRunner::run() {
   cout << "Beginning run for configuration -- " << endl;
   config->pprint();
   #endif
-
-  LDServer ld_server(config->segment_size);
-  ScoreServer score_server(config->segment_size);
-
-  for (auto&& genotype_file : config->genotype_files) {
-    if (!is_file(genotype_file)) {
-      throw std::invalid_argument("Genotype file not accessible: " + genotype_file);
-    }
-
-    ld_server.set_file(genotype_file);
-    score_server.set_genotypes_file(genotype_file, config->genotype_dataset_id);
-  }
-
-  auto analysis_cols = make_shared<vector<string>>(config->phenotype_analysis_columns.begin(), config->phenotype_analysis_columns.end());
-
-  score_server.load_phenotypes_file(
-    config->phenotype_file,
-    config->phenotype_column_types,
-    config->phenotype_nrows,
-    config->phenotype_delim,
-    config->phenotype_sample_column,
-    config->phenotype_dataset_id,
-    analysis_cols
-  );
-  score_server.set_phenotype(config->phenotype);
-
-  coordinate_samples(score_server, ld_server, config->genotype_files[0], config->phenotype, config->sample_subset, config->samples);
-
-//  if (!config->redis_hostname.empty()) {
-//    ld_server.enable_cache(config->genotype_dataset_id, config->redis_hostname, config->redis_port);
-//    score_server.enable_cache(config->redis_hostname, config->redis_port);
-//  }
 
   document = make_shared<Document>();
   document->SetObject();
@@ -111,10 +143,12 @@ void ScoreCovarianceRunner::run() {
   Value groups(kArrayType);
 
   set<string> seen_variants;
-  LDQueryResult ld_res(INITIAL_RESULT_SIZE);
-  ld_res.limit = MAX_UINT32;
-  ScoreStatQueryResult score_res(INITIAL_RESULT_SIZE);
-  score_res.limit = MAX_UINT32;
+  auto ld_res = make_shared<LDQueryResult>(INITIAL_RESULT_SIZE);
+  ld_res->limit = MAX_UINT32;
+
+  auto score_res = make_shared<ScoreStatQueryResult>(INITIAL_RESULT_SIZE);
+  score_res->limit = MAX_UINT32;
+
   for (auto&& mask : config->masks) {
     #ifndef NDEBUG
     cout << "Working on: " << mask.get_id() << endl;
@@ -125,53 +159,62 @@ void ScoreCovarianceRunner::run() {
       #endif
 
       // Clear result objects
-      ld_res.erase();
-      score_res.erase();
+      ld_res->erase();
+      score_res->erase();
 
       const VariantGroup& group = group_item.second;
 
-      // DEBUG PATCH
+      if (run_mode == ScoreCovRunMode::COMPUTE) {
+        SharedSegmentVector segments = make_shared_segment_vector();
 
-      // END PATCH
+        auto group_positions = group.get_positions();
+        for_each(
+          group_positions->begin(),
+          group_positions->end(),
+          [this](const uint64_t& p) {
+            ld_server->add_overlap_position(p);
+          }
+        );
 
-      SharedSegmentVector segments = make_shared_segment_vector();
+        ld_server->compute_region_ld(
+          group.chrom,
+          group.start,
+          group.stop,
+          correlation::COV,
+          *ld_res,
+          config->sample_subset,
+          true, // compute diagonal elements (variance of each variant)
+          segments
+        );
 
-      auto group_positions = group.get_positions();
-      for_each(group_positions->begin(), group_positions->end(), [&ld_server](const uint64_t& p) { ld_server.add_overlap_position(p); });
+        score_server->compute_scores(
+          group.chrom,
+          group.start,
+          group.stop,
+          *score_res,
+          config->sample_subset,
+          segments
+        );
+      }
+      else {
+        summary_stat_loader->load_region(group.chrom, group.start, group.stop);
+        ld_res = summary_stat_loader->getCovResult();
+        score_res = summary_stat_loader->getScoreResult();
+      }
 
-      ld_server.compute_region_ld(
-        group.chrom,
-        group.start,
-        group.stop,
-        correlation::COV,
-        ld_res,
-        config->sample_subset,
-        true, // compute diagonal elements (variance of each variant)
-        segments
-      );
+      ld_res->filter_by_variants(*group.get_variants());
+      score_res->filter_by_variants(*group.get_variants());
 
-      score_server.compute_scores(
-        group.chrom,
-        group.start,
-        group.stop,
-        score_res,
-        config->sample_subset,
-        segments
-      );
-
-      ld_res.filter_by_variants(*group.get_variants());
-      score_res.filter_by_variants(*group.get_variants());
-
-      if (score_res.data.size() == 0) {
+      if (score_res->data.size() == 0) {
         // No variants in this group survived after processing samples for missing data (they became monomorphic and
         // therefore could not be tested.
         continue;
       }
 
-      ld_res.sort_by_variant();
-      score_res.sort_by_variant();
+      ld_res->sort_by_variant();
+      score_res->sort_by_variant();
 
-      for (auto&& v : score_res.data) {
+      for (auto&& v : score_res->data) {
         if (seen_variants.find(v.variant) == seen_variants.end()) {
           seen_variants.emplace(v.variant);
         }
@@ -203,8 +246,14 @@ void ScoreCovarianceRunner::run() {
       Value group_variants(kArrayType);
       Value group_covar(kArrayType);
       set<string> seen_group_variants;
-      for (auto&& pair : ld_res.data) {
-        group_covar.PushBack(pair.value / score_res.sigma2, alloc);
+      for (auto&& pair : ld_res->data) {
+        double cov_value = pair.value;
+        if (run_mode == ScoreCovRunMode::COMPUTE) {
+          // When we compute from genotype/phenotype files, the covariance hasn't been normalized by the
+          // residual variance yet, so we need to do so here. In the covariance matrix files, this has already been done.
+          cov_value /= score_res->sigma2;
+        }
+        group_covar.PushBack(cov_value, alloc);
 
         if (seen_group_variants.find(pair.variant1) == seen_group_variants.end()) {
           group_variants.PushBack(Value(pair.variant1.c_str(), alloc), alloc);
@@ -221,13 +270,12 @@ void ScoreCovarianceRunner::run() {
       this_group.AddMember("covariance", group_covar, alloc);
       groups.PushBack(this_group, alloc);
     }
-
   }
 
   data.AddMember("variants", variants, alloc);
   data.AddMember("groups", groups, alloc);
-  data.AddMember("sigmaSquared", score_res.sigma2, alloc);
-  data.AddMember("nSamples", score_res.nsamples, alloc);
+  data.AddMember("sigmaSquared", score_res->sigma2, alloc);
+  data.AddMember("nSamples", score_res->nsamples, alloc);
   data.AddMember("phenotypeDataset", config->phenotype_dataset_id, alloc);
   data.AddMember("genotypeDataset", config->genotype_dataset_id, alloc);
   data.AddMember("phenotype", Value(config->phenotype.c_str(), alloc), alloc);
