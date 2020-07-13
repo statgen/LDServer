@@ -25,7 +25,15 @@ uint64_t SummaryStatisticsLoader::getNumberOfVariantsFromCovFile(const string& f
 
     auto comma = regex(",");
     string pos_str = tokens.at(4);
-    copy(sregex_token_iterator(pos_str.begin(), pos_str.end(), comma, -1), sregex_token_iterator(), inserter(positions, positions.begin()));
+
+    transform(
+      sregex_token_iterator(pos_str.begin(), pos_str.end(), comma, -1),
+      sregex_token_iterator(),
+      inserter(positions, positions.begin()),
+      [](const auto& x) {
+        return stoi(x);
+      }
+    );
 
     line.clear();
     tokens.clear();
