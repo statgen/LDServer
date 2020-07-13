@@ -15,6 +15,7 @@
 #include "../src/Phenotypes.h"
 #include "../src/Mask.h"
 #include "../src/ScoreCovarianceRunner.h"
+#include "../src/SummaryStatisticsLoader.h"
 #include <armadillo>
 #include <cereal/external/rapidjson/document.h>
 
@@ -289,6 +290,35 @@ TEST_F(LDServerTest, SAV_one_page) {
         ASSERT_EQ(goldstandard.count(key), 1);
 //        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
     }
+}
+
+TEST_F(LDServerTest, summary_stat_load_test) {
+  // Load from disk using our new summary stat loader
+  SummaryStatisticsLoader loader("chr21.test.RAND_QT.singlevar.score.txt", "chr21.test.RAND_QT.singlevar.cov.txt");
+
+  // Use our testing methods to load the same data for later comparison
+  map<string, double> gold_cov;
+  this->load_raremetal_covariance("chr21.test.RAND_QT.singlevar.cov.txt", gold_cov);
+  auto gold_scores = load_raremetal_scores("chr21.test.RAND_QT.singlevar.score.txt");
+
+  // Check covariance
+  auto cov_result = loader.getCovResult();
+  for (auto&& entry : cov_result->data) {
+    string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+    double value_gold = gold_cov.find(key)->second;
+    double value_test = entry.value;
+    ASSERT_NE(entry.variant1, "");
+    ASSERT_NE(entry.variant2, "");
+    ASSERT_NEAR(value_gold, value_test, 0.0001);
+  }
+
+  // Check scores
+  auto score_result = loader.getScoreResult();
+  for (auto&& score_res : score_result->data) {
+    auto gold = gold_scores->get_record(score_res.variant);
+    ASSERT_NEAR(gold->u_stat, score_res.score_stat, 0.001);
+    ASSERT_NEAR(gold->pvalue, score_res.pvalue, 0.001);
+  }
 }
 
 TEST_F(LDServerTest, simple_cov_test) {
