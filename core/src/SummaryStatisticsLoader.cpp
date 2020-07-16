@@ -165,6 +165,11 @@ void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start,
     string row_variant = getVariantForPosition(row_pos);
     for (uint64_t j = 0; j < cov.size(); j++) {
       uint64_t pos = positions[j];
+
+      if (pos > stop) {
+        break;
+      }
+
       string variant = getVariantForPosition(pos);
       double v = cov[j];
       double j_alt_freq = getAltFreqForPosition(pos);
