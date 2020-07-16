@@ -9,6 +9,9 @@
 #include <map>
 #include <memory>
 #include <boost/process/system.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
 #include "../src/LDServer.h"
 #include "../src/ScoreServer.h"
 #include "RareMetal.h"
@@ -134,9 +137,22 @@ protected:
       return make_shared<RareMetalScores>(file);
     }
 
-    void load_raremetal_covariance(const string &file, map<string, double> &values) {
-        ifstream input_file(file);
+    void load_raremetal_covariance(const string &path, map<string, double> &values) {
+        unique_ptr<istream> file;
+        boost::iostreams::filtering_streambuf<boost::iostreams::input> inbuf;
+        ifstream fs(path, ios_base::in | ios_base::binary);
+
+        bool is_gz = path.find(".gz") != string::npos;
         string line;
+        if (is_gz) {
+          inbuf.push(boost::iostreams::gzip_decompressor());
+          inbuf.push(fs);
+          file = make_unique<istream>(&inbuf);
+        }
+        else {
+          file = make_unique<ifstream>(path);
+        }
+
         vector<string> tokens;
         vector<uint64_t> positions;
         vector<double> cov;
@@ -144,8 +160,8 @@ protected:
         auto field_separator = regex(",");
         string comment = "#";
 
-        getline(input_file, line); // skip header;
-        while (getline(input_file, line)) {
+        getline(*file, line); // skip header;
+        while (getline(*file, line)) {
             if (std::equal(comment.begin(), comment.end(), line.begin())) {
               continue;
             }

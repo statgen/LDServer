@@ -1,13 +1,21 @@
 #include "RareMetal.h"
-#include <fstream>
-#include <string>
-#include <iostream>
-#include <regex>
-
 using namespace std;
 
-void RareMetalScores::load(const string &file) {
-  ifstream input_file(file);
+void RareMetalScores::load(const string &path) {
+  unique_ptr<istream> file;
+  ifstream fs(path, ios_base::in | ios_base::binary);
+  boost::iostreams::filtering_streambuf<boost::iostreams::input> inbuf;
+
+  bool is_gz = path.find(".gz") != string::npos;
+  if (is_gz) {
+    inbuf.push(boost::iostreams::gzip_decompressor());
+    inbuf.push(fs);
+    file = make_unique<istream>(&inbuf);
+  }
+  else {
+    file = make_unique<ifstream>(path);
+  }
+
   string line;
   auto line_separator = regex("[ \t]");
 
@@ -19,7 +27,7 @@ void RareMetalScores::load(const string &file) {
 
   bool header_done = false;
   bool parse_trait = false;
-  while (getline(input_file, line)) {
+  while (getline(*file, line)) {
     smatch match;
     if (!header_done) {
       if (regex_search(line, match, regex_samples) && match.size() > 1) {
