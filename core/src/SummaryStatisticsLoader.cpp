@@ -232,7 +232,11 @@ void SummaryStatisticsLoader::load_scores(const string& chromosome, uint64_t sta
     result.score_stat = stod(tokens.at(cols.colU));
     result.pvalue = stod(tokens.at(cols.colPvalue));
     result.alt_freq = stod(tokens.at(cols.colAltFreq));
+    string ref = tokens.at(cols.colRef);
+    string alt = tokens.at(cols.colAlt);
+    result.variant = result.chrom + ":" + to_string(result.position) + "_" + ref + "/" + alt;
     alt_freq[result.position] = result.alt_freq;
+    pos_variant[result.position] = result.variant;
 
     // Store to ScoreStatQueryResult object
     score_result->data.emplace_back(result);
