@@ -645,11 +645,13 @@ This section is for pre-calculated meta-analysis summary statistics, usually gen
 
 For example, in rvtests: https://github.com/zhanxw/rvtests#meta-analysis-models
 
+The score statistic (`score_path`) and covariance matrix (`cov_path`) files must both be tabix indexed. RAREMETALWORKER or rvtest should do this automatically for you (there will be a `.tbi` tabix index file created for each score/cov file.)
+
+###### Add all records in YAML
+
 The YAML file may have genotype, phenotype, mask, and summary-stats blocks specified in any order, however there may only be 1 block for each type.
 
 Additionally, genotypes will always be processed first, followed by phenotypes, and finally mask files. This is because the latter two are dependent on having at least 1 genotype dataset available.
-
-Summary statistics are
 
 To add the datasets specified by the YAML file:
 
