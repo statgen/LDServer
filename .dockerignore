@@ -1,5 +1,10 @@
 cget
 venv
+venv-testing
 .git
 private
+build-release
+build-debug
+cmake-build-debug
+cmake-build-release
 docker-compose.override.yml
