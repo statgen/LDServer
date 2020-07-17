@@ -73,4 +73,12 @@ install(FILES
         ../../data/mask.epacts.chr22.gencode-exons-AF05.tab.gz.tbi
         ../../data/chr21.test.RAND_QT.singlevar.cov.txt
         ../../data/chr21.test.RAND_QT.singlevar.score.txt
+        ../../data/test_sumstat_loader_rm.scores.assoc.gz.tbi
+        ../../data/test_sumstat_loader_rm.scores.assoc.gz
+        ../../data/test_sumstat_loader_rm.cov.assoc.gz.tbi
+        ../../data/test_sumstat_loader_rm.cov.assoc.gz
+        ../../data/test.smallchunk.MetaScore.assoc.gz.tbi
+        ../../data/test.smallchunk.MetaScore.assoc.gz
+        ../../data/test.smallchunk.MetaCov.assoc.gz.tbi
+        ../../data/test.smallchunk.MetaCov.assoc.gz
         DESTINATION test)
