@@ -289,8 +289,8 @@ def get_covariance():
 
   config.masks = mask_vec
 
-  runner = ScoreCovarianceRunner(config)
   try:
+    runner = ScoreCovarianceRunner(config)
     runner.run()
   except RuntimeError as e:
     if str(e).startswith("Error reading line"):
