@@ -101,11 +101,13 @@ summary_stats:
 - id: 1
   name: "RAREMETAL scorecov test"
   description: "RAREMETAL summary statistics for a small test region"
+  genome_build: "GRCh37"
   score_path: "data/test_sumstat_loader_rm.scores.assoc.gz"
   cov_path: "data/test_sumstat_loader_rm.cov.assoc.gz"
 
 - id: 2
   name: "rvtests scorecov test"
   description: "rvtests summary statistics for a small test region"
+  genome_build: "GRCh37"
   score_path: "data/test.smallchunk.MetaScore.assoc.gz"
   cov_path: "data/test.smallchunk.MetaCov.assoc.gz"

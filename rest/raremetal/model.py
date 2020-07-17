@@ -124,6 +124,7 @@ class SummaryStatDataset(db.Model):
   description = db.Column(db.String, unique = False, nullable = False)
   score_path = db.Column(db.String, unique = False, nullable = False)
   cov_path = db.Column(db.String, unique = False, nullable = False)
+  genome_build = db.Column(db.String(), unique = False, nullable = False)
 
 Index('genotype_dataset_index_1', GenotypeDataset.genome_build)
 Index('file_index', File.genotype_dataset_id, File.path)
@@ -643,7 +644,7 @@ def add_phenotype_dataset(name, description, filepath, genotype_datasets, column
   db.session.add(pheno)
   db.session.commit()
 
-def add_summary_stat_dataset(name, description, score_path, cov_path, ssid=None):
+def add_summary_stat_dataset(name, description, genome_build, score_path, cov_path, ssid=None):
   db.create_all()
 
   args = {
@@ -651,6 +652,7 @@ def add_summary_stat_dataset(name, description, score_path, cov_path, ssid=None)
     "description": description,
     "score_path": score_path,
     "cov_path": cov_path,
+    "genome_build": genome_build
   }
 
   if ssid is not None:
@@ -824,7 +826,7 @@ def add_from_yaml(filepath):
 
   if "summary_stats" in data:
     for record in data["summary_stats"]:
-      add_summary_stat_dataset(record["name"], record["description"], record["score_path"], record["cov_path"], record.get("id"))
+      add_summary_stat_dataset(record["name"], record["description"], record["genome_build"], record["score_path"], record["cov_path"], record.get("id"))
 
 @click.command("add-yaml")
 @click.argument("yaml_path", type=click.Path(exists=True))

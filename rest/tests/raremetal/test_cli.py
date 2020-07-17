@@ -42,6 +42,7 @@ def test_add_yaml(app, db):
 
     ssdata = get_summary_stat_dataset(1)
     assert ssdata["name"] == "RAREMETAL scorecov test"
+    assert ssdata["genome_build"] == "GRCh37"
 
 def test_tab_incorrect_float(app, db):
   with app.app_context():
