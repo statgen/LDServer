@@ -1,5 +1,5 @@
 from raremetal.model import add_yaml_command, get_genotype_dataset, get_phenotype_dataset, \
-                            get_phenotype_column_objects, get_mask_by_id, get_analysis_columns
+                            get_phenotype_column_objects, get_mask_by_id, get_analysis_columns, get_summary_stat_dataset
 from core.pywrapper import VariantGroupType, GroupIdentifierType
 import traceback
 
@@ -39,6 +39,9 @@ def test_add_yaml(app, db):
 
     analysis_cols = get_analysis_columns(1)
     assert len(analysis_cols) == 2
+
+    ssdata = get_summary_stat_dataset(1)
+    assert ssdata["name"] == "RAREMETAL scorecov test"
 
 def test_tab_incorrect_float(app, db):
   with app.app_context():

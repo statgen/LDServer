@@ -117,6 +117,13 @@ class Mask(db.Model):
 
   genotypes = db.relationship("GenotypeDataset", secondary="genotype_mask", back_populates="masks")
 
+class SummaryStatDataset(db.Model):
+  __tablename__ = "summary_stat_datasets"
+  id = db.Column(db.Integer, primary_key = True)
+  name = db.Column(db.String, unique = False, nullable = False)
+  description = db.Column(db.String, unique = False, nullable = False)
+  score_path = db.Column(db.String, unique = False, nullable = False)
+  cov_path = db.Column(db.String, unique = False, nullable = False)
 
 Index('genotype_dataset_index_1', GenotypeDataset.genome_build)
 Index('file_index', File.genotype_dataset_id, File.path)
@@ -162,6 +169,13 @@ def get_phenotype_dataset(phenotype_dataset_id):
 
   return None
 
+def get_summary_stat_dataset(summary_stat_dataset_id):
+  summary_stat_dataset = SummaryStatDataset.query.filter_by(id = summary_stat_dataset_id).first()
+  if summary_stat_dataset is not None:
+    return {c.key: getattr(summary_stat_dataset, c.key) for c in inspect(summary_stat_dataset).mapper.column_attrs}
+
+  return None
+
 def get_full_genotype_datasets():
   datasets = []
   for row in db.session.query(GenotypeDataset).all():
@@ -179,6 +193,9 @@ def has_genotype_dataset(genotype_dataset_id):
 
 def has_phenotype_dataset(phenotype_dataset_id):
   return db.session.query(PhenotypeDataset.id).filter_by(id = phenotype_dataset_id).first() is not None
+
+def has_summary_stat_dataset(summary_stat_dataset_id):
+  return db.session.query(SummaryStatDataset.id).filter_by(id = summary_stat_dataset_id).first() is not None
 
 def has_phenotype(phenotype_dataset_id, phenotype):
   return db.session.query(PhenotypeColumn).filter_by(phenotype_dataset_id=phenotype_dataset_id, column_name=phenotype).scalar()
@@ -626,6 +643,23 @@ def add_phenotype_dataset(name, description, filepath, genotype_datasets, column
   db.session.add(pheno)
   db.session.commit()
 
+def add_summary_stat_dataset(name, description, score_path, cov_path, ssid=None):
+  db.create_all()
+
+  args = {
+    "name": name,
+    "description": description,
+    "score_path": score_path,
+    "cov_path": cov_path,
+  }
+
+  if ssid is not None:
+    args["id"] = ssid
+
+  sumstat = SummaryStatDataset(**args)
+
+  db.session.add(sumstat)
+  db.session.commit()
 
 def add_masks(name, description, filepath, genome_build, genotype_datasets, group_type, identifier_type, mid=None):
   args = locals()
@@ -746,6 +780,8 @@ def add_from_yaml(filepath):
       id_lookup = has_phenotype_dataset
     elif block_type == "masks":
       id_lookup = has_mask
+    elif block_type == "summary_stats":
+      id_lookup = has_summary_stat_dataset
     else:
       raise ValueError("Unrecognized block in yaml file: " + block_type)
 
@@ -785,6 +821,10 @@ def add_from_yaml(filepath):
   if "masks" in data:
     for record in data["masks"]:
       add_masks(record["name"], record["description"], record["filepath"], record["genome_build"], record["genotypes"], record["group_type"], record["identifier_type"], record.get("id"))
+
+  if "summary_stats" in data:
+    for record in data["summary_stats"]:
+      add_summary_stat_dataset(record["name"], record["description"], record["score_path"], record["cov_path"], record.get("id"))
 
 @click.command("add-yaml")
 @click.argument("yaml_path", type=click.Path(exists=True))
