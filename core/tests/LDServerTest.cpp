@@ -15,6 +15,7 @@
 #include "../src/LDServer.h"
 #include "../src/ScoreServer.h"
 #include "RareMetal.h"
+#include "RvTest.h"
 #include "../src/Phenotypes.h"
 #include "../src/Mask.h"
 #include "../src/ScoreCovarianceRunner.h"
@@ -137,6 +138,10 @@ protected:
       return make_shared<RareMetalScores>(file);
     }
 
+    auto load_rvtest_scores(const string &file) {
+      return make_shared<RvTestScores>(file);
+    }
+
     void load_raremetal_covariance(const string &path, map<string, double> &values) {
         unique_ptr<istream> file;
         boost::iostreams::filtering_streambuf<boost::iostreams::input> inbuf;
@@ -202,6 +207,77 @@ protected:
             cov.clear();
         }
     }
+
+  void load_rvtest_covariance(const string &path, map<string, double> &values) {
+    unique_ptr<istream> file;
+    boost::iostreams::filtering_streambuf<boost::iostreams::input> inbuf;
+    ifstream fs(path, ios_base::in | ios_base::binary);
+
+    bool is_gz = path.find(".gz") != string::npos;
+    string line;
+    if (is_gz) {
+      inbuf.push(boost::iostreams::gzip_decompressor());
+      inbuf.push(fs);
+      file = make_unique<istream>(&inbuf);
+    }
+    else {
+      file = make_unique<ifstream>(path);
+    }
+
+    vector<string> tokens;
+    vector<uint64_t> positions;
+    vector<double> cov;
+    auto line_separator = regex("[ \t]");
+    auto field_separator = regex(",");
+    string comment = "#";
+    auto regex_header = regex("CHROM\tSTART_POS.*");
+
+    getline(*file, line); // skip header;
+    while (getline(*file, line)) {
+      smatch match;
+      if (std::equal(comment.begin(), comment.end(), line.begin())) {
+        continue;
+      }
+      else if (regex_search(line, match, regex_header)) {
+        continue;
+      }
+
+      // Split line and insert into tokens
+      copy(sregex_token_iterator(line.begin(), line.end(), line_separator, -1), sregex_token_iterator(), back_inserter(tokens));
+
+      string chrom(tokens.at(0));
+      string ref_pos(tokens.at(1));
+
+      // Load the positions on this row
+      transform(
+        sregex_token_iterator(tokens.at(4).begin(), tokens.at(4).end(), field_separator, -1),
+        sregex_token_iterator(),
+        back_inserter(positions),
+        [](const string &str) { return stoi(str); }
+      );
+
+      // Load the covariance values on this row
+      transform(
+        sregex_token_iterator(tokens.at(5).begin(), tokens.at(5).end(), field_separator, -1),
+        sregex_token_iterator(),
+        back_inserter(cov),
+        [](const string &str) { return stod(str); }
+      );
+
+      // Store values to map
+      string pair_key;
+      double pair_cov;
+      for (int index = 0; index < positions.size(); index++) {
+        pair_key = ref_pos + "_" + to_string(positions[index]);
+        pair_cov = cov[index];
+        values.emplace(pair_key, pair_cov);
+      }
+
+      tokens.clear();
+      positions.clear();
+      cov.clear();
+    }
+  }
 
     void load_samples(const string &file, vector<string>& samples) {
         ifstream input_file(file);
@@ -343,12 +419,12 @@ TEST_F(LDServerTest, summary_stat_load_raremetal_test) {
 TEST_F(LDServerTest, summary_stat_load_rvtest_test) {
   // Load from disk using our new summary stat loader
   SummaryStatisticsLoader loader("test.smallchunk.MetaScore.assoc.gz", "test.smallchunk.MetaCov.assoc.gz");
+  loader.load_region("1", 2, 307);
 
   // Use our testing methods to load the same data for later comparison
   map<string, double> gold_cov;
-  // TODO: need to write parsing functions for rvtest scores/cov for testing
-  this->load_raremetal_covariance("test.smallchunk.MetaCov.assoc.gz", gold_cov);
-  auto gold_scores = load_raremetal_scores("test.smallchunk.MetaScore.assoc.gz");
+  this->load_rvtest_covariance("test.smallchunk.MetaCov.assoc.gz", gold_cov);
+  auto gold_scores = load_rvtest_scores("test.smallchunk.MetaScore.assoc.gz");
 
   // Check covariance
   auto cov_result = loader.getCovResult();
