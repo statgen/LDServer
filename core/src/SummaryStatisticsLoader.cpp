@@ -100,6 +100,10 @@ void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start,
     throw std::range_error("Chromosome " + chromosome + " not found within covariance matrix file");
   }
 
+  if (alt_freq.empty()) {
+    throw std::runtime_error("No alt allele frequencies available when parsing cov matrix file - did you load the scores first?");
+  }
+
   string line;
   vector<string> tokens;
 
