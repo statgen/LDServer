@@ -47,7 +47,7 @@ double SummaryStatisticsLoader::getAltFreqForPosition(uint64_t& pos) {
     return alt_freq.at(pos);
   }
   catch (std::out_of_range& e) {
-    throw ScoreCovParseException("Position " + to_string(pos) + "did not have alt allele frequency when loading scores/covariance matrix");
+    throw ScoreCovParseException("Position " + to_string(pos) + " did not have alt allele frequency when loading scores/covariance matrix");
   }
 }
 
@@ -56,7 +56,7 @@ string SummaryStatisticsLoader::getVariantForPosition(uint64_t& pos) {
     return pos_variant.at(pos);
   }
   catch (std::out_of_range& e) {
-    throw ScoreCovParseException("Position " + to_string(pos) + "does not have a known variant when loading scores/covariance matrix");
+    throw ScoreCovParseException("Position " + to_string(pos) + " does not have a known variant when loading scores/covariance matrix");
   }
 }
 
