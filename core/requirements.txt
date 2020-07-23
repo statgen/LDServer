@@ -5,4 +5,4 @@ gtest,https://github.com/google/googletest/archive/release-1.8.0.tar.gz
 redis,http://download.redis.io/releases/redis-5.0-rc4.tar.gz --cmake redis.cmake
 hiredis,https://github.com/redis/hiredis/archive/v0.13.3.tar.gz --cmake hiredis.cmake
 cereal,https://github.com/USCiLab/cereal/archive/v1.2.2.tar.gz --cmake header
-welchr/tabixpp@92c583065c2985ac07a3b5f5ce81dc8f82d5bc89 --cmake tabixpp.cmake
+welchr/tabixpp@65be7dd96bb461325adf3a531594dafca9059151 --cmake tabixpp.cmake
