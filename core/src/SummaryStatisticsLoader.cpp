@@ -146,6 +146,11 @@ void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start,
     // always position 3 in combination with the remaining positions.
     uint64_t row_pos = positions[0];
 
+    if ((row_pos < start) || (row_pos > stop)) {
+      // This whole row stores covariances with a position we aren't interested in, so we can skip it.
+      continue;
+    }
+
     // Load the covariance values on this row
     // Note: rvtest will put 3 elements within the covariance column if a binary trait was used
     // The first element is essentially G.T * G
