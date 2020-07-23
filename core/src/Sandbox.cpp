@@ -358,8 +358,66 @@ void perf_sav_55k() {
 //  ASSERT_NEAR(doc["data"]["groups"][0]["covariance"][0].GetDouble(), 0.39843530436, 0.0001);
 }
 
+void mask_segfault() {
+  string mask_path = "/Users/welchr/projects/LDServer/rest/raremetal/../../data/test.smallchunk.mask.epacts.tab";
+  auto itype = GroupIdentifierType::ENSEMBL;
+  auto gtype = VariantGroupType::GENE;
+  Mask mask(
+    mask_path,
+    3,
+    gtype,
+    itype,
+    "1",
+    2,
+    307
+  );
+}
+
+void sumstats() {
+//  SummaryStatisticsLoader loader(
+//    "../../../data/test.smallchunk.MetaScore.assoc.gz",
+//    "../../../data/test.smallchunk.MetaCov.assoc.gz"
+//  );
+//  loader.load_region("1", 2, 9);
+
+  string chrom = "1";
+  auto start = 2ul;
+  auto stop = 307ul;
+
+  uint64_t mask_id = 3;
+  Mask mask("../../../data/test.smallchunk.mask.epacts.tab.gz", mask_id, VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, chrom, start, stop);
+  vector<Mask> masks;
+  masks.emplace_back(mask);
+
+  auto config = make_score_covariance_config();
+  config->chrom = chrom;
+  config->start = start;
+  config->stop = stop;
+  config->segment_size = 10;
+  config->masks = masks;
+  config->summary_stat_dataset_id = 1;
+  config->summary_stat_score_file = "../../../data/test.smallchunk.MetaScore.assoc.gz";
+  config->summary_stat_cov_file = "../../../data/test.smallchunk.MetaCov.assoc.gz";
+
+  // Run score/covariance calculations
+  ScoreCovarianceRunner runner(config);
+  runner.run();
+  auto json = runner.getJSON();
+  rapidjson::Document doc;
+  doc.Parse(json.c_str());
+  auto& data = doc["data"];
+  auto& groups = doc["data"]["groups"];
+  auto& variants = doc["data"]["variants"];
+  auto& group1 = doc["data"]["groups"][0];
+  auto& group2 = doc["data"]["groups"][1];
+  auto& group1_variant1 = doc["data"]["groups"][0]["variants"][0];
+  auto& group2_variant1 = doc["data"]["groups"][1]["variants"][0];
+  cout << "DONE!" << endl;
+}
+
 int main() {
-  perf_sav_55k();
+  //perf_sav_55k();
+  sumstats();
   //test3();
   return 0;
 }
