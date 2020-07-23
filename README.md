@@ -56,6 +56,7 @@ This project contains multiple components that work together to provide these fe
           - [Phenotype records](#phenotype-records)
           - [Mask records](#mask-records)
           - [Summary statistic records](#summary-statistic-records)
+          - [Add all records in YAML](#add-all-records-in-yaml)
         - [CLI: Quickly add data for testing purposes](#cli-quickly-add-data-for-testing-purposes)
           - [Adding genotype datasets](#adding-genotype-datasets)
           - [Adding phenotype datasets](#adding-phenotype-datasets)
@@ -623,9 +624,20 @@ Each record under `masks` looks like:
   description: <long description of mask>
   filepath: "data/mask.epacts.chr22.gencode-exons-AF01.tab.gz"
   genome_build: <genome build, e.g. GRCh37>
-  genotypes: <genotype dataset ID containing the variants specified in this mask>
+  genotypes: <genotype dataset IDs containing the variants specified in this mask>
+  summary_stats: <summary stat dataset IDs>
   group_type: <group type, can be "GENE" or "REGION">
   identifier_type: <identifier type, currently only "ENSEMBL" supported>
+```
+
+A mask can be linked to any number of genotype datasets, or summary statistic datasets. For example:
+
+```YAML
+- id: 1
+  name: "All possible protein truncating variants in the genome"
+  genotypes: [1, 2, 3]
+  summary_stats: [1, 4, 7]
+  ...
 ```
 
 ###### Summary statistic records

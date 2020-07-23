@@ -131,12 +131,10 @@ For now, a description of the variant filtering and grouping criteria will proba
           ]
         }
       ],
-      "summaryStatisticDatasets": [
-        {
-          "summaryStatisticDataset": 1,
-          "description": "TOPMed 70K Exomes - T2D"
-        }
-      ]
+    },
+    {
+      "summaryStatisticDataset": 1,
+      "description": "TOPMed 70K Exomes - T2D"
     }
   ]
 }
