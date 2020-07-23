@@ -97,6 +97,15 @@ masks:
   group_type: "GENE"
   identifier_type: "ENSEMBL"
 
+- id: 3
+  name: "Simulated genes for rvtests scorecov test"
+  description: "A couple of simulated genes with a known burden effect"
+  filepath: "data/test.smallchunk.mask.epacts.tab.gz"
+  genome_build: "GRCh37"
+  summary_stats: 2
+  group_type: "GENE"
+  identifier_type: "ENSEMBL"
+
 summary_stats:
 - id: 1
   name: "RAREMETAL scorecov test"
