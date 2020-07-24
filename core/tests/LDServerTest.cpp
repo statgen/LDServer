@@ -414,6 +414,8 @@ TEST_F(LDServerTest, summary_stat_load_raremetal_test) {
     ASSERT_NEAR(gold->u_stat, score_res.score_stat, 0.001);
     ASSERT_NEAR(gold->pvalue, score_res.pvalue, 0.001);
   }
+  ASSERT_TRUE(loader.getSigma2() > 0);
+  ASSERT_TRUE(loader.getNumSamples() > 0);
 }
 
 TEST_F(LDServerTest, summary_stat_load_rvtest_test) {
@@ -446,6 +448,8 @@ TEST_F(LDServerTest, summary_stat_load_rvtest_test) {
     ASSERT_NEAR(gold->u_stat, score_res.score_stat, 0.001);
     ASSERT_NEAR(gold->pvalue, score_res.pvalue, 0.001);
   }
+  ASSERT_TRUE(loader.getSigma2() > 0);
+  ASSERT_TRUE(loader.getNumSamples() > 0);
 }
 
 TEST_F(LDServerTest, simple_cov_test) {
