@@ -6,6 +6,7 @@ SummaryStatisticsLoader::SummaryStatisticsLoader(const string& score_path, const
   this->cov_path = cov_path;
   this->score_result = make_shared<ScoreStatQueryResult>(INIT_QUERY_LIMIT);
   this->cov_result = make_shared<LDQueryResult>(INIT_QUERY_LIMIT);
+  this->parseHeader(score_path);
 }
 
 uint64_t SummaryStatisticsLoader::getNumberOfVariantsFromCovFile(const string& filepath, const string& region) {
@@ -60,14 +61,18 @@ string SummaryStatisticsLoader::getVariantForPosition(uint64_t& pos) {
   }
 }
 
-ScoreCovFormat SummaryStatisticsLoader::detectFormat(const std::string& filepath) {
+void SummaryStatisticsLoader::parseHeader(const std::string& filepath) {
   Tabix tbfile(const_cast<string&>(filepath));
   string header;
   tbfile.getHeader(header);
 
+  /**
+   * Parse program name from score file.
+   */
   auto regex_prog_name = regex("##ProgramName=(\\w+)");
   smatch match;
   string format;
+
   if (regex_search(header, match, regex_prog_name) && match.size() > 1) {
     format = match.str(1);
   }
@@ -76,15 +81,49 @@ ScoreCovFormat SummaryStatisticsLoader::detectFormat(const std::string& filepath
   }
 
   if (format == "Rvtests") {
-    return ScoreCovFormat::RVTEST;
+    detected_format = ScoreCovFormat::RVTEST;
   }
   else if (format == "RareMetalWorker") {
-    return ScoreCovFormat::RAREMETAL;
+    detected_format = ScoreCovFormat::RAREMETAL;
   }
   else {
     throw runtime_error(
       boost::str(boost::format("Invalid program name (%s) found in header of %s") % format % filepath)
     );
+  }
+
+  /**
+   * Parse sigma2 from score file.
+   */
+  if (detected_format == ScoreCovFormat::RVTEST) {
+    auto regex_sigma = regex("## - Sigma2\t([0-9\\.]+)");
+    if (regex_search(header, match, regex_sigma) && !match.empty()) {
+      sigma2 = stod(match.str(1));
+    }
+    else {
+      throw runtime_error("Could not parse sigma2 from score file: " + filepath);
+    }
+  }
+  else {
+    auto regex_sigma = regex("##Sigma_e2_Hat\t(.+)");
+    if (regex_search(header, match, regex_sigma) && !match.empty()) {
+      sigma2 = stod(match.str(1));
+    }
+    else {
+      throw runtime_error("Could not parse sigma2 from score file: " + filepath);
+    }
+  }
+
+  /**
+   * Parse # of samples from score file.
+   * In both rvtest and raremetalworker files, this field is exactly the same.
+   */
+  auto regex_samples = regex("##AnalyzedSamples=(\\d+)");
+  if (regex_search(header, match, regex_samples) && !match.empty()) {
+    nsamples = stoul(match.str(1));
+  }
+  else {
+    throw runtime_error("Could not parse sigma2 from score file: " + filepath);
   }
 }
 
@@ -92,7 +131,6 @@ void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start,
   cov_result->erase();
 
   Tabix tbfile(const_cast<string&>(cov_path));
-  ScoreCovFormat format = SummaryStatisticsLoader::detectFormat(cov_path);
   string region = chromosome + ":" + to_string(start) + "-" + to_string(stop);
 
   bool has_chrom = find(tbfile.chroms.begin(), tbfile.chroms.end(), chromosome) != tbfile.chroms.end();
@@ -112,10 +150,10 @@ void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start,
   }
 
   CovarianceColumns cols;
-  if (format == ScoreCovFormat::RVTEST) {
+  if (detected_format == ScoreCovFormat::RVTEST) {
     cols = COV_COLUMNS_RVTEST;
   }
-  else if (format == ScoreCovFormat::RAREMETAL) {
+  else if (detected_format == ScoreCovFormat::RAREMETAL) {
     cols = COV_COLUMNS_RAREMETAL;
   }
 
@@ -202,11 +240,16 @@ void SummaryStatisticsLoader::load_scores(const string& chromosome, uint64_t sta
   score_result->erase();
   alt_freq.clear();
 
+  // These values are valid for the lifetime of this object, since it only exists for 1 score file and 1 cov file.
+  // However, when we create a new score result for a particular region (chrom/start/stop), the erase() clears
+  // these values, so they need to be restored.
+  score_result->sigma2 = sigma2;
+  score_result->nsamples = nsamples;
+
   if (start <= 0) { throw std::invalid_argument("Score statistic starting position was < 0"); }
   if (stop  <= 0) { throw std::invalid_argument("Score statistic stop position was < 0"); }
 
   Tabix tbfile(const_cast<string&>(score_path));
-  ScoreCovFormat format = SummaryStatisticsLoader::detectFormat(score_path);
   string region = chromosome + ":" + to_string(start) + "-" + to_string(stop);
 
   bool has_chrom = find(tbfile.chroms.begin(), tbfile.chroms.end(), chromosome) != tbfile.chroms.end();
@@ -222,10 +265,10 @@ void SummaryStatisticsLoader::load_scores(const string& chromosome, uint64_t sta
   }
 
   ScoreColumns cols;
-  if (format == ScoreCovFormat::RVTEST) {
+  if (detected_format == ScoreCovFormat::RVTEST) {
     cols = SCORE_COLUMNS_RVTEST;
   }
-  else if (format == ScoreCovFormat::RAREMETAL) {
+  else if (detected_format == ScoreCovFormat::RAREMETAL) {
     cols = SCORE_COLUMNS_RAREMETAL;
   }
 

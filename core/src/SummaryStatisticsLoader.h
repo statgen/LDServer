@@ -50,7 +50,11 @@ protected:
   shared_ptr<LDQueryResult> cov_result;
   shared_ptr<ScoreStatQueryResult> score_result;
 
-  static ScoreCovFormat detectFormat(const std::string& filepath);
+  ScoreCovFormat detected_format;
+  double sigma2;
+  uint64_t nsamples;
+
+  void parseHeader(const std::string& filepath);
   static uint64_t getNumberOfVariantsFromCovFile(const std::string& filepath, const std::string& region);
 
   double getAltFreqForPosition(uint64_t& pos);
@@ -63,6 +67,8 @@ public:
   void load_region(const std::string& chromosome, uint64_t start, uint64_t stop);
   shared_ptr<LDQueryResult> getCovResult();
   shared_ptr<ScoreStatQueryResult> getScoreResult();
+  double getSigma2() { return sigma2; }
+  uint64_t getNumSamples() { return nsamples; }
 };
 
 #endif //LDSERVER_SUMMARYSTATISTICSLOADER_H
