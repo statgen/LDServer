@@ -141,10 +141,11 @@ def get_covariance():
     'chrom': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'start': fields.Int(required=True, validate=lambda x: x >= 0, error_messages={'validator_failed': 'Value must be greater than or equal to 0.'}),
     'stop': fields.Int(required=True, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be greater than 0.'}),
-    'genotypeDataset': fields.Int(required=True, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
-    'phenotypeDataset': fields.Int(required=True, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
-    'phenotype': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
-    'samples': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'genotypeDataset': fields.Int(required=False, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'phenotypeDataset': fields.Int(required=False, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'summaryStatDataset': fields.Int(required=False, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'phenotype': fields.Str(required=False, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'samples': fields.Str(required=False, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'masks': fields.DelimitedList(fields.Int(), validate=lambda x: len(x) > 0, error_messages={'validator_failed': "Must provide at least 1 mask ID"}),
     'maskDefinitions': fields.Nested(MaskSchema, many=True),
     'genomeBuild': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
@@ -168,55 +169,67 @@ def get_covariance():
   start = args["start"]
   stop = args["stop"]
   build = args["genomeBuild"]
-  genotype_dataset_id = args["genotypeDataset"]
-  phenotype_dataset_id = args["phenotypeDataset"]
-  sample_subset = str(args["samples"])
-  phenotype = str(args["phenotype"])
+  genotype_dataset_id = args.get("genotypeDataset")
+  phenotype_dataset_id = args.get("phenotypeDataset")
+  summary_stat_dataset_id = args.get("summaryStatDataset")
+  sample_subset = str(args.get("samples"))
+  phenotype = str(args.get("phenotype"))
   masks = args.get("masks")
   mask_definitions = args.get("maskDefinitions")
 
   config.chrom = chrom
   config.start = start
   config.stop = stop
-  config.sample_subset = str(args["samples"])
-
-  if not model.has_genome_build(build):
-    raise FlaskException('Genome build \'{}\' was not found.'.format(build), 400)
-
-  if not model.has_genotype_dataset(genotype_dataset_id):
-    raise FlaskException('No genotype dataset \'{}\' available for genome build {}.'.format(genotype_dataset_id, build), 400)
-
-  if not model.has_phenotype_dataset(phenotype_dataset_id):
-    raise FlaskException('No phenotype dataset \'{}\' available for genome build {}.'.format(phenotype_dataset_id, build), 400)
-
-  if not model.has_samples(genotype_dataset_id, sample_subset):
-    raise FlaskException('Sample subset \'{}\' was not found in genotype dataset {}.'.format(sample_subset, genotype_dataset_id), 400)
-
-  if not model.has_phenotype(phenotype_dataset_id, phenotype):
-    raise FlaskException("Phenotype '{}' does not exist in phenotype dataset {}".format(phenotype, phenotype_dataset_id), 400)
+  config.sample_subset = str(args.get("samples"))
 
   if (stop - start) > current_app.config["API_MAX_REGION_SIZE"]:
     raise FlaskException("Region requested for analysis exceeds maximum width of {}".format(current_app.config["API_MAX_REGION_SIZE"]), 400)
 
-  genotype_files = StringVec()
-  genotype_files.extend([model.find_file(x) for x in model.get_files(genotype_dataset_id)])
-  config.genotype_files = genotype_files
-  config.genotype_dataset_id = genotype_dataset_id
+  if genotype_dataset_id or phenotype_dataset_id:
+    if not (genotype_dataset_id and phenotype_dataset_id and phenotype):
+      raise FlaskException("Must specify genotype dataset ID, phenotype dataset ID, and phenotype together")
 
-  if sample_subset != 'ALL':
-    s = StringVec()
-    s.extend(model.get_samples(genotype_dataset_id, sample_subset))
-    config.samples = s
+  if genotype_dataset_id and phenotype_dataset_id:
+    if not model.has_genome_build(build):
+      raise FlaskException('Genome build \'{}\' was not found.'.format(build), 400)
 
-  config.phenotype_file = model.find_file(model.get_phenotype_file(phenotype_dataset_id))
-  config.phenotype_column_types = model.get_column_types(phenotype_dataset_id)
-  config.phenotype_nrows = model.get_phenotype_nrows(phenotype_dataset_id)
-  config.phenotype_sample_column = str(model.get_phenotype_sample_column(phenotype_dataset_id))
-  config.phenotype_delim = str(model.get_phenotype_delim(phenotype_dataset_id))
-  config.phenotype_dataset_id = phenotype_dataset_id
-  config.phenotype = phenotype
-  analysis_cols = model.get_analysis_columns(phenotype_dataset_id)
-  config.phenotype_analysis_columns = makeStringVec(analysis_cols)
+    if not model.has_genotype_dataset(genotype_dataset_id):
+      raise FlaskException('No genotype dataset \'{}\' available for genome build {}.'.format(genotype_dataset_id, build), 400)
+
+    if not model.has_phenotype_dataset(phenotype_dataset_id):
+      raise FlaskException('No phenotype dataset \'{}\' available for genome build {}.'.format(phenotype_dataset_id, build), 400)
+
+    if not model.has_samples(genotype_dataset_id, sample_subset):
+      raise FlaskException('Sample subset \'{}\' was not found in genotype dataset {}.'.format(sample_subset, genotype_dataset_id), 400)
+
+    if not model.has_phenotype(phenotype_dataset_id, phenotype):
+      raise FlaskException("Phenotype '{}' does not exist in phenotype dataset {}".format(phenotype, phenotype_dataset_id), 400)
+
+    genotype_files = StringVec()
+    genotype_files.extend([model.find_file(x) for x in model.get_files(genotype_dataset_id)])
+    config.genotype_files = genotype_files
+    config.genotype_dataset_id = genotype_dataset_id
+
+    if sample_subset != 'ALL':
+      s = StringVec()
+      s.extend(model.get_samples(genotype_dataset_id, sample_subset))
+      config.samples = s
+
+    config.phenotype_file = model.find_file(model.get_phenotype_file(phenotype_dataset_id))
+    config.phenotype_column_types = model.get_column_types(phenotype_dataset_id)
+    config.phenotype_nrows = model.get_phenotype_nrows(phenotype_dataset_id)
+    config.phenotype_sample_column = str(model.get_phenotype_sample_column(phenotype_dataset_id))
+    config.phenotype_delim = str(model.get_phenotype_delim(phenotype_dataset_id))
+    config.phenotype_dataset_id = phenotype_dataset_id
+    config.phenotype = phenotype
+    analysis_cols = model.get_analysis_columns(phenotype_dataset_id)
+    config.phenotype_analysis_columns = makeStringVec(analysis_cols)
+
+  elif summary_stat_dataset_id:
+    config.summary_stat_dataset_id = summary_stat_dataset_id
+    score_file, cov_file =  (model.find_file(x) for x in model.get_scorecov_files(summary_stat_dataset_id))
+    config.summary_stat_score_file = str(score_file)
+    config.summary_stat_cov_file = str(cov_file)
 
   if current_app.config["CACHE_ENABLED"]:
     config.redis_hostname = current_app.config["CACHE_REDIS_HOSTNAME"]
@@ -240,8 +253,11 @@ def get_covariance():
       if mask["genome_build"] != build:
         raise FlaskException("Mask ID {} is invalid for genome build {}".format(mask_id, build), 400)
 
-      if genotype_dataset_id not in [g.id for g in mask["genotypes"]]:
+      if genotype_dataset_id and (genotype_dataset_id not in [g.id for g in mask["genotypes"]]):
         raise FlaskException("Mask ID {} is invalid for genotype dataset ID {}".format(mask_id, genotype_dataset_id), 400)
+
+      if summary_stat_dataset_id and (summary_stat_dataset_id not in [s.id for s in mask["sumstats"]]):
+        raise FlaskException("Mask ID {} is invalid for summary statistic dataset ID {}".format(mask_id, summary_stat_dataset_id), 400)
 
       try:
         tb = Mask(str(mask_path), mask_id, mask["group_type"], mask["identifier_type"], chrom, start, stop)
