@@ -162,6 +162,7 @@ void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start,
   auto separator_comma = regex(",");
   while (tbfile.getNextLine(line)) {
     // Split entire line
+    tokens.clear();
     copy(sregex_token_iterator(line.begin(), line.end(), separator_tab, -1), sregex_token_iterator(), back_inserter(tokens));
 
     string row_positions = tokens.at(cols.colPos);
@@ -231,8 +232,6 @@ void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start,
       // const string& chromosome2, uint64_t position2, double value):
       cov_result->data.emplace_back(row_variant, row_chrom, row_pos, variant, row_chrom, pos, v);
     }
-
-    tokens.clear();
   }
 }
 
