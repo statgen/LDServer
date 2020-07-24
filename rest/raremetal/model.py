@@ -105,6 +105,11 @@ genotype_mask = db.Table("genotype_mask",
   db.Column("mask_id", db.Integer, db.ForeignKey("masks.id"), primary_key = True)
 )
 
+sumstat_mask = db.Table("sumstat_mask",
+  db.Column("summary_stat_dataset_id", db.Integer, db.ForeignKey("summary_stat_datasets.id"), primary_key=True),
+  db.Column("mask_id", db.Integer, db.ForeignKey("masks.id"), primary_key=True)
+)
+
 class Mask(db.Model):
   __tablename__ = "masks"
   id = db.Column(db.Integer, primary_key = True)
@@ -116,6 +121,7 @@ class Mask(db.Model):
   identifier_type = db.Column(db.String, unique = False, nullable = False)
 
   genotypes = db.relationship("GenotypeDataset", secondary="genotype_mask", back_populates="masks")
+  sumstats = db.relationship("SummaryStatDataset", secondary="sumstat_mask", back_populates="masks")
 
 class SummaryStatDataset(db.Model):
   __tablename__ = "summary_stat_datasets"
@@ -125,6 +131,8 @@ class SummaryStatDataset(db.Model):
   score_path = db.Column(db.String, unique = False, nullable = False)
   cov_path = db.Column(db.String, unique = False, nullable = False)
   genome_build = db.Column(db.String(), unique = False, nullable = False)
+
+  masks = db.relationship("Mask", secondary="sumstat_mask", back_populates="sumstats")
 
 Index('genotype_dataset_index_1', GenotypeDataset.genome_build)
 Index('file_index', File.genotype_dataset_id, File.path)
@@ -315,6 +323,13 @@ def get_mask_by_name(mask_name, genotype_dataset_id):
   as_dict["group_type"] = VariantGroupType.names.get(result.group_type)
   as_dict["identifier_type"] = GroupIdentifierType.names.get(result.identifier_type)
   return as_dict
+
+def get_scorecov_files(summary_stat_id):
+  result = db.session.query(SummaryStatDataset).filter_by(id = summary_stat_id).scalar()
+  if result is None:
+    raise ValueError("No summary statistic dataset exists with ID {}".format(summary_stat_id))
+
+  return result.score_path, result.cov_path
 
 def load_correlations():
   db.create_all()
@@ -663,30 +678,50 @@ def add_summary_stat_dataset(name, description, genome_build, score_path, cov_pa
   db.session.add(sumstat)
   db.session.commit()
 
-def add_masks(name, description, filepath, genome_build, genotype_datasets, group_type, identifier_type, mid=None):
+def add_masks(name, description, filepath, genome_build, genotype_datasets, summary_stat_datasets, group_type, identifier_type, mid=None):
   args = locals()
   if mid is not None:
     args["id"] = mid
 
   if "mid" in args: del args["mid"]
   del args["genotype_datasets"]
+  del args["summary_stat_datasets"]
 
-  try:
-    genotype_datasets = [int(x) for x in genotype_datasets]
-  except TypeError as e:
-    if not "'int' object is not iterable" == str(e):
-      raise Exception("Unexpected exception when parsing genotype dataset ID for phenotype dataset {}".format(args["id"]))
+  if genotype_datasets:
+    try:
+      genotype_datasets = [int(x) for x in genotype_datasets]
+    except TypeError as e:
+      if not "'int' object is not iterable" == str(e):
+        raise Exception("Unexpected exception when parsing genotype dataset ID for mask {}".format(args["id"]))
 
-    genotype_datasets = [int(genotype_datasets)]
+      genotype_datasets = [int(genotype_datasets)]
+
+  if summary_stat_datasets:
+    try:
+      summary_stat_datasets = [int(x) for x in summary_stat_datasets]
+    except TypeError as e:
+      if not "'int' object is not iterable" == str(e):
+        raise Exception("Unexpected exception when parsing summary statistic dataset ID for mask {}".format(args["id"]))
+
+      summary_stat_datasets = [int(summary_stat_datasets)]
 
   mask = Mask(**args)
 
-  for gd in genotype_datasets:
-    genotype_dataset = GenotypeDataset.query.filter_by(id = gd).first()
-    if genotype_dataset is not None:
-      mask.genotypes.append(genotype_dataset)
-    else:
-      raise ValueError("Genotype dataset with ID {} does not exist".format(gd))
+  if genotype_datasets:
+    for gd in genotype_datasets:
+      genotype_dataset = GenotypeDataset.query.filter_by(id = gd).first()
+      if genotype_dataset is not None:
+        mask.genotypes.append(genotype_dataset)
+      else:
+        raise ValueError("Genotype dataset with ID {} does not exist".format(gd))
+
+  if summary_stat_datasets:
+    for ss in summary_stat_datasets:
+      summary_stat_dataset = SummaryStatDataset.query.filter_by(id = ss).first()
+      if summary_stat_dataset is not None:
+        mask.sumstats.append(summary_stat_dataset)
+      else:
+        raise ValueError("Summary statistics dataset with ID {} does not exist".format(ss))
 
   db.session.add(mask)
   db.session.commit()
@@ -820,13 +855,14 @@ def add_from_yaml(filepath):
     for record in data["phenotypes"]:
       add_phenotype_dataset(record["name"], record["description"], record["filepath"], record["genotypes"], record.get("columns"), record.get("delim"), record.get("id"))
 
-  if "masks" in data:
-    for record in data["masks"]:
-      add_masks(record["name"], record["description"], record["filepath"], record["genome_build"], record["genotypes"], record["group_type"], record["identifier_type"], record.get("id"))
-
   if "summary_stats" in data:
     for record in data["summary_stats"]:
       add_summary_stat_dataset(record["name"], record["description"], record["genome_build"], record["score_path"], record["cov_path"], record.get("id"))
+
+  if "masks" in data:
+    for record in data["masks"]:
+      add_masks(record["name"], record["description"], record["filepath"], record["genome_build"], record.get("genotypes"), record.get("summary_stats"), record["group_type"], record["identifier_type"], record.get("id"))
+
 
 @click.command("add-yaml")
 @click.argument("yaml_path", type=click.Path(exists=True))
