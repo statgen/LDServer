@@ -155,6 +155,41 @@ def test_covar(client):
         assert variant["pvalue"] <= 1
         assert "score" in variant
 
+def test_summary_stat(client):
+    resp = client.post("/aggregation/covariance", data = {
+        "chrom": "1",
+        "start": 2,
+        "stop": 307,
+        "summaryStatDataset": 2,
+        "genomeBuild": "GRCh37",
+        "masks": [3]
+    })
+
+    assert resp.status_code == 200
+    assert resp.is_json
+
+    score_variants = [x["variant"] for x in resp.json["data"]["variants"]]
+
+    assert "summaryStatDataset" in resp.json["data"]
+
+    for group in resp.json["data"]["groups"]:
+        n_variants = len(group["variants"])
+        n_covar = len(group["covariance"])
+        assert n_variants > 0
+        assert n_covar > 0
+        assert n_covar == (n_variants * (n_variants + 1) / 2)
+        assert isinstance(group["mask"], int)
+        assert "group" in group
+        assert "groupType" in group
+        assert group["groupType"] in ("REGION", "GENE")
+        assert all([v in score_variants for v in group["variants"]])
+
+    for variant in resp.json["data"]["variants"]:
+        assert variant["altFreq"] > 0
+        assert variant["pvalue"] > 0
+        assert variant["pvalue"] <= 1
+        assert "score" in variant
+
 def test_pheno_bad_float(client):
     resp = client.post("/aggregation/covariance", data = {
         "chrom": "22",
