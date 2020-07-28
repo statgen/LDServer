@@ -2,6 +2,8 @@ cget
 venv
 venv-testing
 .git
+.tox
+**/*.pyc
 private
 build-release
 build-debug
