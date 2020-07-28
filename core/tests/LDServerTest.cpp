@@ -452,6 +452,70 @@ TEST_F(LDServerTest, summary_stat_load_rvtest_test) {
   ASSERT_TRUE(loader.getNumSamples() > 0);
 }
 
+TEST_F(LDServerTest, summary_stat_ldserver_compare) {
+  // Summary stat loader
+  SummaryStatisticsLoader loader("chr21.test.RAND_QT.singlevar.score.txt.gz", "chr21.test.RAND_QT.singlevar.cov.txt.gz");
+  loader.load_region("21", 9411239, 9411793);
+
+  auto loader_scores = loader.getScoreResult();
+  auto loader_cov = loader.getCovResult();
+  auto loader_sigma2 = loader.getSigma2();
+  auto loader_samples = loader.getNumSamples();
+
+  // LD server
+  LDServer ld_server(100);
+  LDQueryResult ld_result(INITIAL_RESULT_SIZE);
+  ld_result.limit = MAX_UINT32;
+  ld_server.set_file("chr21.test.vcf.gz");
+
+  // Score server
+  ScoreServer score_server(100);
+  ScoreStatQueryResult score_result(INITIAL_RESULT_SIZE);
+  score_result.limit = MAX_UINT32;
+  score_server.set_genotypes_file("chr21.test.vcf.gz", 1);
+
+  ColumnTypeMap ctmap;
+  ctmap.add("iid", ColumnType::TEXT);
+  ctmap.add("sex", ColumnType::CATEGORICAL);
+  ctmap.add("rand_binary", ColumnType::CATEGORICAL);
+  ctmap.add("rand_qt", ColumnType::FLOAT);
+
+  string phenotype_file = "chr21.test.tab";
+  score_server.load_phenotypes_file(phenotype_file, ctmap, 2504, "\t", "iid", 1);
+  score_server.set_phenotype("rand_qt");
+
+  auto segments = make_shared_segment_vector();
+
+  ASSERT_TRUE(ld_server.compute_region_ld("21", 9411239, 9411793, correlation::COV, ld_result, "ALL", true, segments));
+  ASSERT_TRUE(score_server.compute_scores("21", 9411239, 9411793, score_result, "ALL", segments));
+  ASSERT_NEAR(loader_sigma2, score_result.sigma2, 0.001);
+  ASSERT_TRUE(loader_samples == score_result.nsamples);
+
+  ASSERT_TRUE(loader_scores->data.size() == score_result.data.size());
+  ASSERT_TRUE(loader_cov->data.size() == ld_result.data.size());
+
+  for (int i = 0; i < loader_scores->data.size(); i++) {
+    double u_loader = loader_scores->data[i].score_stat;
+    double u_server = score_result.data[i].score_stat;
+    ASSERT_NEAR(u_loader, u_server, 0.001);
+  }
+
+  loader_cov->sort_by_variant();
+  ld_result.sort_by_variant();
+  for (int i = 0; i < loader_cov->data.size(); i++) {
+    auto& result_loader = loader_cov->data[i];
+    auto& result_server = ld_result.data[i];
+
+    ASSERT_TRUE(result_loader.variant1 == result_server.variant1);
+    ASSERT_TRUE(result_loader.variant2 == result_server.variant2);
+
+    double v_loader = result_loader.value * loader_sigma2;
+    double v_server = result_server.value;
+    ASSERT_NEAR(v_loader, v_server, 0.001);
+  }
+
+}
+
 TEST_F(LDServerTest, simple_cov_test) {
     // Load gold standard covariance values from RAREMETAL
     map<string, double> gold_standard;

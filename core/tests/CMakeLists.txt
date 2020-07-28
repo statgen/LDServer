@@ -42,6 +42,10 @@ install(FILES
         ../../data/chr22.test.ped
         ../../data/chr22.test.dat
         ../../data/chr22.test.frq
+        ../../data/chr21.test.RAND_QT.singlevar.cov.txt.gz
+        ../../data/chr21.test.RAND_QT.singlevar.cov.txt.gz.tbi
+        ../../data/chr21.test.RAND_QT.singlevar.score.txt.gz
+        ../../data/chr21.test.RAND_QT.singlevar.score.txt.gz.tbi
         ../../data/chr21.test.missing_genotypes_and_phenotypes.RAND_QT.singlevar.cov.txt
         ../../data/chr21.test.missing_genotypes_and_phenotypes.RAND_QT.singlevar.score.txt
         ../../data/chr21.test.missing_pheno.RAND_QT.singlevar.cov.txt
