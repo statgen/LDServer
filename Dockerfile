@@ -14,11 +14,13 @@ LABEL org.label-schema.schema-version="1.0"
 
 # Install required packages for swiss to install. Many of swiss' dependencies
 # require compiling C/C++ code.
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
   cmake \
   python \
   python-pip \
+  python-setuptools \
+  python-dev \
   zlib1g-dev \
   liblzma-dev \
   libopenblas-base \
