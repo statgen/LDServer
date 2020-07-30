@@ -197,6 +197,18 @@ def get_full_genotype_datasets():
 
   return datasets
 
+def get_full_summary_stat_datasets():
+  datasets = []
+  for row in db.session.query(SummaryStatDataset).all():
+    as_dict = {c.key: getattr(row, c.key) for c in inspect(row).mapper.column_attrs}
+    as_dict["summaryStatisticDataset"] = as_dict["id"]
+    as_dict["genomeBuild"] = as_dict["genome_build"]
+    del as_dict["genome_build"]
+    del as_dict["id"]
+    datasets.append(as_dict)
+
+  return datasets
+
 def has_genotype_dataset(genotype_dataset_id):
   return db.session.query(GenotypeDataset).filter_by(id = genotype_dataset_id).first() is not None
 
@@ -292,6 +304,19 @@ def get_phenotypes_for_genotypes(genotype_dataset_id):
 def get_masks_for_genotypes(genotype_dataset_id):
   masks = []
   for row in db.session.query(Mask).filter(Mask.genotypes.any(id=genotype_dataset_id)):
+    as_dict = {c.key: getattr(row, c.key) for c in inspect(row).mapper.column_attrs}
+    as_dict["groupType"] = as_dict.pop("group_type")
+    as_dict["identifierType"] = as_dict.pop("identifier_type")
+
+    del as_dict["genome_build"]
+    del as_dict["filepath"]
+    masks.append(as_dict)
+
+  return masks
+
+def get_masks_for_summary_stats(summary_stat_dataset_id):
+  masks = []
+  for row in db.session.query(Mask).filter(Mask.sumstats.any(id=summary_stat_dataset_id)):
     as_dict = {c.key: getattr(row, c.key) for c in inspect(row).mapper.column_attrs}
     as_dict["groupType"] = as_dict.pop("group_type")
     as_dict["identifierType"] = as_dict.pop("identifier_type")

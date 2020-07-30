@@ -19,15 +19,15 @@ def test_metadata(client):
     resp = client.get("/aggregation/metadata")
     assert resp.status_code == 200
 
-    for genotype_dataset in resp.json["data"]:
-        assert "name" in genotype_dataset
-        assert "masks" in genotype_dataset
-        assert "description" in genotype_dataset
-        assert "genomeBuild" in genotype_dataset
-        assert "genotypeDataset" in genotype_dataset
-        assert "phenotypeDatasets" in genotype_dataset
+    for dataset in resp.json["data"]:
+        assert "name" in dataset
+        assert "masks" in dataset
+        assert "description" in dataset
+        assert "genomeBuild" in dataset
 
-        for phenotype_dataset in genotype_dataset["phenotypeDatasets"]:
+        assert ("genotypeDataset" in dataset and "phenotypeDatasets" in dataset) or "summaryStatisticDataset" in dataset
+
+        for phenotype_dataset in dataset.get("phenotypeDatasets", []):
             assert "description" in phenotype_dataset
             assert "phenotypes" in phenotype_dataset
             assert "name" in phenotype_dataset
@@ -37,7 +37,7 @@ def test_metadata(client):
                 assert "description" in phenotype
                 assert "name" in phenotype
 
-        for mask in genotype_dataset["masks"]:
+        for mask in dataset["masks"]:
             assert "groupType" in mask
             assert "identifierType" in mask
             assert "description" in mask
@@ -46,8 +46,6 @@ def test_metadata(client):
 
             assert mask["groupType"] == mask["groupType"].upper()
             assert mask["identifierType"] == mask["identifierType"].upper()
-
-
 
 def test_malformed_chrom(client):
     resp = client.post("/aggregation/covariance", data = {

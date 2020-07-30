@@ -79,6 +79,12 @@ def get_metadata():
     gd["masks"] = model.get_masks_for_genotypes(gd["genotypeDataset"])
     gd["phenotypeDatasets"] = model.get_phenotypes_for_genotypes(gd["genotypeDataset"])
 
+  sum_stat_datasets = model.get_full_summary_stat_datasets()
+  for sd in sum_stat_datasets:
+    sd["masks"] = model.get_masks_for_summary_stats(sd["summaryStatisticDataset"])
+
+  outer["data"].extend(sum_stat_datasets)
+
   resp = make_response(jsonify(outer), 200)
   resp.mimetype = 'application/json'
 
