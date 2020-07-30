@@ -67,7 +67,7 @@ For now, a description of the variant filtering and grouping criteria will proba
 
 #### Request
 
-`GET /api/aggregation/metadata`
+`GET /aggregation/metadata`
 
 #### Response
 
@@ -148,7 +148,7 @@ For now, a description of the variant filtering and grouping criteria will proba
 
 Only requesting scores and covariance for the "PTV" mask just to save some space.
 
-`POST /api/aggregation/covariance`
+`POST /aggregation/covariance`
 
 ```json
 {
@@ -202,7 +202,7 @@ Note that both `masks` and `maskDefinitions` should not be given together.
 
 Instead of `genotypeDataset` and `phenotypeDataset` keys, specify `summaryStatisticDataset`.
 
-`POST /api/aggregation/covariance`
+`POST /aggregation/covariance`
 
 ```json
 {
@@ -280,7 +280,7 @@ as the response below.
 
 Looks identical to the same request used to retrieve covariance.
 
-`POST /api/aggregation/results`
+`POST /aggregation/results`
 
 ```json
 {
