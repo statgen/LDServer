@@ -214,6 +214,8 @@ void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start,
     for (uint64_t j = 0; j < cov.size(); j++) {
       uint64_t pos = positions[j];
 
+      // Since the file is tabix-indexed by start position only, it is possible that a row will contain variants
+      // beyond the chrom:start-stop that we are interested in.
       if (pos > stop) {
         break;
       }
@@ -222,14 +224,20 @@ void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start,
       double v = cov[j];
       double j_alt_freq = getAltFreqForPosition(pos);
 
+      /**
+       * The score stats file codes variant genotypes towards the alt allele. If the alt allele frequency
+       * is > 0.5, that means we're not counting towards the minor (rare) allele, and we need to flip it around.
+       * We don't flip when i == j because that element represents the variance of the variant itself, which is
+       * invariant to which allele we code towards (but covariance is not.)
+       * We also don't flip when both the i variant and j variant need to be flipped (the ^ is XOR) because it would
+       * just cancel out.
+       */
       if (row_pos != pos) {
         if ((row_alt_freq > 0.5) ^ (j_alt_freq > 0.5)) {
           v = -1.0 * v;
         }
       }
 
-      // VariantsPair(const string& variant1, const string& chromosome1, uint64_t position1, const string& variant2,
-      // const string& chromosome2, uint64_t position2, double value):
       cov_result->data.emplace_back(row_variant, row_chrom, row_pos, variant, row_chrom, pos, v);
     }
   }

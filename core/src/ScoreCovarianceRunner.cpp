@@ -64,6 +64,8 @@ ScoreCovarianceRunner::ScoreCovarianceRunner(std::shared_ptr<ScoreCovarianceConf
     throw std::invalid_argument("Must provide either genotype/phenotype files, or score stat/covariance files");
   }
 
+  // If the config specifies a genotype file or phenotype file, we'll assume we're in "compute mode" - calculate scores
+  // and covariances from the genotype & phenotype.
   if (!config->genotype_files.empty() || !config->phenotype_file.empty()) {
     run_mode = ScoreCovRunMode::COMPUTE;
 
@@ -75,6 +77,8 @@ ScoreCovarianceRunner::ScoreCovarianceRunner(std::shared_ptr<ScoreCovarianceConf
     }
   }
 
+  // If the config has a score statistic or covariance file, we're in "pre-compute mode" - the scores and covariances
+  // are already computed, and we just need to read them out of files on disk.
   if (!config->summary_stat_score_file.empty() || !config->summary_stat_cov_file.empty()) {
     run_mode = ScoreCovRunMode::PRECOMPUTE;
 
@@ -165,6 +169,7 @@ void ScoreCovarianceRunner::run() {
       const VariantGroup& group = group_item.second;
 
       if (run_mode == ScoreCovRunMode::COMPUTE) {
+        // In this block we use the LDServer and ScoreServer to compute scores and covariances from genotype/phenotype.
         SharedSegmentVector segments = make_shared_segment_vector();
 
         auto group_positions = group.get_positions();
@@ -197,6 +202,7 @@ void ScoreCovarianceRunner::run() {
         );
       }
       else {
+        // Here we'll use the SummaryStatisticsLoader to read already computed scores/covariances from files on disk.
         summary_stat_loader->load_region(group.chrom, group.start, group.stop);
         ld_res = summary_stat_loader->getCovResult();
         score_res = summary_stat_loader->getScoreResult();
@@ -215,6 +221,7 @@ void ScoreCovarianceRunner::run() {
       score_res->sort_by_variant();
 
       for (auto&& v : score_res->data) {
+        // The following code prevents duplicate variants from being inserted into the JSON.
         if (seen_variants.find(v.variant) == seen_variants.end()) {
           seen_variants.emplace(v.variant);
         }
@@ -292,6 +299,10 @@ void ScoreCovarianceRunner::run() {
 string ScoreCovarianceRunner::getJSON() const {
   StringBuffer strbuf;
   Writer<StringBuffer> writer(strbuf);
+
+  // Note to future self: it is pretty common when testing on new data for Accept() to fail without a clear explanation
+  // as to why. When that happens, breakpointing here and stepping into the function with the debugger helps figure out
+  // what value the library is choking on. Frequently it is a NaN where one wasn't expected.
   if (!document->Accept(writer)) {
     throw runtime_error("Error while saving to JSON");
   }
