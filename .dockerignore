@@ -9,4 +9,6 @@ build-release
 build-debug
 cmake-build-debug
 cmake-build-release
+cmake-install
+tmp
 docker-compose.override.yml
