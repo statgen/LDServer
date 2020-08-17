@@ -37,7 +37,7 @@ def goldstandard_ld():
         with open(filename, 'r') as f:
             header = f.readline().rstrip().split('\t')
             for line in f:
-                record = dict(zip(header, line.rstrip().split('\t')))
+                record = dict(list(zip(header, line.rstrip().split('\t'))))
                 goldstandard[record['POS1'] + '_' + record['POS2']] = float(record['R^2'])
         return goldstandard
     yield _goldstandard_ld

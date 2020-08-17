@@ -37,7 +37,7 @@ if __name__ == '__main__':
             for line in f:
                 if line:
                     chrom, start_bp, stop_bp = line.rstrip().split()
-                    start_bp, stop_bp = map(int, (start_bp, stop_bp))
+                    start_bp, stop_bp = list(map(int, (start_bp, stop_bp)))
                     genes.append((chrom, start_bp, stop_bp))
         for i in range(0, args.c):
             chrom, start_bp, stop_bp = random.choice(genes)
@@ -61,9 +61,9 @@ if __name__ == '__main__':
         with open(args.queries_file, 'r') as f:
             header = f.readline().rstrip().split()
             for line in f:
-                fields = dict(zip(header, line.rstrip().split()))
+                fields = dict(list(zip(header, line.rstrip().split())))
                 queries.append((fields['QUERY'], fields['REGION_LENGTH'], fields['PAGE_SIZE']))
-    print 'QUERY\tREGION_LENGTH\tPAGE_SIZE\tN_VARIANTS\tN_RESULTS\tN_PAGES\tSECONDS'
+    print('QUERY\tREGION_LENGTH\tPAGE_SIZE\tN_VARIANTS\tN_RESULTS\tN_PAGES\tSECONDS')
     for query, region_length, page_size in queries:
         url = 'http://{}{}/{}'.format(args.hostname, ':' + str(args.port) if args.port else '', query)
         total_time = 0
@@ -83,5 +83,5 @@ if __name__ == '__main__':
             total_results += len(data['correlation'])
             total_pages += 1
             url = response.json()['next']
-        print '{}\t{}\t{}\t{}\t{}\t{}\t{}'.format(query, region_length, page_size, len(all_variants), total_results, total_pages, '%0.4f' % total_time)
+        print('{}\t{}\t{}\t{}\t{}\t{}\t{}'.format(query, region_length, page_size, len(all_variants), total_results, total_pages, '%0.4f' % total_time))
 

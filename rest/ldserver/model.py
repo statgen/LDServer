@@ -113,7 +113,7 @@ def load_references(json_file):
             r = Reference(name = reference['Name'], description = reference['Description'], genome_build = reference['Genome build'])
             for path in reference['Files']:
                 r.files.append(File(path = path))
-            for subset, samples in reference['Samples'].iteritems():
+            for subset, samples in reference['Samples'].items():
                 for sample in samples:
                     r.samples.append(Sample(subset = subset, sample = sample))
             db.session.add(r)
@@ -121,9 +121,9 @@ def load_references(json_file):
 
 def show_references():
     db.create_all()
-    print '\t'.join(['NAME', 'DESCRIPTION', 'GENOME BUILD', 'POPULATIONS'])
+    print('\t'.join(['NAME', 'DESCRIPTION', 'GENOME BUILD', 'POPULATIONS']))
     for reference in Reference.query.all():
-        print '\t'.join([reference.name, reference.description, reference.genome_build, ';'.join(list(set([s.subset for s in reference.samples])))])
+        print('\t'.join([reference.name, reference.description, reference.genome_build, ';'.join(list(set([s.subset for s in reference.samples])))]))
 
 def add_reference(name, description, genome_build, samples_filename, genotype_files):
     db.create_all()
@@ -163,9 +163,9 @@ def show_genotypes(genome_build, reference_name):
     if reference is None:
         click.echo('Reference {} on {} genome build doesn\'t exist'.format(reference_name, genome_build))
         return
-    print '\t'.join(['GENOME BUILD', 'REFERENCE NAME', 'FILE'])
+    print('\t'.join(['GENOME BUILD', 'REFERENCE NAME', 'FILE']))
     for file in reference.files:
-        print '\t'.join([reference.genome_build, reference.name, file.path])
+        print('\t'.join([reference.genome_build, reference.name, file.path]))
 
 def show_samples(genome_build, reference_name, subset_name):
     db.create_all()
@@ -177,9 +177,9 @@ def show_samples(genome_build, reference_name, subset_name):
     if not samples:
         click.echo('Population {} doesn\'t exist in {} reference'.format(subset_name, reference_name))
         return
-    print '\t'.join(['GENOME BUILD', 'REFERENCE NAME', 'POPULATION', 'SAMPLE'])
+    print('\t'.join(['GENOME BUILD', 'REFERENCE NAME', 'POPULATION', 'SAMPLE']))
     for sample in samples:
-        print '\t'.join([reference.genome_build, reference.name, sample.subset, sample.sample])
+        print('\t'.join([reference.genome_build, reference.name, sample.subset, sample.sample]))
 
 @click.command('load-references')
 @click.argument('json', type = click.Path(exists = True))

@@ -4,8 +4,7 @@ from flask_compress import Compress
 from webargs.flaskparser import parser
 from webargs import fields, ValidationError
 from functools import partial
-from model import Reference, File, Sample
-import model
+from . import model
 from core.pywrapper import LDServer, LDQueryResult, StringVec, correlation
 import time
 
@@ -18,7 +17,7 @@ compress = Compress()
 
 @parser.error_handler
 def handle_parsing_error(error, request, schema):
-    for field, message in error.messages.iteritems():
+    for field, message in error.messages.items():
         message = 'Error while parsing \'{}\' query parameter: {}'.format(field, message[0])
         break
     response = jsonify({'data': None, 'error': message })
@@ -27,7 +26,7 @@ def handle_parsing_error(error, request, schema):
 
 
 def validate_query(parsed_fields, all_fields):
-    for key, value in request.args.iteritems():
+    for key, value in request.args.items():
         if key not in all_fields:
             raise ValidationError({key: ['Unknown parameter.']})
     if 'start' in parsed_fields and 'stop' in parsed_fields:
@@ -166,7 +165,7 @@ def get_region_ld(genome_build, reference_name, population_name):
         base_url = '/'.join(x.strip('/') for x in [current_app.config['PROXY_PASS'], request.path])
     else:
         base_url = request.base_url
-    base_url += '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))
+    base_url += '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.items(True) if arg != 'last'))
     #print "Jsonified result in {} seconds.".format("%0.4f" % (time.time() - start))
     #start = time.time()
     r = make_response(result.get_json(str(base_url)), 200)
@@ -214,12 +213,12 @@ def get_variant_ld(genome_build, reference_name, population_name):
         ldserver.enable_cache(reference_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
     start = time.time()
     ldserver.compute_variant_ld(str(args['variant']), str(args['chrom']), args['start'], args['stop'], correlation_type(args['correlation']), result, str(population_name))
-    print "Computed results in {} seconds.".format("%0.4f" % (time.time() - start))
+    print("Computed results in {} seconds.".format("%0.4f" % (time.time() - start)))
     if current_app.config['PROXY_PASS']:
         base_url = '/'.join(x.strip('/') for x in [current_app.config['PROXY_PASS'], request.path])
     else:
         base_url = request.base_url
-    base_url += '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))
+    base_url += '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.items(True) if arg != 'last'))
     r = make_response(result.get_json(str(base_url)), 200)
     r.mimetype = 'application/json'
     return r

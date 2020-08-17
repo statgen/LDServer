@@ -20,7 +20,7 @@ def app():
         'SENTRY_DSN': None,
         'SENTRY_ENV': None
     })
-    print "Using database: " + app.config["SQLALCHEMY_DATABASE_URI"]
+    print("Using database: " + app.config["SQLALCHEMY_DATABASE_URI"])
     yield app
 
 @pytest.fixture

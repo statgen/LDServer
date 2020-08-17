@@ -1,6 +1,6 @@
 import pytest
 import json
-import StringIO
+import io
 import gzip
 
 
@@ -77,7 +77,7 @@ def test_reference_populations(client, config):
     data = result['data']
     with open(config['REFERENCES_JSON'], 'r') as f:
         reference_json = [x for x in json.load(f) if x['Name'] == '1000G'][0]
-        populations = reference_json['Samples'].keys()
+        populations = list(reference_json['Samples'].keys())
     assert len(data) == len(populations)
     assert all(x in populations for x in data)
 
@@ -146,10 +146,10 @@ def test_region_ld(client, goldstandard_ld):
     assert all(len(data['correlation']) == len(data[x]) for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
     goldstandard = goldstandard_ld('../data/region_ld_22_51241101_51241385.hap.ld')
     assert len(goldstandard) == len(data['correlation'])
-    for i in xrange(0, len(goldstandard)):
+    for i in range(0, len(goldstandard)):
         key = str(data['position1'][i]) + '_' + str(data['position2'][i])
         assert key in goldstandard
-        print key, goldstandard[key], data['correlation'][i]
+        print((key, goldstandard[key], data['correlation'][i]))
         assert pytest.approx(data['correlation'][i], 0.00001) == goldstandard[key]
 
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=22&start=51241101&stop=51241385&correlation=r')
@@ -163,10 +163,10 @@ def test_region_ld(client, goldstandard_ld):
     assert all(len(data['correlation']) == len(data[x]) for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
     goldstandard = goldstandard_ld('../data/region_ld_22_51241101_51241385.hap.ld')
     assert len(goldstandard) == len(data['correlation'])
-    for i in xrange(0, len(goldstandard)):
+    for i in range(0, len(goldstandard)):
         key = str(data['position1'][i]) + '_' + str(data['position2'][i])
         assert key in goldstandard
-        print key, goldstandard[key], data['correlation'][i]**2
+        print((key, goldstandard[key], data['correlation'][i]**2))
         assert pytest.approx(data['correlation'][i]**2, 0.00001) == goldstandard[key]
 
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/AFR/regions?chrom=22&start=51241101&stop=51241385&correlation=rsquare')
@@ -180,7 +180,7 @@ def test_region_ld(client, goldstandard_ld):
     assert all(len(data['correlation']) == len(data[x]) for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
     goldstandard = goldstandard_ld('../data/region_ld_22_51241101_51241385.AFR.hap.ld')
     assert len(goldstandard) == len(data['correlation'])
-    for i in xrange(0, len(goldstandard)):
+    for i in range(0, len(goldstandard)):
         key = str(data['position1'][i]) + '_' + str(data['position2'][i])
         assert key in goldstandard
         assert pytest.approx(data['correlation'][i], 0.00001) == goldstandard[key]
@@ -229,7 +229,7 @@ def test_variant_ld(client, goldstandard_ld):
     assert all(len(data['correlation']) == len(data[x]) for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
     goldstandard = goldstandard_ld('../data/variant_ld_22_51241101_vs_51241101_51241385.hap.ld')
     assert len(goldstandard) == len(data['correlation'])
-    for i in xrange(0, len(goldstandard)):
+    for i in range(0, len(goldstandard)):
         key = str(data['position1'][i]) + '_' + str(data['position2'][i])
         assert key in goldstandard
         assert pytest.approx(data['correlation'][i], 0.00001) == goldstandard[key]
@@ -245,7 +245,7 @@ def test_variant_ld(client, goldstandard_ld):
     assert all(len(data['correlation']) == len(data[x]) for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
     goldstandard = goldstandard_ld('../data/variant_ld_22_51241101_vs_51241101_51241385.hap.ld')
     assert len(goldstandard) == len(data['correlation'])
-    for i in xrange(0, len(goldstandard)):
+    for i in range(0, len(goldstandard)):
         key = str(data['position1'][i]) + '_' + str(data['position2'][i])
         assert key in goldstandard
         assert pytest.approx(data['correlation'][i]**2, 0.00001) == goldstandard[key]
@@ -285,7 +285,7 @@ def test_variant_ld_with_paging(client):
 def test_compression(client):
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=22&start=51241101&stop=51241385&correlation=rsquare', headers=[('Accept-Encoding', 'gzip')])
     assert response.headers['Content-Encoding'] == 'gzip'
-    compressed_payload = StringIO.StringIO(response.data)
+    compressed_payload = io.BytesIO(response.data)
     uncompressed_payload = gzip.GzipFile(fileobj = compressed_payload, mode = 'rb').read()
     assert len(uncompressed_payload) > 0
     result = json.loads(uncompressed_payload)

@@ -7,7 +7,7 @@ from marshmallow import Schema
 from webargs import fields, ValidationError
 from functools import partial
 from raven.versioning import fetch_git_sha
-import model
+from . import model
 import os
 import re
 import traceback
@@ -31,7 +31,7 @@ def makeStringVec(arr=[]):
 
 @parser.error_handler
 def handle_parsing_error(error, request, schema, status_code=None, headers=None):
-  for field, message in error.messages.iteritems():
+  for field, message in error.messages.items():
     message = 'Error while parsing \'{}\' query parameter: {}'.format(field, message[0])
     break
 
@@ -39,7 +39,7 @@ def handle_parsing_error(error, request, schema, status_code=None, headers=None)
 
 
 def validate_query(parsed_fields, all_fields):
-  for key, value in request.args.iteritems():
+  for key, value in request.args.items():
     if key not in all_fields:
       raise ValidationError({key: ['Unknown parameter.']})
 
@@ -283,7 +283,7 @@ def get_covariance():
     for mask in mask_definitions:
       try:
         vg_vec = VariantGroupVector()
-        for group_name, variants in mask["groups"].iteritems():
+        for group_name, variants in mask["groups"].items():
           vg = VariantGroup()
           vg.name = str(group_name)
           for v in variants:

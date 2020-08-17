@@ -380,7 +380,7 @@ def load_genotype_datasets(json_file):
       r = GenotypeDataset(name = genotype_dataset['Name'], description = genotype_dataset['Description'], genome_build = genotype_dataset['Genome build'])
       for path in genotype_dataset['Files']:
         r.files.append(File(path = path))
-      for subset, samples in genotype_dataset['Samples'].iteritems():
+      for subset, samples in genotype_dataset['Samples'].items():
         for sample in samples:
           r.samples.append(Sample(subset = subset, sample = sample))
       db.session.add(r)
@@ -775,9 +775,9 @@ def show_genotypes(genome_build, genotype_dataset_name):
   if genotype_dataset is None:
     click.echo('Genotype dataset {} on {} genome build doesn\'t exist'.format(genotype_dataset_name, genome_build))
     return
-  print '\t'.join(['GENOME BUILD', 'GENOTYPE DATASET NAME', 'FILE'])
+  print('\t'.join(['GENOME BUILD', 'GENOTYPE DATASET NAME', 'FILE']))
   for file in genotype_dataset.files:
-    print '\t'.join([genotype_dataset.genome_build, genotype_dataset.name, file.path])
+    print('\t'.join([genotype_dataset.genome_build, genotype_dataset.name, file.path]))
 
 
 def show_samples(genome_build, genotype_dataset_name, subset_name):
@@ -790,9 +790,9 @@ def show_samples(genome_build, genotype_dataset_name, subset_name):
   if not samples:
     click.echo('Population {} doesn\'t exist in {} genotype_dataset'.format(subset_name, genotype_dataset_name))
     return
-  print '\t'.join(['GENOME BUILD', 'GENOTYPE DATASET NAME', 'SAMPLE SUBSET', 'SAMPLE'])
+  print('\t'.join(['GENOME BUILD', 'GENOTYPE DATASET NAME', 'SAMPLE SUBSET', 'SAMPLE']))
   for sample in samples:
-    print '\t'.join([genotype_dataset.genome_build, genotype_dataset.name, sample.subset, sample.sample])
+    print('\t'.join([genotype_dataset.genome_build, genotype_dataset.name, sample.subset, sample.sample]))
 
 
 @click.command('load-genotypes')
@@ -834,7 +834,7 @@ def add_from_yaml(filepath):
     data = yaml.safe_load(fp)
 
   # We need to preprocess the file to make sure their requested database IDs have not already been taken.
-  for block_type, block_data in data.iteritems():
+  for block_type, block_data in data.items():
     id_lookup = None
     if block_type == "genotypes":
       id_lookup = has_genotype_dataset

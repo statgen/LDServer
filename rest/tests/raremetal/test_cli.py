@@ -51,9 +51,9 @@ def test_tab_incorrect_float(app, db):
     result = runner.invoke(add_yaml_command, ["../data/test_tab_incorrect_float.yaml"])
 
     assert isinstance(result.exception, ValueError)
-    assert result.exception.message.startswith("Column sex for phenotype dataset")
-    assert result.exception.message.startswith("Column sex for phenotype dataset")
-    assert result.exception.message.endswith("cannot be coerced to float")
+    assert str(result.exception).startswith("Column sex for phenotype dataset")
+    assert str(result.exception).startswith("Column sex for phenotype dataset")
+    assert str(result.exception).endswith("cannot be coerced to float")
 
 def test_ped_incorrect_float(app, db):
   with app.app_context():
@@ -62,8 +62,8 @@ def test_ped_incorrect_float(app, db):
     result = runner.invoke(add_yaml_command, ["../data/test_ped_incorrect_float.yaml"])
 
     assert isinstance(result.exception, ValueError)
-    assert result.exception.message.startswith("Column ANCESTRY for PED")
-    assert result.exception.message.endswith("cannot be coerced to float")
+    assert str(result.exception).startswith("Column ANCESTRY for PED")
+    assert str(result.exception).endswith("cannot be coerced to float")
 
 def test_vcf_missing_tabix(app, db):
   with app.app_context():
@@ -72,7 +72,7 @@ def test_vcf_missing_tabix(app, db):
     result = runner.invoke(add_yaml_command, ["../data/test_no_tabix.yaml"])
 
     assert isinstance(result.exception, ValueError)
-    assert result.exception.message.startswith("Cannot find tabix index for VCF file")
+    assert str(result.exception).startswith("Cannot find tabix index for VCF file")
 
 def test_sav_missing_index(app, db):
   with app.app_context():
@@ -81,4 +81,4 @@ def test_sav_missing_index(app, db):
     result = runner.invoke(add_yaml_command, ["../data/test_no_sav_index.yaml"])
 
     assert isinstance(result.exception, ValueError)
-    assert result.exception.message.startswith("Cannot find savvy index")
+    assert str(result.exception).startswith("Cannot find savvy index")
