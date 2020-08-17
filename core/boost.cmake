@@ -242,10 +242,10 @@ if(NOT ${B2_EXE})
         set(B2_EXE "${CMAKE_CURRENT_SOURCE_DIR}/tools/build/b2.exe")
     else()
         add_custom_target(bootstrap
-            COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/build/bootstrap.sh
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools/build/
+            COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/bootstrap.sh --with-python=python3 --with-python-version=3
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
-        set(B2_EXE "${CMAKE_CURRENT_SOURCE_DIR}/tools/build/b2")
+        set(B2_EXE "${CMAKE_CURRENT_SOURCE_DIR}/b2")
     endif()
     install(PROGRAMS ${B2_EXE} DESTINATION bin)
 endif()
