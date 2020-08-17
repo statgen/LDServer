@@ -215,6 +215,11 @@ endforeach()
 set(B2_TOOLCHAIN_VERSION cget)
 set(B2_CONFIG ${CMAKE_CURRENT_BINARY_DIR}/user-config.jam)
 
+# python version
+execute_process(COMMAND python3 -c "import sys; print(sys.executable)" OUTPUT_VARIABLE PYTHON_BINARY)
+execute_process(COMMAND python3 -c "from sysconfig import get_paths as gp; print(gp()['include'])" OUTPUT_VARIABLE PYTHON_INCLUDE)
+execute_process(COMMAND python3 -c "from sysconfig import get_paths as gp; print(gp()['stdlib'])" OUTPUT_VARIABLE PYTHON_LIB)
+
 # TODO: Make this configurable
 set(B2_THREAD_API "pthread")
 if(WIN32)
@@ -227,6 +232,8 @@ using ${BOOST_TOOLCHAIN} : ${B2_TOOLCHAIN_VERSION} : \"${B2_COMPILER}\" :
 <ranlib>${CMAKE_RANLIB}
 ${SEARCH_PATHS}
 ;
+
+using python : : ${PYTHON_BINARY} : ${PYTHON_INCLUDE} : ${PYTHON_LIB} ;
 ")
 message("${B2_CONFIG_CONTENT}")
 
