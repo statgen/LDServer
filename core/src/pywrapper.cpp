@@ -4,7 +4,6 @@
 //#include <boost/python/exception_translator.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <boost/python/suite/indexing/map_indexing_suite.hpp>
-#include <python2.7/Python.h>
 #include "LDServer.h"
 #include "ScoreServer.h"
 #include "Phenotypes.h"
