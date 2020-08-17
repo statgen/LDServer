@@ -1,12 +1,13 @@
 language: cpp
-dist: xenial
+dist: bionic
 compiler: gcc
 cache: pip
 before_install:
  - sudo apt update
- - sudo apt install cmake
- - sudo apt install python2.7 python-pip python-virtualenv
+ - sudo apt install curl
+ - curl -OJL https://github.com/Kitware/CMake/releases/download/v3.18.1/cmake-3.18.1-Linux-x86_64.sh && chmod u+x cmake-3.18.1-Linux-x86_64.sh && sudo ./cmake-3.18.1-Linux-x86_64.sh --skip-license
+ - sudo apt install python3.6 python3.6-dev python3-distutils python3-setuptools python3-pip python3-wheel python3-virtualenv
  - sudo apt install libopenblas-base libopenblas-dev liblapack-dev libarpack2 libarpack2-dev
 install:
- - sudo pip install invoke tox pytest backports.lzma cget
+ - sudo pip3 install invoke tox pytest cget
 script: invoke test
