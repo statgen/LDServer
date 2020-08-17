@@ -12,15 +12,16 @@ LABEL org.label-schema.usage="https://github.com/statgen/LDServer#docker"
 LABEL org.label-schema.vcs-url="https://github.com/statgen/LDServer"
 LABEL org.label-schema.schema-version="1.0"
 
-# Install required packages for swiss to install. Many of swiss' dependencies
-# require compiling C/C++ code.
+# Install required packages for LDServer to install.
 RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
-  cmake \
-  python \
-  python-pip \
-  python-setuptools \
-  python-dev \
+  curl \
+  python3.6 \
+  python3.6-dev \
+  python3-distutils \
+  python3-setuptools \
+  python3-pip \
+  python3-wheel \
   zlib1g-dev \
   liblzma-dev \
   libopenblas-base \
@@ -36,12 +37,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV LC_ALL en_US.UTF-8
 ENV LANG en_US.UTF-8
 
-# Install necessary python packages (backports.lzma needed for cget to extract .xz archives)
-RUN pip install backports.lzma cget pytest invoke tox
+# Need a newer version of CMake than what Ubuntu 18.04 has
+RUN curl -OJL https://github.com/Kitware/CMake/releases/download/v3.18.1/cmake-3.18.1-Linux-x86_64.sh && \
+  chmod u+x cmake-3.18.1-Linux-x86_64.sh && \
+  ./cmake-3.18.1-Linux-x86_64.sh --skip-license
+
+# Install necessary python packages
+RUN pip3 install wheel cget pytest invoke tox
 
 # Copy the python requirements for install
 COPY rest/requirements.txt /
-RUN pip install -r requirements.txt
+RUN pip3 install -r requirements.txt
 
 # Create a group and user to execute as, then drop root
 ARG UID
