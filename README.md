@@ -385,7 +385,7 @@ gunicorn -b 127.0.0.1:[port] -w [n workers] -k gevent --pythonpath rest "playgro
 
 ### raremetal app
 
-This app serves a more specialized [REST API](https://github.com/statgen/raremetal.js/blob/master/docs/portal-api.pdf) for calculating aggregation tests of rare genetic variants. It provides covariance between variants, in addition to score statistics (summary statistics of the association between genetic variants and phenotypes.)
+This app serves a more specialized [REST API](docs/raremetal-api.md) for calculating aggregation tests of rare genetic variants. It provides covariance between variants, in addition to score statistics (summary statistics of the association between genetic variants and phenotypes.)
 
 These statistics can be used by the [raremetal.js](https://github.com/statgen/raremetal.js) package to perform the aggregation tests. That package also provides documentation on the methodology.
 
