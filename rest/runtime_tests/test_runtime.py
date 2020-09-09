@@ -63,7 +63,7 @@ if __name__ == '__main__':
             for line in f:
                 fields = dict(list(zip(header, line.rstrip().split())))
                 queries.append((fields['QUERY'], fields['REGION_LENGTH'], fields['PAGE_SIZE']))
-    print('QUERY\tREGION_LENGTH\tPAGE_SIZE\tN_VARIANTS\tN_RESULTS\tN_PAGES\tSECONDS')
+    print('QUERY\tREGION_LENGTH\tPAGE_SIZE\tN_VARIANTS\tN_RESULTS\tN_PAGES\tTOTAL_SECONDS\tRESPONSE_SECONDS\tUNCOMPRESSED_MB\tCOMPRESSED_MB')
     for query, region_length, page_size in queries:
         url = 'http://{}{}/{}'.format(args.hostname, ':' + str(args.port) if args.port else '', query)
         total_time = 0
@@ -83,5 +83,4 @@ if __name__ == '__main__':
             total_results += len(data['correlation'])
             total_pages += 1
             url = response.json()['next']
-        print('{}\t{}\t{}\t{}\t{}\t{}\t{}'.format(query, region_length, page_size, len(all_variants), total_results, total_pages, '%0.4f' % total_time))
-
+        print('{}\t{}\t{}\t{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}'.format(query, region_length, page_size, len(all_variants), total_results, total_pages, total_time, response.elapsed.total_seconds(), len(response.content) / (1024.0 * 1024.0), int(response.headers['Content-Length']) / (1024.0 * 1024.0)))
