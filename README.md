@@ -195,9 +195,9 @@ If you've already started services, replace `run` with `exec` to jump into the a
 
 Before installing, the following software/packages are required:
 
-* CMake 3+
+* CMake 3.14+
 * gcc 5.4+
-* Python 2.7
+* Python 3.6+
 * A BLAS implementation, such as OpenBLAS or Intel MKL
 
 The following software is optional:
@@ -232,9 +232,9 @@ Now follow these steps to complete installation:
 - Compile and install.
 
   ```bash
-  virtualenv -p python2 venv &&
+  virtualenv -p python3 venv &&
     source venv/bin/activate &&
-    pip install backports.lzma cget &&
+    pip install cget &&
     cget install core
   ```
 
