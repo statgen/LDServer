@@ -1,4 +1,5 @@
 import re
+import pytest
 
 def is_sha(s):
     return re.search("[A-Fa-f0-9]+",s) is not None
@@ -200,11 +201,11 @@ def test_summary_stat_chromglob(client):
 
     assert resp.status_code == 200
     assert resp.is_json
-
     score_variants = [x["variant"] for x in resp.json["data"]["variants"]]
-
     assert "summaryStatDataset" in resp.json["data"]
 
+    groups = resp.json["data"]["groups"]
+    assert len(groups) > 0
     for group in resp.json["data"]["groups"]:
         n_variants = len(group["variants"])
         n_covar = len(group["covariance"])
@@ -215,13 +216,65 @@ def test_summary_stat_chromglob(client):
         assert "group" in group
         assert "groupType" in group
         assert group["groupType"] in ("REGION", "GENE")
+        assert group["variants"][0].split(":")[0] == '9'
         assert all([v in score_variants for v in group["variants"]])
 
-    for variant in resp.json["data"]["variants"]:
+    assert groups[0]["group"] == "MODX3"
+    assert groups[0]["covariance"][0] == pytest.approx(0.0142854)
+
+    variants = resp.json["data"]["variants"]
+    assert len(variants) > 0
+    for variant in variants:
         assert variant["altFreq"] > 0
         assert variant["pvalue"] > 0
         assert variant["pvalue"] <= 1
         assert "score" in variant
+
+    assert variants[0]["score"] == pytest.approx(-9.93863)
+    assert variants[0]["pvalue"] == pytest.approx(0.00881654)
+
+    resp = client.post("/aggregation/covariance", data = {
+        "chrom": "1",
+        "start": 14895,
+        "stop": 14918,
+        "summaryStatDataset": 3,
+        "genomeBuild": "GRCh37",
+        "masks": [4]
+    })
+
+    assert resp.status_code == 200
+    assert resp.is_json
+    score_variants = [x["variant"] for x in resp.json["data"]["variants"]]
+    assert "summaryStatDataset" in resp.json["data"]
+
+    groups = resp.json["data"]["groups"]
+    assert len(groups) > 0
+    for group in resp.json["data"]["groups"]:
+        n_variants = len(group["variants"])
+        n_covar = len(group["covariance"])
+        assert n_variants > 0
+        assert n_covar > 0
+        assert n_covar == (n_variants * (n_variants + 1) / 2)
+        assert isinstance(group["mask"], int)
+        assert "group" in group
+        assert "groupType" in group
+        assert group["groupType"] in ("REGION", "GENE")
+        assert group["variants"][0].split(":")[0] == '1'
+        assert all([v in score_variants for v in group["variants"]])
+
+    assert groups[0]["group"] == "IDQV5"
+    assert groups[0]["covariance"][0] == pytest.approx(0.00140996)
+
+    variants = resp.json["data"]["variants"]
+    assert len(variants) > 0
+    for variant in variants:
+        assert variant["altFreq"] > 0
+        assert variant["pvalue"] > 0
+        assert variant["pvalue"] <= 1
+        assert "score" in variant
+
+    assert variants[0]["score"] == pytest.approx(-1.31314)
+    assert variants[0]["pvalue"] == pytest.approx(0.270687)
 
 def test_pheno_bad_float(client):
     resp = client.post("/aggregation/covariance", data = {
