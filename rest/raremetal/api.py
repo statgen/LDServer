@@ -212,7 +212,7 @@ def get_covariance():
       raise FlaskException("Phenotype '{}' does not exist in phenotype dataset {}".format(phenotype, phenotype_dataset_id), 400)
 
     genotype_files = StringVec()
-    genotype_files.extend([model.find_file(x) for x in model.get_files(genotype_dataset_id)])
+    genotype_files.extend([model.find_file(x) for x in model.get_genotype_files(genotype_dataset_id)])
     config.genotype_files = genotype_files
     config.genotype_dataset_id = genotype_dataset_id
 
@@ -233,9 +233,20 @@ def get_covariance():
 
   elif summary_stat_dataset_id:
     config.summary_stat_dataset_id = summary_stat_dataset_id
-    score_file, cov_file =  (model.find_file(x) for x in model.get_scorecov_files(summary_stat_dataset_id))
-    config.summary_stat_score_file = str(score_file)
-    config.summary_stat_cov_file = str(cov_file)
+
+    score_files = model.get_score_files(summary_stat_dataset_id)
+    cov_files = model.get_cov_files(summary_stat_dataset_id)
+
+    score_files = [model.find_file(f) for f in score_files]
+    cov_files = [model.find_file(f) for f in cov_files]
+
+    score_vec = StringVec()
+    cov_vec = StringVec()
+    score_vec.extend(score_files)
+    cov_vec.extend(cov_files)
+
+    config.summary_stat_score_files = score_vec
+    config.summary_stat_cov_files = cov_vec
 
   if current_app.config["CACHE_ENABLED"]:
     config.redis_hostname = current_app.config["CACHE_REDIS_HOSTNAME"]

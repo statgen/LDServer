@@ -7,6 +7,7 @@ from collections import Counter, OrderedDict
 from core.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType, GroupIdentifierType, extract_samples, StringVec
 from tabulate import tabulate
 from glob import glob
+from pathlib import Path
 import os
 import click
 import json
@@ -35,7 +36,7 @@ class GenotypeDataset(db.Model):
   genome_build = db.Column(db.String(), unique = False, nullable = False)
   description = db.Column(db.String(), unique = False, nullable = False)
 
-  files = db.relationship('File', backref = 'genotype_datasets', lazy = True)
+  files = db.relationship('GenotypeFile', backref = 'genotype_datasets', lazy = True)
   samples = db.relationship('Sample', backref = 'genotype_datasets', lazy = True)
   phenotypes = db.relationship("PhenotypeDataset", secondary="genotype_phenotype", back_populates="genotypes")
   masks = db.relationship("Mask", secondary="genotype_mask", back_populates="genotypes")
@@ -48,8 +49,8 @@ class GenotypeDataset(db.Model):
     return '<GenotypeDataset %r>' % self.name
 
 
-class File(db.Model):
-  __tablename__ = 'file'
+class GenotypeFile(db.Model):
+  __tablename__ = 'genotype_file'
   id = db.Column(db.Integer, primary_key = True)
   path = db.Column(db.String(), unique = False, nullable = False)
   genotype_dataset_id = db.Column(db.Integer, db.ForeignKey('genotype_datasets.id'), nullable = False)
@@ -123,19 +124,39 @@ class Mask(db.Model):
   genotypes = db.relationship("GenotypeDataset", secondary="genotype_mask", back_populates="masks")
   sumstats = db.relationship("SummaryStatDataset", secondary="sumstat_mask", back_populates="masks")
 
+class ScoreStatFile(db.Model):
+  __tablename__ = 'score_files'
+  id = db.Column(db.Integer, primary_key = True)
+  path = db.Column(db.String(), unique = False, nullable = False)
+  summary_stat_dataset_id = db.Column(db.Integer, db.ForeignKey('summary_stat_datasets.id'), nullable = False)
+
+  def __repr__(self):
+    return '<ScoreStatFile %r>' % self.path
+
+class CovarianceFile(db.Model):
+  __tablename__ = 'covariance_files'
+  id = db.Column(db.Integer, primary_key = True)
+  path = db.Column(db.String(), unique = False, nullable = False)
+  summary_stat_dataset_id = db.Column(db.Integer, db.ForeignKey('summary_stat_datasets.id'), nullable = False)
+
+  def __repr__(self):
+    return '<CovarianceFile %r>' % self.path
+
 class SummaryStatDataset(db.Model):
   __tablename__ = "summary_stat_datasets"
   id = db.Column(db.Integer, primary_key = True)
   name = db.Column(db.String, unique = False, nullable = False)
   description = db.Column(db.String, unique = False, nullable = False)
-  score_path = db.Column(db.String, unique = False, nullable = False)
-  cov_path = db.Column(db.String, unique = False, nullable = False)
+  score_files = db.relationship('ScoreStatFile', backref = 'summary_stat_datasets', lazy = True)
+  cov_files = db.relationship('CovarianceFile', backref = 'summary_stat_datasets', lazy = True)
   genome_build = db.Column(db.String(), unique = False, nullable = False)
 
   masks = db.relationship("Mask", secondary="sumstat_mask", back_populates="sumstats")
 
 Index('genotype_dataset_index_1', GenotypeDataset.genome_build)
-Index('file_index', File.genotype_dataset_id, File.path)
+Index('genotype_file_index', GenotypeFile.genotype_dataset_id, GenotypeFile.path)
+Index('score_stat_file_index', ScoreStatFile.summary_stat_dataset_id, ScoreStatFile.path)
+Index('cov_file_index', CovarianceFile.summary_stat_dataset_id, CovarianceFile.path)
 Index('sample_index', Sample.genotype_dataset_id, Sample.subset, Sample.sample)
 
 def find_file(relpath):
@@ -242,8 +263,14 @@ def get_samples_count(genotype_dataset_id, subset):
 def get_samples(genotype_dataset_id, subset):
   return [str(x) for x, in db.session.query(Sample.sample).filter_by(genotype_dataset_id = genotype_dataset_id).filter_by(subset = subset)]
 
-def get_files(genotype_dataset_id):
-  return [str(x) for x, in db.session.query(File.path).filter_by(genotype_dataset_id = genotype_dataset_id)]
+def get_genotype_files(genotype_dataset_id):
+  return [str(x) for x, in db.session.query(GenotypeFile.path).filter_by(genotype_dataset_id = genotype_dataset_id)]
+
+def get_score_files(summary_stat_dataset_id):
+  return [str(x) for x, in db.session.query(ScoreStatFile.path).filter_by(summary_stat_dataset_id = summary_stat_dataset_id)]
+
+def get_cov_files(summary_stat_dataset_id):
+  return [str(x) for x, in db.session.query(CovarianceFile.path).filter_by(summary_stat_dataset_id = summary_stat_dataset_id)]
 
 def get_phenotype_file(phenotype_dataset_id):
   p = db.session.query(PhenotypeDataset.filepath).filter_by(id = phenotype_dataset_id).scalar()
@@ -354,7 +381,7 @@ def get_scorecov_files(summary_stat_id):
   if result is None:
     raise ValueError("No summary statistic dataset exists with ID {}".format(summary_stat_id))
 
-  return result.score_path, result.cov_path
+  return result.score_files, result.cov_files
 
 def load_correlations():
   db.create_all()
@@ -379,7 +406,7 @@ def load_genotype_datasets(json_file):
     for genotype_dataset in json.load(f):
       r = GenotypeDataset(name = genotype_dataset['Name'], description = genotype_dataset['Description'], genome_build = genotype_dataset['Genome build'])
       for path in genotype_dataset['Files']:
-        r.files.append(File(path = path))
+        r.files.append(GenotypeFile(path = path))
       for subset, samples in genotype_dataset['Samples'].items():
         for sample in samples:
           r.samples.append(Sample(subset = subset, sample = sample))
@@ -464,7 +491,7 @@ def add_genotype_dataset(name, description, genome_build, samples_filename, geno
 
   r = GenotypeDataset(**args)
   for path in genotype_files:
-    r.files.append(File(path = path))
+    r.files.append(GenotypeFile(path = path))
   for sample in samples:
     r.samples.append(Sample(subset = 'ALL', sample = sample))
   db.session.add(r)
@@ -684,14 +711,12 @@ def add_phenotype_dataset(name, description, filepath, genotype_datasets, column
   db.session.add(pheno)
   db.session.commit()
 
-def add_summary_stat_dataset(name, description, genome_build, score_path, cov_path, ssid=None):
+def add_summary_stat_dataset(name, description, genome_build, score_files, cov_files, ssid=None):
   db.create_all()
 
   args = {
     "name": name,
     "description": description,
-    "score_path": score_path,
-    "cov_path": cov_path,
     "genome_build": genome_build
   }
 
@@ -699,6 +724,12 @@ def add_summary_stat_dataset(name, description, genome_build, score_path, cov_pa
     args["id"] = ssid
 
   sumstat = SummaryStatDataset(**args)
+
+  for path in score_files:
+    sumstat.score_files.append(ScoreStatFile(path = path))
+
+  for path in cov_files:
+    sumstat.cov_files.append(CovarianceFile(path = path))
 
   db.session.add(sumstat)
   db.session.commit()
@@ -833,6 +864,8 @@ def add_from_yaml(filepath):
   with open(filepath) as fp:
     data = yaml.safe_load(fp)
 
+  server_root = Path(current_app.root_path, "../../")
+
   # We need to preprocess the file to make sure their requested database IDs have not already been taken.
   for block_type, block_data in data.items():
     id_lookup = None
@@ -882,7 +915,27 @@ def add_from_yaml(filepath):
 
   if "summary_stats" in data:
     for record in data["summary_stats"]:
-      add_summary_stat_dataset(record["name"], record["description"], record["genome_build"], record["score_path"], record["cov_path"], record.get("id"))
+      score_path = record["score_path"]
+      if "*" in score_path:
+        score_files = glob(score_path)
+        if len(score_files) == 0:
+          score_files = list(server_root.glob(score_path))
+          if len(score_files) > 0:
+            score_files = [str(f.relative_to(server_root)) for f in score_files]
+      else:
+        score_files = [score_path]
+
+      cov_path = record["cov_path"]
+      if "*" in cov_path:
+        cov_files = glob(cov_path)
+        if len(cov_files) == 0:
+          cov_files = list(server_root.glob(cov_path))
+          if len(cov_files) > 0:
+            cov_files = [str(f.relative_to(server_root)) for f in cov_files]
+      else:
+        cov_files = [cov_path]
+
+      add_summary_stat_dataset(record["name"], record["description"], record["genome_build"], score_files, cov_files, record.get("id"))
 
   if "masks" in data:
     for record in data["masks"]:
