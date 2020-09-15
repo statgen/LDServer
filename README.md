@@ -659,6 +659,13 @@ For example, in rvtests: https://github.com/zhanxw/rvtests#meta-analysis-models
 
 The score statistic (`score_path`) and covariance matrix (`cov_path`) files must both be tabix indexed. RAREMETALWORKER or rvtest should do this automatically for you (there will be a `.tbi` tabix index file created for each score/cov file.)
 
+If your files are split by chromosome, you can specify both paths as a glob with the `*` character. For example: 
+
+```YAML
+  score_path: "topmed.chr*.metascore.txt.gz"
+  cov_path: "topmed.chr*.metascore.txt.gz"
+```
+
 ###### Add all records in YAML
 
 The YAML file may have genotype, phenotype, mask, and summary-stats blocks specified in any order, however there may only be 1 block for each type.
