@@ -54,8 +54,8 @@ class ScoreCovParseException : public std::runtime_error { using std::runtime_er
  */
 class SummaryStatisticsLoader {
 protected:
-  std::string score_path;
-  std::string cov_path;
+  std::map<std::string, std::string> score_map;
+  std::map<std::string, std::string> cov_map;
   std::map<uint64_t, double> alt_freq;
   std::map<uint64_t, std::string> pos_variant;
 
@@ -107,7 +107,7 @@ public:
    *
    *  Once a loader object is created, call load_region() to load statistics from a specific region into memory.
    */
-  SummaryStatisticsLoader(const std::string& score_path, const std::string& cov_path);
+  SummaryStatisticsLoader(const std::vector<std::string>& score_vec, const std::vector<std::string>& cov_vec);
 
   /**
    * Load a region of score statistics and covariances into memory.

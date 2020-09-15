@@ -1,12 +1,26 @@
 #include "SummaryStatisticsLoader.h"
 using namespace std;
 
-SummaryStatisticsLoader::SummaryStatisticsLoader(const string& score_path, const string& cov_path) {
-  this->score_path = score_path;
-  this->cov_path = cov_path;
+SummaryStatisticsLoader::SummaryStatisticsLoader(const std::vector<std::string>& score_vec, const std::vector<std::string>& cov_vec) {
+  // Create a mapping from chromosome -> score statistic file containing that chromosome.
+  for (auto& f : score_vec) {
+    Tabix tb(const_cast<string&>(f));
+    for (auto& chrom : tb.chroms) {
+      score_map[chrom] = f;
+    }
+  }
+
+  // Same as above, but for covariance files instead.
+  for (auto& f : cov_vec) {
+    Tabix tb(const_cast<string&>(f));
+    for (auto& chrom : tb.chroms) {
+      cov_map[chrom] = f;
+    }
+  }
+
   this->score_result = make_shared<ScoreStatQueryResult>(INIT_QUERY_LIMIT);
   this->cov_result = make_shared<LDQueryResult>(INIT_QUERY_LIMIT);
-  this->parseHeader(score_path);
+  this->parseHeader(score_vec[0]); // Assume all score stat files have same header
 }
 
 uint64_t SummaryStatisticsLoader::getNumberOfVariantsFromCovFile(const string& filepath, const string& region) {
@@ -130,6 +144,7 @@ void SummaryStatisticsLoader::parseHeader(const std::string& filepath) {
 void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start, uint64_t stop) {
   cov_result->erase();
 
+  const string& cov_path = cov_map[chromosome];
   Tabix tbfile(const_cast<string&>(cov_path));
   string region = chromosome + ":" + to_string(start) + "-" + to_string(stop);
 
@@ -256,6 +271,7 @@ void SummaryStatisticsLoader::load_scores(const string& chromosome, uint64_t sta
   if (start <= 0) { throw std::invalid_argument("Score statistic starting position was < 0"); }
   if (stop  <= 0) { throw std::invalid_argument("Score statistic stop position was < 0"); }
 
+  const string& score_path = score_map[chromosome];
   Tabix tbfile(const_cast<string&>(score_path));
   string region = chromosome + ":" + to_string(start) + "-" + to_string(stop);
 

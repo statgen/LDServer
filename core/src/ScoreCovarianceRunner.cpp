@@ -60,7 +60,7 @@ ScoreCovarianceRunner::ScoreCovarianceRunner(std::shared_ptr<ScoreCovarianceConf
   if (config->start <= 0) { throw std::invalid_argument("Invalid starting position " + to_string(config->start)); }
   if (config->segment_size <= 0) { throw std::invalid_argument("Segment size must be non-zero"); }
 
-  if (config->genotype_files.empty() && config->summary_stat_score_file.empty()) {
+  if (config->genotype_files.empty() && config->summary_stat_score_files.empty()) {
     throw std::invalid_argument("Must provide either genotype/phenotype files, or score stat/covariance files");
   }
 
@@ -79,13 +79,13 @@ ScoreCovarianceRunner::ScoreCovarianceRunner(std::shared_ptr<ScoreCovarianceConf
 
   // If the config has a score statistic or covariance file, we're in "pre-compute mode" - the scores and covariances
   // are already computed, and we just need to read them out of files on disk.
-  if (!config->summary_stat_score_file.empty() || !config->summary_stat_cov_file.empty()) {
+  if (!config->summary_stat_score_files.empty() || !config->summary_stat_cov_files.empty()) {
     run_mode = ScoreCovRunMode::PRECOMPUTE;
 
-    if (config->summary_stat_score_file.empty()) {
+    if (config->summary_stat_score_files.empty()) {
       throw std::invalid_argument("Must provide score statistic file in addition to covariance file");
     }
-    else if (config->summary_stat_cov_file.empty()) {
+    else if (config->summary_stat_cov_files.empty()) {
       throw std::invalid_argument("Must provide covariance file in addition to score statistic file");
     }
   }
@@ -127,7 +127,7 @@ ScoreCovarianceRunner::ScoreCovarianceRunner(std::shared_ptr<ScoreCovarianceConf
   }
   else {
     // We have pre-computed score/covariance and just need to serve them from files.
-    summary_stat_loader = make_shared<SummaryStatisticsLoader>(config->summary_stat_score_file, config->summary_stat_cov_file);
+    summary_stat_loader = make_shared<SummaryStatisticsLoader>(config->summary_stat_score_files, config->summary_stat_cov_files);
   }
 }
 

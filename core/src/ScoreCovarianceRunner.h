@@ -47,8 +47,8 @@ public:
    * Settings for when serving scores/covariance from rvtest or raremetalworker generated files
    */
   uint32_t summary_stat_dataset_id;
-  std::string summary_stat_score_file;
-  std::string summary_stat_cov_file;
+  std::vector<std::string> summary_stat_score_files;
+  std::vector<std::string> summary_stat_cov_files;
 
   /**
    * Mask related settings
