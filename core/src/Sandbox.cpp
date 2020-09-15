@@ -396,8 +396,8 @@ void sumstats() {
   config->segment_size = 10;
   config->masks = masks;
   config->summary_stat_dataset_id = 1;
-  config->summary_stat_score_file = "../../../data/test.smallchunk.MetaScore.assoc.gz";
-  config->summary_stat_cov_file = "../../../data/test.smallchunk.MetaCov.assoc.gz";
+  config->summary_stat_score_files = {"../../../data/test.smallchunk.MetaScore.assoc.gz"};
+  config->summary_stat_cov_files = {"../../../data/test.smallchunk.MetaCov.assoc.gz"};
 
   // Run score/covariance calculations
   ScoreCovarianceRunner runner(config);
