@@ -85,4 +85,14 @@ install(FILES
         ../../data/test.smallchunk.MetaScore.assoc.gz
         ../../data/test.smallchunk.MetaCov.assoc.gz.tbi
         ../../data/test.smallchunk.MetaCov.assoc.gz
+        ../../data/test.twochroms.chr1.MetaCov.assoc.gz
+        ../../data/test.twochroms.chr1.MetaCov.assoc.gz.tbi
+        ../../data/test.twochroms.chr1.MetaScore.assoc.gz
+        ../../data/test.twochroms.chr1.MetaScore.assoc.gz.tbi
+        ../../data/test.twochroms.chr9.MetaCov.assoc.gz
+        ../../data/test.twochroms.chr9.MetaCov.assoc.gz.tbi
+        ../../data/test.twochroms.chr9.MetaScore.assoc.gz
+        ../../data/test.twochroms.chr9.MetaScore.assoc.gz.tbi
+        ../../data/test.twochroms.mask.tab.gz
+        ../../data/test.twochroms.mask.tab.gz.tbi
         DESTINATION test)

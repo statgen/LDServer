@@ -106,6 +106,15 @@ masks:
   group_type: "GENE"
   identifier_type: "ENSEMBL"
 
+- id: 4
+  name: "Test scores/cov split by chrom"
+  description: "Simulated genes for testing scores/cov split into files by chrom"
+  filepath: "data/test.twochroms.mask.tab.gz"
+  genome_build: "GRCh37"
+  summary_stats: 3
+  group_type: "GENE"
+  identifier_type: "ENSEMBL"
+
 summary_stats:
 - id: 1
   name: "RAREMETAL scorecov test"
@@ -120,3 +129,10 @@ summary_stats:
   genome_build: "GRCh37"
   score_path: "data/test.smallchunk.MetaScore.assoc.gz"
   cov_path: "data/test.smallchunk.MetaCov.assoc.gz"
+
+- id: 3
+  name: "Test multiple chrom"
+  description: "With glob"
+  genome_build: "GRCh37"
+  score_path: "data/test.twochroms.chr*.MetaScore.assoc.gz"
+  cov_path: "data/test.twochroms.chr*.MetaCov.assoc.gz"

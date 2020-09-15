@@ -386,7 +386,7 @@ TEST_F(LDServerTest, SAV_one_page) {
 
 TEST_F(LDServerTest, summary_stat_load_raremetal_test) {
   // Load from disk using our new summary stat loader
-  SummaryStatisticsLoader loader("test_sumstat_loader_rm.scores.assoc.gz", "test_sumstat_loader_rm.cov.assoc.gz");
+  SummaryStatisticsLoader loader({"test_sumstat_loader_rm.scores.assoc.gz"}, {"test_sumstat_loader_rm.cov.assoc.gz"});
   loader.load_region("22", 27021502, 27026606);
 
   // Use our testing methods to load the same data for later comparison
@@ -420,7 +420,7 @@ TEST_F(LDServerTest, summary_stat_load_raremetal_test) {
 
 TEST_F(LDServerTest, summary_stat_load_rvtest_test) {
   // Load from disk using our new summary stat loader
-  SummaryStatisticsLoader loader("test.smallchunk.MetaScore.assoc.gz", "test.smallchunk.MetaCov.assoc.gz");
+  SummaryStatisticsLoader loader({"test.smallchunk.MetaScore.assoc.gz"}, {"test.smallchunk.MetaCov.assoc.gz"});
   loader.load_region("1", 2, 307);
 
   // Use our testing methods to load the same data for later comparison
@@ -454,7 +454,7 @@ TEST_F(LDServerTest, summary_stat_load_rvtest_test) {
 
 TEST_F(LDServerTest, summary_stat_ldserver_compare) {
   // Summary stat loader
-  SummaryStatisticsLoader loader("chr21.test.RAND_QT.singlevar.score.txt.gz", "chr21.test.RAND_QT.singlevar.cov.txt.gz");
+  SummaryStatisticsLoader loader({"chr21.test.RAND_QT.singlevar.score.txt.gz"}, {"chr21.test.RAND_QT.singlevar.cov.txt.gz"});
   loader.load_region("21", 9411239, 9411793);
 
   auto loader_scores = loader.getScoreResult();
