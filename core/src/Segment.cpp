@@ -280,8 +280,32 @@ const vector<vector<unsigned int>>& Segment::get_alt_carriers() const {
     return alt_carriers;
 }
 
-void Segment::create_pair(Segment& segment1, Segment& segment2, int i, int j, double value, vector<VariantsPair>& pairs) {
-    pairs.emplace_back(segment1.names[i], segment1.chromosome, segment1.positions[i], segment2.names[j], segment2.chromosome, segment2.positions[j], value);
+void Segment::create_pair(Segment& segment1, Segment& segment2, int i, int j, double value, LDQueryResult& result) {
+    uint32_t variant1_idx = 0u, variant2_idx = 0u;
+    auto& variant1_name = segment1.names[i];
+    auto& variant2_name = segment2.names[j];
+    auto index_it = result.index.end();
+    if ((index_it = result.index.find(variant1_name)) != result.index.end()) {
+        variant1_idx = index_it->second;
+    } else {
+        variant1_idx = result.variants.size();
+        result.index.emplace(variant1_name, variant1_idx);
+        result.variants.emplace_back(variant1_name, segment1.chromosome, segment1.positions[i]);
+    }
+    if ((index_it = result.index.find(variant2_name)) != result.index.end()) {
+        variant2_idx = index_it->second;
+    } else {
+        variant2_idx = result.variants.size();
+        result.index.emplace(variant2_name, variant2_idx);
+        result.variants.emplace_back(variant2_name, segment2.chromosome, segment2.positions[j]);
+    }
+    auto correlations_it = result.correlations.end();
+    if ((correlations_it = result.correlations.find(variant1_idx)) != result.correlations.end()) {
+        correlations_it->second.emplace_back(variant2_idx, value);
+    } else {
+        result.correlations.emplace(variant1_idx, vector<Correlation>()).first->second.emplace_back(variant2_idx, value);
+    }
+    ++result.n_correlations;
 }
 
 bool Segment::overlaps_region(uint64_t region_start_bp, uint64_t region_stop_bp, int &segment_start_index, int &segment_stop_index) const {

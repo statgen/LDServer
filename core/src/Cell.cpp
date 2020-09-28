@@ -91,12 +91,13 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
         int j = result.last_j >= 0 ? result.last_j : i + !diagonal;
         arma::fmat R(raw_fmat.get(), segment_i->get_n_variants(), segment_i->get_n_variants(), false, true);
         auto segment_i_n_variants = segment_i_to - segment_i_from + 1;
-        auto result_i = result.data.size();
+//        auto result_i = result.data.size();
+        auto result_i = result.n_correlations;
         while (i < segment_i_n_variants - !diagonal) {
             while (j < segment_i_n_variants) {
                 // Grab the correlation value from the R matrix for these two variants at i and j in the segment, and
                 // store it to a VariantPair object in result.
-                Segment::create_pair(*segment_i, *segment_i, segment_i_from + i, segment_i_from + j, R(segment_i_from + i, segment_i_from + j), result.data);
+                Segment::create_pair(*segment_i, *segment_i, segment_i_from + i, segment_i_from + j, R(segment_i_from + i, segment_i_from + j), result);
                 ++result_i;
                 ++j;
                 if (result_i >= result.limit) {
@@ -134,10 +135,11 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
         arma::fmat R(raw_fmat.get(), segment_i->get_n_variants(), segment_j->get_n_variants(), false, true);
         auto segment_i_n_variants = segment_i_to - segment_i_from + 1;
         auto segment_j_n_variants = segment_j_to - segment_j_from + 1;
-        auto result_i = result.data.size();
+//        auto result_i = result.data.size();
+        auto result_i = result.n_correlations;
         while (i < segment_i_n_variants) {
             while (j < segment_j_n_variants) {
-                Segment::create_pair(*segment_i, *segment_j, segment_i_from + i, segment_j_from + j, R(segment_i_from + i, segment_j_from + j), result.data);
+                Segment::create_pair(*segment_i, *segment_j, segment_i_from + i, segment_j_from + j, R(segment_i_from + i, segment_j_from + j), result);
                 ++result_i;
                 ++j;
                 if (result_i >= result.limit) {
@@ -179,9 +181,10 @@ void Cell::extract(const std::string& index_variant, std::uint64_t index_bp, std
         int i = segment_i_index;
         int j = result.last_j >= 0 ? result.last_j : 0;
         auto segment_i_n_variants = segment_i_to - segment_i_from + 1;
-        auto result_i = result.data.size();
+//        auto result_i = result.data.size();
+        auto result_i = result.n_correlations;
         while (j < segment_i_n_variants) {
-            Segment::create_pair(*segment_i, *segment_i, i, segment_i_from + j, R(i, segment_i_from + j), result.data);
+            Segment::create_pair(*segment_i, *segment_i, i, segment_i_from + j, R(i, segment_i_from + j), result);
             ++result_i;
             ++j;
             if (result_i >= result.limit) {
@@ -223,9 +226,10 @@ void Cell::extract(const std::string& index_variant, std::uint64_t index_bp, std
         int i = segment_i_index;
         int j = result.last_j >= 0 ? result.last_j : 0;
         auto segment_j_n_variants = segment_j_to - segment_j_from + 1;
-        auto result_i = result.data.size();
+//        auto result_i = result.data.size();
+        auto result_i = result.n_correlations;
         while (j < segment_j_n_variants) {
-            Segment::create_pair(*segment_i, *segment_j, i, segment_j_from + j, reversed ? R(segment_j_from + j, i) : R(i, segment_j_from + j), result.data);
+            Segment::create_pair(*segment_i, *segment_j, i, segment_j_from + j, reversed ? R(segment_j_from + j, i) : R(i, segment_j_from + j), result);
             ++result_i;
             ++j;
             if (result_i >= result.limit) {

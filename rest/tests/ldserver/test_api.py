@@ -90,7 +90,6 @@ def test_reference_populations(client, config):
         assert result['data'] is None
 
 
-
 def test_reference_population(client, config):
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/EUR')
     assert response.status_code == 200
@@ -138,19 +137,24 @@ def test_region_ld(client, goldstandard_ld):
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=22&start=51241101&stop=51241385&correlation=rsquare')
     assert response.status_code == 200
     result = response.get_json()
+    print(result)
     assert all(x in result for x in ['data', 'error', 'next'])
     assert result['error'] is None
     data = result['data']
     assert result['next'] is None
-    assert all(x in data for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
-    assert all(len(data['correlation']) == len(data[x]) for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
+    assert all(x in data for x in ['variants', 'chromosomes', 'positions', 'correlation'])
+    assert all(len(data['correlation']) <= len(data[x]) for x in ['variants', 'chromosomes', 'positions'])
+    assert len(data['variants']) == len(data['chromosomes'])
+    assert len(data['variants']) == len(data['positions'])
+    n_correlations = sum(len(buddies) for variant, buddies in data['correlation'].items())
     goldstandard = goldstandard_ld('../data/region_ld_22_51241101_51241385.hap.ld')
-    assert len(goldstandard) == len(data['correlation'])
-    for i in range(0, len(goldstandard)):
-        key = str(data['position1'][i]) + '_' + str(data['position2'][i])
-        assert key in goldstandard
-        print((key, goldstandard[key], data['correlation'][i]))
-        assert pytest.approx(data['correlation'][i], 0.00001) == goldstandard[key]
+    assert len(goldstandard) == n_correlations
+    for variant1, buddies in data['correlation'].items():
+        for variant2, value in buddies:
+            key = str(data['positions'][int(variant1)]) + '_' + str(data['positions'][int(variant2)])
+            assert key in goldstandard
+            print((key, goldstandard[key], value))
+            assert pytest.approx(value, 0.00001) == goldstandard[key]
 
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=22&start=51241101&stop=51241385&correlation=r')
     assert response.status_code == 200
@@ -159,15 +163,19 @@ def test_region_ld(client, goldstandard_ld):
     assert result['error'] is None
     data = result['data']
     assert result['next'] is None
-    assert all(x in data for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
-    assert all(len(data['correlation']) == len(data[x]) for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
+    assert all(x in data for x in ['variants', 'chromosomes', 'positions', 'correlation'])
+    assert all(len(data['correlation']) <= len(data[x]) for x in ['variants', 'chromosomes', 'positions'])
+    assert len(data['variants']) == len(data['chromosomes'])
+    assert len(data['variants']) == len(data['positions'])
+    n_correlations = sum(len(buddies) for variant, buddies in data['correlation'].items())
     goldstandard = goldstandard_ld('../data/region_ld_22_51241101_51241385.hap.ld')
-    assert len(goldstandard) == len(data['correlation'])
-    for i in range(0, len(goldstandard)):
-        key = str(data['position1'][i]) + '_' + str(data['position2'][i])
-        assert key in goldstandard
-        print((key, goldstandard[key], data['correlation'][i]**2))
-        assert pytest.approx(data['correlation'][i]**2, 0.00001) == goldstandard[key]
+    assert len(goldstandard) == n_correlations
+    for variant1, buddies in data['correlation'].items():
+        for variant2, value in buddies:
+            key = str(data['positions'][int(variant1)]) + '_' + str(data['positions'][int(variant2)])
+            assert key in goldstandard
+            print((key, goldstandard[key], value))
+            assert pytest.approx(value**2, 0.00001) == goldstandard[key]
 
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/AFR/regions?chrom=22&start=51241101&stop=51241385&correlation=rsquare')
     assert response.status_code == 200
@@ -176,14 +184,19 @@ def test_region_ld(client, goldstandard_ld):
     assert result['error'] is None
     data = result['data']
     assert result['next'] is None
-    assert all(x in data for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
-    assert all(len(data['correlation']) == len(data[x]) for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
+    assert all(x in data for x in ['variants', 'chromosomes', 'positions', 'correlation'])
+    assert all(len(data['correlation']) <= len(data[x]) for x in ['variants', 'chromosomes', 'positions'])
+    assert len(data['variants']) == len(data['chromosomes'])
+    assert len(data['variants']) == len(data['positions'])
+    n_correlations = sum(len(buddies) for variant, buddies in data['correlation'].items())
     goldstandard = goldstandard_ld('../data/region_ld_22_51241101_51241385.AFR.hap.ld')
-    assert len(goldstandard) == len(data['correlation'])
-    for i in range(0, len(goldstandard)):
-        key = str(data['position1'][i]) + '_' + str(data['position2'][i])
-        assert key in goldstandard
-        assert pytest.approx(data['correlation'][i], 0.00001) == goldstandard[key]
+    assert len(goldstandard) == n_correlations
+    for variant1, buddies in data['correlation'].items():
+        for variant2, value in buddies:
+            key = str(data['positions'][int(variant1)]) + '_' + str(data['positions'][int(variant2)])
+            assert key in goldstandard
+            print((key, goldstandard[key], value))
+            assert pytest.approx(value, 0.00001) == goldstandard[key]
 
 
 def test_region_ld_empty(client):
@@ -192,8 +205,8 @@ def test_region_ld_empty(client):
     result = response.get_json()
     assert result['error'] is None
     data = result['data']
-    assert all(x in data for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
-    assert all(len(data[x]) == 0 for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
+    assert all(x in data for x in ['variants', 'chromosomes', 'positions', 'correlation'])
+    assert all(len(data[x]) == 0 for x in ['variants', 'chromosomes', 'positions', 'correlation'])
 
 
 def test_region_ld_with_paging(client):
@@ -201,20 +214,31 @@ def test_region_ld_with_paging(client):
     response = client.get(url)
     assert response.status_code == 200
     data = response.get_json()['data']
-    single_page_result = [x for x in zip(data['variant1'], data['variant2'], data['correlation'])]
+    single_page_result = {}
+    for variant1, buddies in data['correlation'].items():
+        for variant2, value in buddies:
+            key = data['variants'][int(variant1)] + '_' + data['variants'][int(variant2)]
+            assert key not in single_page_result
+            single_page_result[key] = value
     url += '&limit=2'
-    multi_page_result = []
+    multi_page_result = {}
     while True:
         response = client.get(url)
         assert response.status_code == 200
         result = response.get_json()
         data = result['data']
-        multi_page_result.extend([x for x in zip(data['variant1'], data['variant2'], data['correlation'])])
+        for variant1, buddies in data['correlation'].items():
+            for variant2, value in buddies:
+                key = data['variants'][int(variant1)] + '_' + data['variants'][int(variant2)]
+                assert key not in multi_page_result
+                multi_page_result[key] = value
         url = result['next']
         if url is None:
             break
     assert len(single_page_result) == len(multi_page_result)
-    assert all(x == y for x, y in zip(single_page_result, multi_page_result))
+    for x, y in single_page_result.items():
+        assert x in multi_page_result
+        assert y == multi_page_result[x]
 
 
 def test_variant_ld(client, goldstandard_ld):
@@ -225,14 +249,18 @@ def test_variant_ld(client, goldstandard_ld):
     assert result['error'] is None
     data = result['data']
     assert result['next'] is None
-    assert all(x in data for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
-    assert all(len(data['correlation']) == len(data[x]) for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
+    assert all(x in data for x in ['variants', 'chromosomes', 'positions', 'correlation'])
+    assert len(data['correlation']) == 1
+    assert len(data['variants']) == len(data['chromosomes'])
+    assert len(data['variants']) == len(data['positions'])
+    n_correlations = sum(len(buddies) for variant, buddies in data['correlation'].items())
     goldstandard = goldstandard_ld('../data/variant_ld_22_51241101_vs_51241101_51241385.hap.ld')
-    assert len(goldstandard) == len(data['correlation'])
-    for i in range(0, len(goldstandard)):
-        key = str(data['position1'][i]) + '_' + str(data['position2'][i])
-        assert key in goldstandard
-        assert pytest.approx(data['correlation'][i], 0.00001) == goldstandard[key]
+    assert len(goldstandard) == n_correlations
+    for variant1, buddies in data['correlation'].items():
+        for variant2, value in buddies:
+            key = str(data['positions'][int(variant1)]) + '_' + str(data['positions'][int(variant2)])
+            assert key in goldstandard
+            assert pytest.approx(value, 0.00001) == goldstandard[key]
 
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=r')
     assert response.status_code == 200
@@ -241,14 +269,18 @@ def test_variant_ld(client, goldstandard_ld):
     assert result['error'] is None
     data = result['data']
     assert result['next'] is None
-    assert all(x in data for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
-    assert all(len(data['correlation']) == len(data[x]) for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
+    assert all(x in data for x in ['variants', 'chromosomes', 'positions', 'correlation'])
+    assert len(data['correlation']) == 1
+    assert len(data['variants']) == len(data['chromosomes'])
+    assert len(data['variants']) == len(data['positions'])
+    n_correlations = sum(len(buddies) for variant, buddies in data['correlation'].items())
     goldstandard = goldstandard_ld('../data/variant_ld_22_51241101_vs_51241101_51241385.hap.ld')
-    assert len(goldstandard) == len(data['correlation'])
-    for i in range(0, len(goldstandard)):
-        key = str(data['position1'][i]) + '_' + str(data['position2'][i])
-        assert key in goldstandard
-        assert pytest.approx(data['correlation'][i]**2, 0.00001) == goldstandard[key]
+    assert len(goldstandard) == n_correlations
+    for variant1, buddies in data['correlation'].items():
+        for variant2, value in buddies:
+            key = str(data['positions'][int(variant1)]) + '_' + str(data['positions'][int(variant2)])
+            assert key in goldstandard
+            assert pytest.approx(value**2, 0.00001) == goldstandard[key]
 
 
 def test_variant_ld_different_chromosomes(client):
@@ -257,8 +289,8 @@ def test_variant_ld_different_chromosomes(client):
     result = response.get_json()
     assert result['error'] is None
     data = result['data']
-    assert all(x in data for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
-    assert all(len(data[x]) == 0 for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
+    assert all(x in data for x in ['variants', 'chromosomes', 'positions', 'correlation'])
+    assert all(len(data[x]) == 0 for x in ['variants', 'chromosomes', 'positions', 'correlation'])
 
 
 def test_variant_ld_with_paging(client):
@@ -266,20 +298,31 @@ def test_variant_ld_with_paging(client):
     response = client.get(url)
     assert response.status_code == 200
     data = response.get_json()['data']
-    single_page_result = [x for x in zip(data['variant1'], data['variant2'], data['correlation'])]
+    single_page_result = {}
+    for variant1, buddies in data['correlation'].items():
+        for variant2, value in buddies:
+            key = data['variants'][int(variant1)] + '_' + data['variants'][int(variant2)]
+            assert key not in single_page_result
+            single_page_result[key] = value
     url += '&limit=2'
-    multi_page_result = []
+    multi_page_result = {}
     while True:
         response = client.get(url)
         assert response.status_code == 200
         result = response.get_json()
         data = result['data']
-        multi_page_result.extend([x for x in zip(data['variant1'], data['variant2'], data['correlation'])])
+        for variant1, buddies in data['correlation'].items():
+            for variant2, value in buddies:
+                key = data['variants'][int(variant1)] + '_' + data['variants'][int(variant2)]
+                assert key not in multi_page_result
+                multi_page_result[key] = value
         url = result['next']
         if url is None:
             break
     assert len(single_page_result) == len(multi_page_result)
-    assert all(x == y for x, y in zip(single_page_result, multi_page_result))
+    for x, y in single_page_result.items():
+        assert x in multi_page_result
+        assert y == multi_page_result[x]
 
 
 def test_compression(client):

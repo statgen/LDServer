@@ -106,7 +106,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
     boost::python::class_<LDQueryResult, boost::noncopyable>("LDQueryResult", boost::python::init<boost::uint32_t>())
             .def(boost::python::init<boost::uint32_t, const string&>())
             .def_readonly("limit", &LDQueryResult::limit)
-            .def_readonly("data", &LDQueryResult::data)
+//            .def_readonly("data", &LDQueryResult::data)
             .def("has_next", &LDQueryResult::has_next)
             .def("is_last", &LDQueryResult::is_last)
             .def("get_last", &LDQueryResult::get_last)

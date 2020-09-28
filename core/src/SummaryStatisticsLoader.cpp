@@ -211,6 +211,19 @@ void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start,
     // Load covariance data
     double row_alt_freq = getAltFreqForPosition(row_pos);
     string row_variant = getVariantForPosition(row_pos);
+
+    // DT: new format.
+    uint32_t variant1_idx = 0u, variant2_idx = 0u;
+    auto index_it = cov_result->index.end();
+
+    if ((index_it = cov_result->index.find(row_variant)) != cov_result->index.end()) {
+        variant1_idx = index_it->second;
+    } else {
+        variant1_idx = cov_result->variants.size();
+        cov_result->variants.emplace_back(row_variant, row_chrom, row_pos);
+        cov_result->index.emplace(row_variant, variant1_idx);
+    }
+
     for (uint64_t j = 0; j < cov.size(); j++) {
       uint64_t pos = positions[j];
 
@@ -238,7 +251,22 @@ void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start,
         }
       }
 
-      cov_result->data.emplace_back(row_variant, row_chrom, row_pos, variant, row_chrom, pos, v);
+//      cov_result->data.emplace_back(row_variant, row_chrom, row_pos, variant, row_chrom, pos, v);
+      // DT: new format
+      if ((index_it = cov_result->index.find(variant)) != cov_result->index.end()) {
+          variant2_idx = index_it->second;
+      } else {
+          variant2_idx = cov_result->variants.size();
+          cov_result->variants.emplace_back(variant, row_chrom, pos);
+          cov_result->index.emplace(variant, variant2_idx);
+      }
+      auto correlations_it = cov_result->correlations.end();
+      if ((correlations_it = cov_result->correlations.find(variant1_idx)) != cov_result->correlations.end()) {
+          correlations_it->second.emplace_back(variant2_idx, v);
+      } else {
+          cov_result->correlations.emplace(variant1_idx, vector<Correlation>()).first->second.emplace_back(variant2_idx, v);
+      }
+      cov_result->n_correlations += 1;
     }
   }
 }
