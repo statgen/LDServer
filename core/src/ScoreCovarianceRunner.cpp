@@ -253,7 +253,31 @@ void ScoreCovarianceRunner::run() {
       Value group_variants(kArrayType);
       Value group_covar(kArrayType);
       set<string> seen_group_variants;
-      for (auto&& pair : ld_res->data) {
+
+      // DT: new format
+      for (unsigned int variant1_idx = 0u; variant1_idx < ld_res->variants.size(); ++variant1_idx) {
+          for (auto&& correlation: ld_res->correlations[variant1_idx]) {
+              double cov_value = correlation.value;
+              if (run_mode == ScoreCovRunMode::COMPUTE) {
+                  // When we compute from genotype/phenotype files, the covariance hasn't been normalized by the
+                  // residual variance yet, so we need to do so here. In the covariance matrix files, this has already been done.
+                  cov_value /= score_res->sigma2;
+              }
+              group_covar.PushBack(cov_value, alloc);
+              auto variant1 = ld_res->variants[variant1_idx].name;
+              auto variant2 = ld_res->variants[correlation.variant_idx].name;
+              if (seen_group_variants.find(variant1) == seen_group_variants.end()) {
+                  group_variants.PushBack(Value(variant1.c_str(), alloc), alloc);
+                  seen_group_variants.emplace(variant1);
+              }
+              if (seen_group_variants.find(variant2) == seen_group_variants.end()) {
+                  group_variants.PushBack(Value(variant2.c_str(), alloc), alloc);
+                  seen_group_variants.emplace(variant2);
+              }
+          }
+      }
+
+      /* for (auto&& pair : ld_res->data) {
         double cov_value = pair.value;
         if (run_mode == ScoreCovRunMode::COMPUTE) {
           // When we compute from genotype/phenotype files, the covariance hasn't been normalized by the
@@ -271,7 +295,7 @@ void ScoreCovarianceRunner::run() {
           group_variants.PushBack(Value(pair.variant2.c_str(), alloc), alloc);
           seen_group_variants.emplace(pair.variant2);
         }
-      }
+      } */
 
       this_group.AddMember("variants", group_variants, alloc);
       this_group.AddMember("covariance", group_covar, alloc);

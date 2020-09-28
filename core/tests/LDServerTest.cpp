@@ -293,6 +293,37 @@ protected:
         assert(reply != nullptr);
         freeReplyObject(reply);
     }
+
+    bool result_has_correct_dims(LDQueryResult& result) {
+        unsigned int n_correlations = 0u;
+        for (auto&& entry: result.correlations) {
+            n_correlations += entry.second.size();
+        }
+        if (n_correlations != result.n_correlations) {
+            return false;
+        }
+        if (result.correlations.size() > 0) {
+            if (result.variants.size() < 2) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool result_has_nonempty_variants(LDQueryResult& result) {
+        for (auto&& v: result.variants) {
+            if (v.name.compare("") == 0) {
+                return false;
+            }
+            if (v.chromosome.compare("") == 0) {
+                return false;
+            }
+            if (v.position == 0u) {
+                return false;
+            }
+        }
+        return true;
+    }
 };
 
 string LDServerTest::hostname = "127.0.0.1";
@@ -334,6 +365,7 @@ TEST_F(LDServerTest, Morton_code) {
 
 TEST_F(LDServerTest, SAV_one_page) {
     map<string, double> goldstandard;
+
     this->load_region_goldstandard("region_ld_22_51241101_51241385.hap.ld", goldstandard);
 
     LDServer server(100);
@@ -344,13 +376,18 @@ TEST_F(LDServerTest, SAV_one_page) {
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
     ASSERT_TRUE(result.is_last());
-    ASSERT_EQ(result.data.size(), goldstandard.size());
-    for (auto&& entry : result.data) {
-        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-        ASSERT_NE(entry.variant1, "");
-        ASSERT_NE(entry.variant2, "");
-        ASSERT_EQ(goldstandard.count(key), 1);
-        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
+    ASSERT_TRUE(this->result_has_correct_dims(result));
+    ASSERT_TRUE(this->result_has_nonempty_variants(result));
+    ASSERT_EQ(result.n_correlations, goldstandard.size());
+    for (auto&& entry: result.correlations) {
+        auto variant1_idx = entry.first;
+        for (auto&& c: entry.second) {
+            auto variant2_idx = c.variant_idx;
+            auto corr_value = c.value;
+            string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
+        }
     }
 
     result.erase();
@@ -358,29 +395,38 @@ TEST_F(LDServerTest, SAV_one_page) {
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
     ASSERT_TRUE(result.is_last());
-    ASSERT_EQ(result.data.size(), goldstandard.size());
-    for (auto&& entry : result.data) {
-        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-        ASSERT_NE(entry.variant1, "");
-        ASSERT_NE(entry.variant2, "");
-        ASSERT_EQ(goldstandard.count(key), 1);
-        ASSERT_NEAR(goldstandard.find(key)->second , pow(entry.value, 2.0), 0.00000000001);
+    ASSERT_TRUE(this->result_has_correct_dims(result));
+    ASSERT_TRUE(this->result_has_nonempty_variants(result));
+    ASSERT_EQ(result.n_correlations, goldstandard.size());
+    for (auto&& entry: result.correlations) {
+        auto variant1_idx = entry.first;
+        for (auto&& c: entry.second) {
+            auto variant2_idx = c.variant_idx;
+            auto corr_value = c.value;
+            string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , pow(corr_value, 2.0), 0.00000000001);
+        }
     }
 
     result.erase();
-    //TODO: compare against pre-computed "golden standard" results. currently we jsut check if number of pairs matches the expected
     server.set_file("chr22.test.sav");
     ASSERT_TRUE(server.compute_region_ld("22", 51241101, 51241385, correlation::COV, result));
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
     ASSERT_TRUE(result.is_last());
-    ASSERT_EQ(result.data.size(), goldstandard.size());
-    for (auto&& entry : result.data) {
-        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-        ASSERT_NE(entry.variant1, "");
-        ASSERT_NE(entry.variant2, "");
-        ASSERT_EQ(goldstandard.count(key), 1);
-//        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
+    ASSERT_TRUE(this->result_has_correct_dims(result));
+    ASSERT_TRUE(this->result_has_nonempty_variants(result));
+    // TODO: compare against pre-computed "golden standard" results. currently we jsut check if number of pairs matches the expected
+    ASSERT_EQ(result.n_correlations, goldstandard.size());
+    for (auto&& entry: result.correlations) {
+        auto variant1_idx = entry.first;
+        for (auto&& c: entry.second) {
+            auto variant2_idx = c.variant_idx;
+            auto corr_value = c.value;
+            string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+            ASSERT_EQ(goldstandard.count(key), 1);
+        }
     }
 }
 
@@ -396,14 +442,18 @@ TEST_F(LDServerTest, summary_stat_load_raremetal_test) {
 
   // Check covariance
   auto cov_result = loader.getCovResult();
-  ASSERT_FALSE(cov_result->data.empty());
-  for (auto&& entry : cov_result->data) {
-    string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-    double value_gold = abs(gold_cov.find(key)->second); // needs abs because the loader flips cov according to alt allele freq
-    double value_test = abs(entry.value);
-    ASSERT_NE(entry.variant1, "");
-    ASSERT_NE(entry.variant2, "");
-    ASSERT_NEAR(value_gold, value_test, 0.0001);
+  ASSERT_GT(cov_result->n_correlations, 0);
+  ASSERT_FALSE(cov_result->variants.empty());
+  ASSERT_FALSE(cov_result->correlations.empty());
+  for (auto&& entry: cov_result->correlations) {
+      auto variant1_idx = entry.first;
+      for (auto&& c: entry.second) {
+          auto variant2_idx = c.variant_idx;
+          string key(to_string(cov_result->variants.at(variant1_idx).position) + "_" + to_string(cov_result->variants.at(variant2_idx).position));
+          double value_gold = abs(gold_cov.find(key)->second); // needs abs because the loader flips cov according to alt allele freq
+          auto value_test = abs(c.value);
+          ASSERT_NEAR(value_gold, value_test, 0.0001);
+      }
   }
 
   // Check scores
@@ -430,14 +480,18 @@ TEST_F(LDServerTest, summary_stat_load_rvtest_test) {
 
   // Check covariance
   auto cov_result = loader.getCovResult();
-  ASSERT_FALSE(cov_result->data.empty());
-  for (auto&& entry : cov_result->data) {
-    string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-    double value_gold = gold_cov.find(key)->second;
-    double value_test = entry.value;
-    ASSERT_NE(entry.variant1, "");
-    ASSERT_NE(entry.variant2, "");
-    ASSERT_NEAR(value_gold, value_test, 0.0001);
+  ASSERT_GT(cov_result->n_correlations, 0u);
+  ASSERT_FALSE(cov_result->variants.empty());
+  ASSERT_FALSE(cov_result->correlations.empty());
+  for (auto&& entry: cov_result->correlations) {
+    auto variant1_idx = entry.first;
+    for (auto&& c: entry.second) {
+        auto variant2_idx = c.variant_idx;
+        string key(to_string(cov_result->variants.at(variant1_idx).position) + "_" + to_string(cov_result->variants.at(variant2_idx).position));
+        double value_gold = gold_cov.find(key)->second;
+        auto value_test = c.value;
+        ASSERT_NEAR(value_gold, value_test, 0.0001);
+    }
   }
 
   // Check scores
@@ -492,7 +546,9 @@ TEST_F(LDServerTest, summary_stat_ldserver_compare) {
   ASSERT_TRUE(loader_samples == score_result.nsamples);
 
   ASSERT_TRUE(loader_scores->data.size() == score_result.data.size());
-  ASSERT_TRUE(loader_cov->data.size() == ld_result.data.size());
+  ASSERT_TRUE(loader_cov->n_correlations == ld_result.n_correlations);
+  ASSERT_TRUE(loader_cov->variants.size() == ld_result.variants.size());
+  ASSERT_TRUE(loader_cov->correlations.size() == ld_result.correlations.size());
 
   for (int i = 0; i < loader_scores->data.size(); i++) {
     double u_loader = loader_scores->data[i].score_stat;
@@ -502,17 +558,33 @@ TEST_F(LDServerTest, summary_stat_ldserver_compare) {
 
   loader_cov->sort_by_variant();
   ld_result.sort_by_variant();
-  for (int i = 0; i < loader_cov->data.size(); i++) {
-    auto& result_loader = loader_cov->data[i];
-    auto& result_server = ld_result.data[i];
 
-    ASSERT_TRUE(result_loader.variant1 == result_server.variant1);
-    ASSERT_TRUE(result_loader.variant2 == result_server.variant2);
-
-    double v_loader = result_loader.value * loader_sigma2;
-    double v_server = result_server.value;
-    ASSERT_NEAR(v_loader, v_server, 0.001);
+  for (unsigned int i = 0u; i < loader_cov->variants.size(); ++i) {
+    ASSERT_TRUE(loader_cov->variants[i] == ld_result.variants[i]);
+    ASSERT_TRUE(loader_cov->variants[i] == ld_result.variants[i]);
   }
+
+  for (auto&& entry: loader_cov->correlations) {
+      auto variant1_idx = entry.first;
+      for (unsigned int i = 0u; i < entry.second.size(); ++i) {
+          double v_loader = entry.second[i].value * loader_sigma2;
+          double v_server = ld_result.correlations[variant1_idx][i].value;
+          ASSERT_EQ(entry.second[i].variant_idx, ld_result.correlations[variant1_idx][i].variant_idx);
+          ASSERT_NEAR(v_loader, v_server, 0.001);
+      }
+  }
+
+//  for (int i = 0; i < loader_cov->data.size(); i++) {
+//    auto& result_loader = loader_cov->data[i];
+//    auto& result_server = ld_result.data[i];
+//
+//    ASSERT_TRUE(result_loader.variant1 == result_server.variant1);
+//    ASSERT_TRUE(result_loader.variant2 == result_server.variant2);
+//
+//    double v_loader = result_loader.value * loader_sigma2;
+//    double v_server = result_server.value;
+//    ASSERT_NEAR(v_loader, v_server, 0.001);
+//  }
 
 }
 
@@ -533,14 +605,24 @@ TEST_F(LDServerTest, simple_cov_test) {
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
     ASSERT_TRUE(result.is_last());
-    for (auto&& entry : result.data) {
-        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-        double value_gold = gold_standard.find(key)->second * scores->get_sigma2();
-        double value_ldserver = entry.value;
-        ASSERT_NE(entry.variant1, "");
-        ASSERT_NE(entry.variant2, "");
-        ASSERT_NEAR(value_gold, value_ldserver, 0.0001);
+    for (auto&& entry: result.correlations) {
+        auto variant1_idx = entry.first;
+        for (auto&& c: entry.second) {
+            auto variant2_idx = c.variant_idx;
+            string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+            double value_gold = gold_standard.find(key)->second * scores->get_sigma2();
+            double value_ldserver = c.value;
+            ASSERT_NEAR(value_gold, value_ldserver, 0.0001);
+        }
     }
+//    for (auto&& entry : result.data) {
+//        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+//        double value_gold = gold_standard.find(key)->second * scores->get_sigma2();
+//        double value_ldserver = entry.value;
+//        ASSERT_NE(entry.variant1, "");
+//        ASSERT_NE(entry.variant2, "");
+//        ASSERT_NEAR(value_gold, value_ldserver, 0.0001);
+//    }
 }
 
 TEST_F(LDServerTest, simple_cov_test_missing_data) {
@@ -560,14 +642,24 @@ TEST_F(LDServerTest, simple_cov_test_missing_data) {
   ASSERT_EQ(result.limit, 1000);
   ASSERT_EQ(result.get_last(), "");
   ASSERT_TRUE(result.is_last());
-  for (auto&& entry : result.data) {
-    string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-    double value_gold = gold_standard.find(key)->second * scores->get_sigma2();
-    double value_ldserver = entry.value;
-    ASSERT_NE(entry.variant1, "");
-    ASSERT_NE(entry.variant2, "");
-    ASSERT_NEAR(value_gold, value_ldserver, 0.005);
+  for (auto&& entry: result.correlations) {
+    auto variant1_idx = entry.first;
+    for (auto&& c: entry.second) {
+        auto variant2_idx = c.variant_idx;
+        string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+        double value_gold = gold_standard.find(key)->second * scores->get_sigma2();
+        double value_ldserver = c.value;
+        ASSERT_NEAR(value_gold, value_ldserver, 0.005);
+    }
   }
+//  for (auto&& entry : result.data) {
+//    string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+//    double value_gold = gold_standard.find(key)->second * scores->get_sigma2();
+//    double value_ldserver = entry.value;
+//    ASSERT_NE(entry.variant1, "");
+//    ASSERT_NE(entry.variant2, "");
+//    ASSERT_NEAR(value_gold, value_ldserver, 0.005);
+//  }
 }
 
 TEST_F(LDServerTest, score_server) {
@@ -1035,13 +1127,18 @@ TEST_F(LDServerTest, BCF_one_page) {
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
     ASSERT_TRUE(result.is_last());
-    ASSERT_EQ(result.data.size(), goldstandard.size());
-    for (auto&& entry : result.data) {
-        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-        ASSERT_NE(entry.variant1, "");
-        ASSERT_NE(entry.variant2, "");
-        ASSERT_EQ(goldstandard.count(key), 1);
-        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
+    ASSERT_TRUE(this->result_has_correct_dims(result));
+    ASSERT_TRUE(this->result_has_nonempty_variants(result));
+    ASSERT_EQ(result.n_correlations, goldstandard.size());
+    for (auto&& entry: result.correlations) {
+        auto variant1_idx = entry.first;
+        for (auto&& c: entry.second) {
+            auto variant2_idx = c.variant_idx;
+            auto corr_value = c.value;
+            string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
+        }
     }
 }
 
@@ -1059,13 +1156,18 @@ TEST_F(LDServerTest, VCF_one_page) {
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
     ASSERT_TRUE(result.is_last());
-    ASSERT_EQ(result.data.size(), goldstandard.size());
-    for (auto&& entry : result.data) {
-        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-        ASSERT_NE(entry.variant1, "");
-        ASSERT_NE(entry.variant2, "");
-        ASSERT_EQ(goldstandard.count(key), 1);
-        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
+    ASSERT_TRUE(this->result_has_correct_dims(result));
+    ASSERT_TRUE(this->result_has_nonempty_variants(result));
+    ASSERT_EQ(result.n_correlations, goldstandard.size());
+    for (auto&& entry: result.correlations) {
+        auto variant1_idx = entry.first;
+        for (auto&& c: entry.second) {
+            auto variant2_idx = c.variant_idx;
+            auto corr_value = c.value;
+            string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
+        }
     }
 }
 
@@ -1084,13 +1186,18 @@ TEST_F(LDServerTest, SAV_chrX_one_page) {
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
     ASSERT_TRUE(result.is_last());
-    ASSERT_EQ(result.data.size(), goldstandard.size());
-    for (auto&& entry : result.data) {
-        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-        ASSERT_NE(entry.variant1, "");
-        ASSERT_NE(entry.variant2, "");
-        ASSERT_EQ(goldstandard.count(key), 1);
-        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.000000001);
+    ASSERT_TRUE(this->result_has_correct_dims(result));
+    ASSERT_TRUE(this->result_has_nonempty_variants(result));
+    ASSERT_EQ(result.n_correlations, goldstandard.size());
+    for (auto&& entry: result.correlations) {
+        auto variant1_idx = entry.first;
+        for (auto&& c: entry.second) {
+            auto variant2_idx = c.variant_idx;
+            auto corr_value = c.value;
+            string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.000000001);
+        }
     }
 }
 
@@ -1105,15 +1212,20 @@ TEST_F(LDServerTest, region_with_paging) {
     server.set_file("chr22.test.sav");
     while (server.compute_region_ld("22", 51241101, 51241385, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 4);
-        ASSERT_LE(result.data.size(), 4);
-        for (auto &&entry : result.data) {
-            string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-            ASSERT_NE(entry.variant1, "");
-            ASSERT_NE(entry.variant2, "");
-            ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
+        ASSERT_TRUE(this->result_has_correct_dims(result));
+        ASSERT_TRUE(this->result_has_nonempty_variants(result));
+        ASSERT_LE(result.n_correlations, 4);
+        for (auto&& entry: result.correlations) {
+            auto variant1_idx = entry.first;
+            for (auto&& c: entry.second) {
+                auto variant2_idx = c.variant_idx;
+                auto corr_value = c.value;
+                string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+                ASSERT_EQ(goldstandard.count(key), 1);
+                ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
+            }
         }
-        result_total_size += result.data.size();
+        result_total_size += result.n_correlations;
     }
     ASSERT_EQ(result_total_size, goldstandard.size());
 }
@@ -1129,15 +1241,20 @@ TEST_F(LDServerTest, variant_with_paging_1) {
     server.set_file("chr22.test.sav");
     while (server.compute_variant_ld("22:51241101_A/T", "22", 51241101, 51241385, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
-        ASSERT_LE(result.data.size(), 2);
-        for (auto&& entry : result.data) {
-            string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-            ASSERT_NE(entry.variant1, "");
-            ASSERT_NE(entry.variant2, "");
-            ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
+        ASSERT_TRUE(this->result_has_correct_dims(result));
+        ASSERT_TRUE(this->result_has_nonempty_variants(result));
+        ASSERT_LE(result.n_correlations, 2);
+        for (auto&& entry: result.correlations) {
+            auto variant1_idx = entry.first;
+            for (auto&& c: entry.second) {
+                auto variant2_idx = c.variant_idx;
+                auto corr_value = c.value;
+                string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+                ASSERT_EQ(goldstandard.count(key), 1);
+                ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
+            }
         }
-        result_total_size += result.data.size();
+        result_total_size += result.n_correlations;
     }
     ASSERT_EQ(result_total_size, goldstandard.size());
 }
@@ -1153,15 +1270,20 @@ TEST_F(LDServerTest, variant_with_paging_2) {
     server.set_file("chr22.test.sav");
     while (server.compute_variant_ld("22:51241386_C/G", "22", 51241101, 51241385, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
-        ASSERT_LE(result.data.size(), 2);
-        for (auto&& entry : result.data) {
-            string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-            ASSERT_NE(entry.variant1, "");
-            ASSERT_NE(entry.variant2, "");
-            ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.0000001);
+        ASSERT_TRUE(this->result_has_correct_dims(result));
+        ASSERT_TRUE(this->result_has_nonempty_variants(result));
+        ASSERT_LE(result.n_correlations, 2);
+        for (auto&& entry: result.correlations) {
+            auto variant1_idx = entry.first;
+            for (auto&& c: entry.second) {
+                auto variant2_idx = c.variant_idx;
+                auto corr_value = c.value;
+                string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+                ASSERT_EQ(goldstandard.count(key), 1);
+                ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.0000001);
+            }
         }
-        result_total_size += result.data.size();
+        result_total_size += result.n_correlations;
     }
     ASSERT_EQ(result_total_size, goldstandard.size());
 }
@@ -1177,15 +1299,20 @@ TEST_F(LDServerTest, variant_with_paging_3) {
     server.set_file("chr22.test.sav");
     while (server.compute_variant_ld("22:51241309_C/T", "22", 51241101, 51244237, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
-        ASSERT_LE(result.data.size(), 2);
-        for (auto&& entry : result.data) {
-            string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-            ASSERT_NE(entry.variant1, "");
-            ASSERT_NE(entry.variant2, "");
-            ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.0000001);
+        ASSERT_TRUE(this->result_has_correct_dims(result));
+        ASSERT_TRUE(this->result_has_nonempty_variants(result));
+        ASSERT_LE(result.n_correlations, 2);
+        for (auto&& entry: result.correlations) {
+            auto variant1_idx = entry.first;
+            for (auto&& c: entry.second) {
+                auto variant2_idx = c.variant_idx;
+                auto corr_value = c.value;
+                string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+                ASSERT_EQ(goldstandard.count(key), 1);
+                ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.0000001);
+            }
         }
-        result_total_size += result.data.size();
+        result_total_size += result.n_correlations;
     }
     ASSERT_EQ(result_total_size, goldstandard.size());
 }
@@ -1197,8 +1324,10 @@ TEST_F(LDServerTest, variant_with_paging_no_variant_1) {
     server.set_file("chr22.test.sav");
     while (server.compute_variant_ld("22:51241101_A/C", "22", 51241101, 51241385, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
-        ASSERT_LE(result.data.size(), 2);
-        result_total_size += result.data.size();
+        ASSERT_TRUE(this->result_has_correct_dims(result));
+        ASSERT_TRUE(this->result_has_nonempty_variants(result));
+        ASSERT_LE(result.n_correlations, 2);
+        result_total_size += result.n_correlations;
     }
     ASSERT_EQ(result_total_size, 0);
 }
@@ -1210,8 +1339,10 @@ TEST_F(LDServerTest, variant_with_paging_no_variant_2) {
     server.set_file("chr22.test.sav");
     while (server.compute_variant_ld("22:51241386_C/T", "22", 51241101, 51241385, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
-        ASSERT_LE(result.data.size(), 2);
-        result_total_size += result.data.size();
+        ASSERT_TRUE(this->result_has_correct_dims(result));
+        ASSERT_TRUE(this->result_has_nonempty_variants(result));
+        ASSERT_LE(result.n_correlations, 2);
+        result_total_size += result.n_correlations;
     }
     ASSERT_EQ(result_total_size, 0);
 }
@@ -1223,7 +1354,10 @@ TEST_F(LDServerTest, variant_with_paging_no_variant_3) {
     server.set_file("chr22.test.sav");
     while (server.compute_variant_ld("22:51241309_C/A", "22", 51241101, 51244237, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
-        ASSERT_LE(result.data.size(), 2);
+        ASSERT_TRUE(this->result_has_correct_dims(result));
+        ASSERT_TRUE(this->result_has_nonempty_variants(result));
+        ASSERT_LE(result.n_correlations, 2);
+        result_total_size += result.n_correlations;
     }
     ASSERT_EQ(result_total_size, 0);
 }
@@ -1243,15 +1377,20 @@ TEST_F(LDServerTest, AFR_region_with_paging) {
     server.set_samples("AFR", samples);
     while (server.compute_region_ld("22", 51241101, 51241385, correlation::LD_RSQUARE, result, "AFR")) {
         ASSERT_LE(result.limit, 4);
-        ASSERT_LE(result.data.size(), 4);
-        for (auto &&entry : result.data) {
-            string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-            ASSERT_NE(entry.variant1, "");
-            ASSERT_NE(entry.variant2, "");
-            ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.0000000001);
+        ASSERT_TRUE(this->result_has_correct_dims(result));
+        ASSERT_TRUE(this->result_has_nonempty_variants(result));
+        ASSERT_LE(result.n_correlations, 4);
+        for (auto&& entry: result.correlations) {
+            auto variant1_idx = entry.first;
+            for (auto&& c: entry.second) {
+                auto variant2_idx = c.variant_idx;
+                auto corr_value = c.value;
+                string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+                ASSERT_EQ(goldstandard.count(key), 1);
+                ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.0000000001);
+            }
         }
-        result_total_size += result.data.size();
+        result_total_size += result.n_correlations;
     }
     ASSERT_EQ(result_total_size, goldstandard.size());
 }
@@ -1267,15 +1406,20 @@ TEST_F(LDServerTest, large_region_with_paging) {
     server.set_file("chr22.test.sav");
     while (server.compute_region_ld("22", 50544251, 50549251, correlation::LD_RSQUARE, result, "ALL")) {
         ASSERT_LE(result.limit, 1000);
-        ASSERT_LE(result.data.size(), 1000);
-        for (auto &&entry : result.data) {
-            string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-            ASSERT_NE(entry.variant1, "");
-            ASSERT_NE(entry.variant2, "");
-            ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.000001);
+        ASSERT_TRUE(this->result_has_correct_dims(result));
+        ASSERT_TRUE(this->result_has_nonempty_variants(result));
+        ASSERT_LE(result.n_correlations, 1000);
+        for (auto&& entry: result.correlations) {
+            auto variant1_idx = entry.first;
+            for (auto&& c: entry.second) {
+                auto variant2_idx = c.variant_idx;
+                auto corr_value = c.value;
+                string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+                ASSERT_EQ(goldstandard.count(key), 1);
+                ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.000001);
+            }
         }
-        result_total_size += result.data.size();
+        result_total_size += result.n_correlations;
     }
     ASSERT_EQ(result_total_size, goldstandard.size());
 }
@@ -1291,15 +1435,20 @@ TEST_F(LDServerTest, large_variant_with_paging) {
     server.set_file("chr22.test.sav");
     while (server.compute_variant_ld("22:50546666_C/T", "22", 50544251, 50549251, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 1000);
-        ASSERT_LE(result.data.size(), 1000);
-        for (auto&& entry : result.data) {
-            string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-            ASSERT_NE(entry.variant1, "");
-            ASSERT_NE(entry.variant2, "");
-            ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.000001);
+        ASSERT_TRUE(this->result_has_correct_dims(result));
+        ASSERT_TRUE(this->result_has_nonempty_variants(result));
+        ASSERT_LE(result.n_correlations, 1000);
+        for (auto&& entry: result.correlations) {
+            auto variant1_idx = entry.first;
+            for (auto&& c: entry.second) {
+                auto variant2_idx = c.variant_idx;
+                auto corr_value = c.value;
+                string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+                ASSERT_EQ(goldstandard.count(key), 1);
+                ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.000001);
+            }
         }
-        result_total_size += result.data.size();
+        result_total_size += result.n_correlations;
     }
     ASSERT_EQ(result_total_size, goldstandard.size());
 }
@@ -1428,12 +1577,25 @@ TEST_F(LDServerTest, cell_cache) {
         ASSERT_EQ(cell1->segment_i->get_position(i), cell2->segment_i->get_position(i));
     }
 
-    ASSERT_EQ(result1.data.size(), result2.data.size());
-    for (unsigned int i = 0; i < result1.data.size(); ++i) {
-        ASSERT_EQ(result1.data[i].variant1, result2.data[i].variant1);
-        ASSERT_EQ(result1.data[i].variant2, result2.data[i].variant2);
-        ASSERT_EQ(result1.data[i].value, result2.data[i].value);
+    ASSERT_EQ(result1.n_correlations, result2.n_correlations);
+    ASSERT_EQ(result1.variants.size(), result2.variants.size());
+    for (unsigned int i = 0u; i < result1.variants.size(); ++i) {
+        ASSERT_EQ(result1.variants[i].name, result2.variants[i].name);
     }
+    ASSERT_EQ(result1.correlations.size(), result2.correlations.size());
+    for (auto&& entry: result1.correlations) {
+        auto variant1_idx = entry.first;
+        ASSERT_EQ(entry.second.size(), result2.correlations[variant1_idx].size());
+        for (unsigned int i = 0u; i < entry.second.size(); ++i) {
+            ASSERT_EQ(entry.second[i].value, result2.correlations[variant1_idx][i].value);
+        }
+    }
+
+//    for (unsigned int i = 0; i < result1.data.size(); ++i) {
+//        ASSERT_EQ(result1.data[i].variant1, result2.data[i].variant1);
+//        ASSERT_EQ(result1.data[i].variant2, result2.data[i].variant2);
+//        ASSERT_EQ(result1.data[i].value, result2.data[i].value);
+//    }
 }
 
 TEST_F(LDServerTest, cache_enabled) {
@@ -1469,12 +1631,30 @@ TEST_F(LDServerTest, cache_with_different_correlations) {
     server.set_file("chr22.test.sav");
     ASSERT_TRUE(server.compute_region_ld("22", 50248762, 50249221, correlation::LD_RSQUARE, result1));
     ASSERT_TRUE(server.compute_region_ld("22", 50248762, 50249221, correlation::LD_R, result2));
+    ASSERT_TRUE(this->result_has_correct_dims(result1));
+    ASSERT_TRUE(this->result_has_nonempty_variants(result1));
     ASSERT_TRUE(result1.is_last());
+    ASSERT_TRUE(this->result_has_correct_dims(result2));
+    ASSERT_TRUE(this->result_has_nonempty_variants(result2));
     ASSERT_TRUE(result2.is_last());
-    ASSERT_EQ(result1.data.size(), result2.data.size());
-    for (unsigned int i = 0u; i < result1.data.size(); ++i) {
-        ASSERT_NE(result1.data[i].value, result2.data[i].value);
+    ASSERT_EQ(result1.n_correlations, result2.n_correlations);
+    ASSERT_EQ(result1.variants.size(), result2.variants.size());
+    for (unsigned int i = 0u; i < result1.variants.size(); ++i) {
+        ASSERT_EQ(result1.variants[i].name, result2.variants[i].name);
     }
+    ASSERT_EQ(result1.correlations.size(), result2.correlations.size());
+    for (auto&& entry: result1.correlations) {
+        auto variant1_idx = entry.first;
+        ASSERT_EQ(entry.second.size(), result2.correlations[variant1_idx].size());
+        for (unsigned int i = 0u; i < entry.second.size(); ++i) {
+            ASSERT_NE(entry.second[i].value, result2.correlations[variant1_idx][i].value);
+            ASSERT_EQ(entry.second[i].variant_idx, result2.correlations[variant1_idx][i].variant_idx);
+        }
+    }
+
+//    for (unsigned int i = 0u; i < result1.data.size(); ++i) {
+//        ASSERT_NE(result1.data[i].value, result2.data[i].value);
+//    }
 
     flush_cache();
 }
@@ -1491,15 +1671,20 @@ TEST_F(LDServerTest, large_region_with_paging_and_caching) {
     server.set_file("chr22.test.sav");
     while (server.compute_region_ld("22", 50544251, 50549251, correlation::LD_RSQUARE, result, "ALL")) {
         ASSERT_LE(result.limit, 1000);
-        ASSERT_LE(result.data.size(), 1000);
-        for (auto &&entry : result.data) {
-            string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-            ASSERT_NE(entry.variant1, "");
-            ASSERT_NE(entry.variant2, "");
-            ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.000001);
+        ASSERT_TRUE(this->result_has_correct_dims(result));
+        ASSERT_TRUE(this->result_has_nonempty_variants(result));
+        ASSERT_LE(result.n_correlations, 1000);
+        for (auto&& entry: result.correlations) {
+            auto variant1_idx = entry.first;
+            for (auto&& c: entry.second) {
+                auto variant2_idx = c.variant_idx;
+                auto corr_value = c.value;
+                string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+                ASSERT_EQ(goldstandard.count(key), 1);
+                ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.000001);
+            }
         }
-        result_total_size += result.data.size();
+        result_total_size += result.n_correlations;
     }
     ASSERT_EQ(result_total_size, goldstandard.size());
 }
@@ -1517,14 +1702,26 @@ TEST_F(LDServerTest, SAV_one_page_no_segment_intersect_1) {
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
     ASSERT_TRUE(result.is_last());
-    ASSERT_EQ(result.data.size(), 1);
-    for (auto&& entry : result.data) {
-        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-        ASSERT_NE(entry.variant1, "");
-        ASSERT_NE(entry.variant2, "");
-        ASSERT_EQ(goldstandard.count(key), 1);
-        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
+    ASSERT_TRUE(this->result_has_correct_dims(result));
+    ASSERT_TRUE(this->result_has_nonempty_variants(result));
+    ASSERT_EQ(result.n_correlations, 1);
+    for (auto&& entry: result.correlations) {
+        auto variant1_idx = entry.first;
+        for (auto&& c: entry.second) {
+            auto variant2_idx = c.variant_idx;
+            auto corr_value = c.value;
+            string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
+        }
     }
+//    for (auto&& entry : result.data) {
+//        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+//        ASSERT_NE(entry.variant1, "");
+//        ASSERT_NE(entry.variant2, "");
+//        ASSERT_EQ(goldstandard.count(key), 1);
+//        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
+//    }
 }
 
 TEST_F(LDServerTest, SAV_one_page_no_segment_intersect_2) {
@@ -1540,14 +1737,26 @@ TEST_F(LDServerTest, SAV_one_page_no_segment_intersect_2) {
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
     ASSERT_TRUE(result.is_last());
-    ASSERT_GT(result.data.size(), 1);
-    for (auto&& entry : result.data) {
-        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-        ASSERT_NE(entry.variant1, "");
-        ASSERT_NE(entry.variant2, "");
-        ASSERT_EQ(goldstandard.count(key), 1);
-        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
+    ASSERT_TRUE(this->result_has_correct_dims(result));
+    ASSERT_TRUE(this->result_has_nonempty_variants(result));
+    ASSERT_GT(result.n_correlations, 1);
+    for (auto&& entry: result.correlations) {
+        auto variant1_idx = entry.first;
+        for (auto&& c: entry.second) {
+            auto variant2_idx = c.variant_idx;
+            auto corr_value = c.value;
+            string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
+        }
     }
+//    for (auto&& entry : result.data) {
+//        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+//        ASSERT_NE(entry.variant1, "");
+//        ASSERT_NE(entry.variant2, "");
+//        ASSERT_EQ(goldstandard.count(key), 1);
+//        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
+//    }
 }
 
 TEST_F(LDServerTest, known_memory_leak_test) {
@@ -1565,7 +1774,11 @@ TEST_F(LDServerTest, empty_data_test) {
     ASSERT_FALSE(server.compute_region_ld("21", 51241103, 51241385, correlation::LD_RSQUARE, result));
     ASSERT_EQ(result.get_last(), "");
     ASSERT_TRUE(result.is_last());
-    ASSERT_EQ(result.data.size(), 0);
+    ASSERT_TRUE(this->result_has_correct_dims(result));
+    ASSERT_TRUE(this->result_has_nonempty_variants(result));
+    ASSERT_EQ(result.n_correlations, 0);
+    ASSERT_EQ(result.variants.size(), 0);
+    ASSERT_EQ(result.correlations.size(), 0);
 }
 
 TEST_F(LDServerTest, rsquare_approx_test) {
@@ -1579,14 +1792,26 @@ TEST_F(LDServerTest, rsquare_approx_test) {
     ASSERT_EQ(result.limit, 1000);
     ASSERT_EQ(result.get_last(), "");
     ASSERT_TRUE(result.is_last());
-    ASSERT_EQ(result.data.size(), goldstandard.size());
-    for (auto&& entry : result.data) {
-        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-        ASSERT_NE(entry.variant1, "");
-        ASSERT_NE(entry.variant2, "");
-        ASSERT_EQ(goldstandard.count(key), 1);
-        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
+    ASSERT_TRUE(this->result_has_correct_dims(result));
+    ASSERT_TRUE(this->result_has_nonempty_variants(result));
+    ASSERT_EQ(result.n_correlations, goldstandard.size());
+    for (auto&& entry: result.correlations) {
+        auto variant1_idx = entry.first;
+        for (auto&& c: entry.second) {
+            auto variant2_idx = c.variant_idx;
+            auto corr_value = c.value;
+            string key(to_string(result.variants.at(variant1_idx).position) + "_" + to_string(result.variants.at(variant2_idx).position));
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
+        }
     }
+//    for (auto&& entry : result.data) {
+//        string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+//        ASSERT_NE(entry.variant1, "");
+//        ASSERT_NE(entry.variant2, "");
+//        ASSERT_EQ(goldstandard.count(key), 1);
+//        ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
+//    }
 }
 
 TEST_F(LDServerTest, DISABLED_read_spead) {

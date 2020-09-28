@@ -88,8 +88,7 @@ public:
     const vector<vector<unsigned int>>& get_alt_carriers() const;
     genotypes_store get_store() const;
 
-    static void create_pair(Segment& segment1, Segment& segment2, int index_i, int index_j, double value, vector<VariantsPair>& pairs);
-
+    static void create_pair(Segment& segment1, Segment& segment2, int index_i, int index_j, double value, LDQueryResult& result);
     bool overlaps_region(uint64_t region_start_bp, uint64_t region_stop_bp, int& from_index, int& to_index) const;
     bool overlaps_variant(const string& name, uint64_t bp, int& index) const;
 

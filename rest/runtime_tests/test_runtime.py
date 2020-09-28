@@ -67,7 +67,6 @@ if __name__ == '__main__':
     for query, region_length, page_size in queries:
         url = 'http://{}{}/{}'.format(args.hostname, ':' + str(args.port) if args.port else '', query)
         total_time = 0
-        all_variants = set()
         total_results = 0
         total_pages = 0
         while url is not None:
@@ -78,9 +77,9 @@ if __name__ == '__main__':
                 sys.exit('Request failed with code {}.\nQuery: {}'.format(response.status_code, query))
             data = response.json()['data']
             total_time += (end - start)
-            all_variants.update(data['variant1'])
-            all_variants.update(data['variant2'])
-            total_results += len(data['correlation'])
+            assert len(data['variants']) == len(data['chromosomes'])
+            assert len(data['variants']) == len(data['positions'])
+            total_results += sum([len(x) for _, x in data['correlation'].items()])
             total_pages += 1
             url = response.json()['next']
-        print('{}\t{}\t{}\t{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}'.format(query, region_length, page_size, len(all_variants), total_results, total_pages, total_time, response.elapsed.total_seconds(), len(response.content) / (1024.0 * 1024.0), int(response.headers['Content-Length']) / (1024.0 * 1024.0)))
+        print('{}\t{}\t{}\t{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}'.format(query, region_length, page_size, len(data['variants']), total_results, total_pages, total_time, response.elapsed.total_seconds(), len(response.content) / (1024.0 * 1024.0), int(response.headers['Content-Length']) / (1024.0 * 1024.0)))

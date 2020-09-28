@@ -334,7 +334,8 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
           z = get_next_z(segment_i, segment_j, z_min, z_max, ++z);
         }
 
-        if (result.data.size() >= result.limit) {
+//        if (result.data.size() >= result.limit) {
+        if (result.n_correlations >= result.limit) {
             // If we reach this point, the following is true:
             //   1. The result object is full
             //   2. Cell extraction stopped because the cell had been parsed completely
@@ -444,7 +445,8 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
             break;
         }
         z = get_next_z(segment_index, segment_i, segment_j, z_min, z_max, ++z);
-        if (result.data.size() >= result.limit) {
+//        if (result.data.size() >= result.limit) {
+        if (result.n_correlations >= result.limit) {
             if (z <= z_max) {
                 result.last_cell = z;
                 result.last_j = 0;
