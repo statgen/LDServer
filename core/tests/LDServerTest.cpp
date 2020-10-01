@@ -28,6 +28,19 @@ using namespace std;
 const uint32_t MAX_UINT32 = numeric_limits<uint32_t>::max();
 const uint32_t INITIAL_RESULT_SIZE = 10000000;
 
+void parse_variant(const std::string& variant, std::string& chromosome, uint64_t& position, std::string& ref_allele, std::string& alt_allele) {
+  std::vector<std::string> variant_name_tokens;
+  auto separator = std::regex("[:_/]");
+  std::copy(std::sregex_token_iterator(variant.begin(), variant.end(), separator, -1), std::sregex_token_iterator(), std::back_inserter(variant_name_tokens));
+  if (variant_name_tokens.size() != 4) {
+    throw std::logic_error("Parsing a variant should return 4 elements (chrom, pos, ref, alt)");
+  }
+  chromosome = variant_name_tokens[0];
+  position = std::stoull(variant_name_tokens[1]);
+  ref_allele = variant_name_tokens[2];
+  alt_allele = variant_name_tokens[3];
+}
+
 class LDServerTest: public::testing::Test {
 protected:
     static string hostname;
@@ -850,6 +863,36 @@ TEST_F(LDServerTest, score_covariance_runner) {
     ASSERT_NEAR(doc["data"]["sigmaSquared"].GetDouble(), 0.08188312, 0.0001);
     ASSERT_EQ(doc["data"]["groups"][0]["variants"].Size(), 162);
     ASSERT_EQ(doc["data"]["groups"][0]["covariance"].Size(), 13203);
+
+    auto& variants = doc["data"]["variants"];
+    set<string> all_variants;
+
+    for (auto&& vblock : variants.GetArray()) {
+      string variant = vblock.GetObject()["variant"].GetString();
+      all_variants.emplace(variant);
+    }
+
+    auto& groups = doc["data"]["groups"];
+    for (auto&& group : groups.GetArray()) {
+      uint64_t n_variants = group.GetObject()["variants"].Size();
+      uint64_t n_covar = group.GetObject()["covariance"].Size();
+      ASSERT_EQ(n_covar, n_variants * (n_variants + 1) / 2);
+
+      string vchrom;
+      uint64_t vpos_prev = 0;
+      uint64_t vpos;
+      string vref, valt;
+      auto& group_variants = group.GetObject()["variants"];
+      for (auto&& vobj : group_variants.GetArray()) {
+        string variant = vobj.GetString();
+        parse_variant(variant, vchrom, vpos, vref, valt);
+
+        ASSERT_TRUE(vpos_prev <= vpos);
+        ASSERT_TRUE(all_variants.find(variant) != all_variants.end());
+
+        vpos_prev = vpos;
+      }
+    }
 }
 
 /**
@@ -991,6 +1034,36 @@ TEST_F(LDServerTest, score_user_defined_masks) {
   ASSERT_EQ(doc["data"]["variants"][0]["variant"], "22:50354416_G/C");
   ASSERT_NEAR(doc["data"]["variants"][0]["score"].GetDouble(), -45.31790009565313, 0.0001);
   ASSERT_NEAR(doc["data"]["groups"][0]["covariance"][0].GetDouble(), 0.39843530436, 0.0001);
+
+  auto& variants = doc["data"]["variants"];
+  set<string> all_variants;
+
+  for (auto&& vblock : variants.GetArray()) {
+    string variant = vblock.GetObject()["variant"].GetString();
+    all_variants.emplace(variant);
+  }
+
+  auto& groups = doc["data"]["groups"];
+  for (auto&& group : groups.GetArray()) {
+    uint64_t n_variants = group.GetObject()["variants"].Size();
+    uint64_t n_covar = group.GetObject()["covariance"].Size();
+    ASSERT_EQ(n_covar, n_variants * (n_variants + 1) / 2);
+
+    string vchrom;
+    uint64_t vpos_prev = 0;
+    uint64_t vpos;
+    string vref, valt;
+    auto& group_variants = group.GetObject()["variants"];
+    for (auto&& vobj : group_variants.GetArray()) {
+      string variant = vobj.GetString();
+      parse_variant(variant, vchrom, vpos, vref, valt);
+
+      ASSERT_TRUE(vpos_prev <= vpos);
+      ASSERT_TRUE(all_variants.find(variant) != all_variants.end());
+
+      vpos_prev = vpos;
+    }
+  }
 }
 
 TEST_F(LDServerTest, score_no_testable_variants) {
