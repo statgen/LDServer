@@ -824,7 +824,7 @@ TEST_F(LDServerTest, score_covariance_runner) {
     config->chrom = chrom;
     config->start = start;
     config->stop = stop;
-    config->segment_size = 1000;
+    config->segment_size = 10;
     config->masks = masks;
     config->sample_subset = "ALL";
     config->genotype_files = {genotype_file};
