@@ -255,7 +255,9 @@ void ScoreCovarianceRunner::run() {
       set<string> seen_group_variants;
 
       // DT: new format
+      uint64_t pos1 = 0;
       for (unsigned int variant1_idx = 0u; variant1_idx < ld_res->variants.size(); ++variant1_idx) {
+          uint64_t pos2 = 0;
           for (auto&& correlation: ld_res->correlations[variant1_idx]) {
               double cov_value = correlation.value;
               if (run_mode == ScoreCovRunMode::COMPUTE) {
@@ -264,8 +266,26 @@ void ScoreCovarianceRunner::run() {
                   cov_value /= score_res->sigma2;
               }
               group_covar.PushBack(cov_value, alloc);
-              auto variant1 = ld_res->variants[variant1_idx].name;
-              auto variant2 = ld_res->variants[correlation.variant_idx].name;
+
+              auto vobj1 = ld_res->variants[variant1_idx];
+              auto vobj2 = ld_res->variants[correlation.variant_idx];
+              auto variant1 = vobj1.name;
+              auto variant2 = vobj2.name;
+
+              if (vobj1.position < pos1) {
+                throw std::runtime_error("Detected variant out of sorted order when constructing score/cov JSON");
+              }
+              else {
+                pos1 = vobj1.position;
+              }
+
+              if (vobj2.position < pos2) {
+                throw std::runtime_error("Detected variant out of sorted order when constructing score/cov JSON");
+              }
+              else {
+                pos2 = vobj2.position;
+              }
+
               if (seen_group_variants.find(variant1) == seen_group_variants.end()) {
                   group_variants.PushBack(Value(variant1.c_str(), alloc), alloc);
                   seen_group_variants.emplace(variant1);
