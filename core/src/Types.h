@@ -64,6 +64,19 @@ template<class T> using SharedVector = shared_ptr<vector<T>>;
 template<typename T> shared_ptr<vector<T>> make_shared_vector(vector<T>& v);
 using SharedArmaVec = shared_ptr<arma::vec>;
 
+inline void parse_variant(const std::string& variant, std::string& chromosome, uint64_t& position, std::string& ref_allele, std::string& alt_allele) {
+  std::vector<std::string> variant_name_tokens;
+  auto separator = std::regex("[:_/]");
+  std::copy(std::sregex_token_iterator(variant.begin(), variant.end(), separator, -1), std::sregex_token_iterator(), std::back_inserter(variant_name_tokens));
+  if (variant_name_tokens.size() != 4) {
+    throw std::logic_error("Parsing a variant should return 4 elements (chrom, pos, ref, alt)");
+  }
+  chromosome = variant_name_tokens[0];
+  position = std::stoull(variant_name_tokens[1]);
+  ref_allele = variant_name_tokens[2];
+  alt_allele = variant_name_tokens[3];
+}
+
 struct VariantMeta {
     string variant;
     string chromosome;
