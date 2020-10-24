@@ -567,6 +567,7 @@ summary_stats:
 - id: 1
   name: "TOPMed 70K Exomes - T2D"
   description: "TOPMed 70K exomes score statistics and covariance matrices for T2D"
+  genome_build: "GRCh37"
   score_path: "topmed.metascore.txt.gz"
   cov_path: "topmed.metacov.txt.gz"
 ```
@@ -649,6 +650,7 @@ summary_stats:
 - id: 1
   name: "TOPMED-70K-EXOMES"
   description: "TOPMed pre-computed covariance for 70K exomes"
+  genome_build: "GRCh37"
   score_path: "topmed.metascore.txt.gz"
   cov_path: "topmed.metacov.txt.gz"
 ```
