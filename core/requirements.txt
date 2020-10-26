@@ -1,5 +1,5 @@
 statgen/savvy@5cf11170e5d -DCMAKE_C_FLAGS=-fPIC -DCMAKE_CXX_FLAGS=-fPIC
-armadillo,http://sourceforge.net/projects/arma/files/armadillo-9.100.5.tar.xz
+armadillo,http://sourceforge.net/projects/arma/files/armadillo-9.900.4.tar.xz
 boost,http://downloads.sourceforge.net/project/boost/boost/1.67.0/boost_1_67_0.tar.bz2 --cmake boost.cmake -DBOOST_WITH_IOSTREAMS=1 -DBOOST_WITH_PYTHON=1 -DBOOST_WITH_SYSTEM=1 -DCMAKE_C_FLAGS=-fPIC -DCMAKE_CXX_FLAGS=-fPIC
 gtest,https://github.com/google/googletest/archive/release-1.8.0.tar.gz
 redis,http://download.redis.io/releases/redis-5.0-rc4.tar.gz --cmake redis.cmake
