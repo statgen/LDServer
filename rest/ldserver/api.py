@@ -16,10 +16,11 @@ CORS(bp)
 compress = Compress()
 
 @parser.error_handler
-def handle_parsing_error(error, request, schema):
-    for field, message in error.messages.items():
-        message = 'Error while parsing \'{}\' query parameter: {}'.format(field, message[0])
-        break
+def handle_parsing_error(error, request, schema, error_status_code=None, error_headers=None):
+    for location, field_dict in error.messages.items():
+        for field, message in field_dict.items():
+            message = 'Error while parsing \'{}\' query parameter: {}'.format(field, message[0])
+            break
     response = jsonify({'data': None, 'error': message })
     response.status_code = 422
     abort(response)
@@ -131,7 +132,7 @@ def get_region_ld(genome_build, reference_name, population_name):
         'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE'], error_messages = {'validator_failed': 'Value must be greater than 0.'}),
         'last': fields.Str(required = False, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'})
     }
-    args = parser.parse(arguments, validate = partial(validate_query, all_fields = ['chrom', 'start', 'stop', 'correlation', 'limit', 'last']))
+    args = parser.parse(arguments, request, validate = partial(validate_query, all_fields = ['chrom', 'start', 'stop', 'correlation', 'limit', 'last']), location="query")
     if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
         args['limit'] = current_app.config['API_MAX_PAGE_SIZE']
     if not model.has_genome_build(genome_build):
@@ -185,7 +186,7 @@ def get_variant_ld(genome_build, reference_name, population_name):
         'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE'], error_messages = {'validator_failed': 'Value must be greater than 0.'}),
         'last': fields.Str(required = False, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'})
     }
-    args = parser.parse(arguments, validate = partial(validate_query, all_fields = ['variant', 'chrom', 'start', 'stop', 'correlation', 'limit', 'last']))
+    args = parser.parse(arguments, validate = partial(validate_query, all_fields = ['variant', 'chrom', 'start', 'stop', 'correlation', 'limit', 'last']), location="query")
     if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
         args['limit'] = current_app.config['API_MAX_PAGE_SIZE']
     if not model.has_genome_build(genome_build):

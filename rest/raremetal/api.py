@@ -30,10 +30,11 @@ def makeStringVec(arr=[]):
   return s
 
 @parser.error_handler
-def handle_parsing_error(error, request, schema, status_code=None, headers=None):
-  for field, message in error.messages.items():
-    message = 'Error while parsing \'{}\' query parameter: {}'.format(field, message[0])
-    break
+def handle_parsing_error(error, request, schema, error_status_code=None, error_headers=None):
+  for location, field_dict in error.messages.items():
+    for field, message in field_dict.items():
+      message = 'Error while parsing \'{}\' query parameter: {}'.format(field, message[0])
+      break
 
   raise FlaskException(message, 400)
 
@@ -101,7 +102,7 @@ class VariantField(fields.String):
     validated = str(self._validated(value)) if value is not None else None
     return super(fields.String, self)._serialize(validated, attr, obj)
 
-  def _deserialize(self, value, attr, data):
+  def _deserialize(self, value, attr, data, **kwargs):
     return self._validated(value)
 
   def _validated(self, value):
@@ -152,7 +153,7 @@ def get_covariance():
     'summaryStatDataset': fields.Int(required=False, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'phenotype': fields.Str(required=False, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'samples': fields.Str(required=False, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
-    'masks': fields.DelimitedList(fields.Int(), validate=lambda x: len(x) > 0, error_messages={'validator_failed': "Must provide at least 1 mask ID"}),
+    'masks': fields.List(fields.Int(), validate=lambda x: len(x) > 0, error_messages={'validator_failed': "Must provide at least 1 mask ID"}),
     'maskDefinitions': fields.Nested(MaskSchema, many=True),
     'genomeBuild': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
   }
@@ -162,7 +163,8 @@ def get_covariance():
     validate = partial(
       validate_query,
       all_fields = ['chrom', 'start', 'stop']
-    )
+    ),
+    location = "json_or_form"
   )
 
   if not (bool(args.get("masks")) ^ bool(args.get("maskDefinitions"))):
