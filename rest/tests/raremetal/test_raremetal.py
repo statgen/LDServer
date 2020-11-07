@@ -159,7 +159,7 @@ def test_summary_stat(client):
         "chrom": "1",
         "start": 2,
         "stop": 307,
-        "summaryStatDataset": 2,
+        "summaryStatisticDataset": 2,
         "genomeBuild": "GRCh37",
         "masks": [3]
     })
@@ -169,7 +169,7 @@ def test_summary_stat(client):
 
     score_variants = [x["variant"] for x in resp.json["data"]["variants"]]
 
-    assert "summaryStatDataset" in resp.json["data"]
+    assert "summaryStatisticDataset" in resp.json["data"]
 
     for group in resp.json["data"]["groups"]:
         n_variants = len(group["variants"])
@@ -194,7 +194,7 @@ def test_summary_stat_chromglob(client):
         "chrom": "9",
         "start": 22132,
         "stop": 22142,
-        "summaryStatDataset": 3,
+        "summaryStatisticDataset": 3,
         "genomeBuild": "GRCh37",
         "masks": [4]
     })
@@ -202,7 +202,7 @@ def test_summary_stat_chromglob(client):
     assert resp.status_code == 200
     assert resp.is_json
     score_variants = [x["variant"] for x in resp.json["data"]["variants"]]
-    assert "summaryStatDataset" in resp.json["data"]
+    assert "summaryStatisticDataset" in resp.json["data"]
 
     groups = resp.json["data"]["groups"]
     assert len(groups) > 0
@@ -237,7 +237,7 @@ def test_summary_stat_chromglob(client):
         "chrom": "1",
         "start": 14895,
         "stop": 14918,
-        "summaryStatDataset": 3,
+        "summaryStatisticDataset": 3,
         "genomeBuild": "GRCh37",
         "masks": [4]
     })
@@ -245,7 +245,7 @@ def test_summary_stat_chromglob(client):
     assert resp.status_code == 200
     assert resp.is_json
     score_variants = [x["variant"] for x in resp.json["data"]["variants"]]
-    assert "summaryStatDataset" in resp.json["data"]
+    assert "summaryStatisticDataset" in resp.json["data"]
 
     groups = resp.json["data"]["groups"]
     assert len(groups) > 0

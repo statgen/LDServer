@@ -150,7 +150,7 @@ def get_covariance():
     'stop': fields.Int(required=True, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be greater than 0.'}),
     'genotypeDataset': fields.Int(required=False, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'phenotypeDataset': fields.Int(required=False, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
-    'summaryStatDataset': fields.Int(required=False, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'summaryStatisticDataset': fields.Int(required=False, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'phenotype': fields.Str(required=False, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'samples': fields.Str(required=False, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
     'masks': fields.List(fields.Int(), validate=lambda x: len(x) > 0, error_messages={'validator_failed': "Must provide at least 1 mask ID"}),
@@ -179,7 +179,7 @@ def get_covariance():
   build = args["genomeBuild"]
   genotype_dataset_id = args.get("genotypeDataset")
   phenotype_dataset_id = args.get("phenotypeDataset")
-  summary_stat_dataset_id = args.get("summaryStatDataset")
+  summary_stat_dataset_id = args.get("summaryStatisticDataset")
   sample_subset = str(args.get("samples"))
   phenotype = str(args.get("phenotype"))
   masks = args.get("masks")

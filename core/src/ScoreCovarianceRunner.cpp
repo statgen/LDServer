@@ -290,7 +290,7 @@ void ScoreCovarianceRunner::run() {
     data.AddMember("phenotype", Value(config->phenotype.c_str(), alloc), alloc);
   }
   else if (run_mode == ScoreCovRunMode::PRECOMPUTE) {
-    data.AddMember("summaryStatDataset", config->summary_stat_dataset_id, alloc);
+    data.AddMember("summaryStatisticDataset", config->summary_stat_dataset_id, alloc);
   }
 
   document->AddMember("data", data, alloc);
