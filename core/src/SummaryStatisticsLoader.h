@@ -6,6 +6,7 @@
 #include <vector>
 #include <map>
 #include <memory>
+#include <limits>
 #include <stdexcept>
 #include <tabixpp.hpp>
 #include <boost/format.hpp>
@@ -63,7 +64,7 @@ protected:
   shared_ptr<ScoreStatQueryResult> score_result;
 
   ScoreCovFormat detected_format;
-  double sigma2;
+  double sigma2 = numeric_limits<double>::quiet_NaN();
   uint64_t nsamples;
 
   /**

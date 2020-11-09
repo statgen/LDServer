@@ -1,4 +1,7 @@
 #include "SummaryStatisticsLoader.h"
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <regex>
 using namespace std;
 
 SummaryStatisticsLoader::SummaryStatisticsLoader(const std::vector<std::string>& score_vec, const std::vector<std::string>& cov_vec) {
@@ -75,6 +78,30 @@ string SummaryStatisticsLoader::getVariantForPosition(uint64_t& pos) {
   }
 }
 
+void getNthDataLine(const std::string& filepath, std::string& out, int n) {
+  unique_ptr<istream> file;
+  boost::iostreams::filtering_streambuf<boost::iostreams::input> inbuf;
+  ifstream fs(filepath, ios_base::in | ios_base::binary);
+
+  string line;
+  inbuf.push(boost::iostreams::gzip_decompressor());
+  inbuf.push(fs);
+  file = make_unique<istream>(&inbuf);
+
+  string comment = "#";
+  int i = 0;
+  while (getline(*file, line)) {
+    if (!std::equal(comment.begin(), comment.end(), line.begin())) {
+      if (i == n) {
+        out = line;
+        break;
+      }
+
+      i += 1;
+    }
+  }
+}
+
 void SummaryStatisticsLoader::parseHeader(const std::string& filepath) {
   Tabix tbfile(const_cast<string&>(filepath));
   string header;
@@ -84,47 +111,61 @@ void SummaryStatisticsLoader::parseHeader(const std::string& filepath) {
    * Parse program name from score file.
    */
   auto regex_prog_name = regex("##ProgramName=(\\w+)");
-  smatch match;
+  auto regex_detect_rvtest = regex(".*(N_INFORMATIVE\\tAF\\tINFORMATIVE_ALT_AC).*");
+  auto regex_detect_raremetal = regex(".*(N_INFORMATIVE\tFOUNDER_AF\tALL_AF\tINFORMATIVE_ALT_AC).*");
+
   string format;
-
-  if (regex_search(header, match, regex_prog_name) && match.size() > 1) {
-    format = match.str(1);
+  smatch m1;
+  if (regex_search(header, m1, regex_prog_name) && m1.size() > 1) {
+    format = m1.str(1);
+    if (format == "Rvtests") {
+      detected_format = ScoreCovFormat::RVTEST;
+    }
+    else if (format == "RareMetalWorker") {
+      detected_format = ScoreCovFormat::RAREMETAL;
+    }
+    else {
+      throw runtime_error(
+        boost::str(boost::format("Invalid program name (%s) found in header of %s") % format % filepath)
+      );
+    }
   }
   else {
-    throw runtime_error("Could not find ProgramName=XX header in file: " + filepath);
-  }
-
-  if (format == "Rvtests") {
-    detected_format = ScoreCovFormat::RVTEST;
-  }
-  else if (format == "RareMetalWorker") {
-    detected_format = ScoreCovFormat::RAREMETAL;
-  }
-  else {
-    throw runtime_error(
-      boost::str(boost::format("Invalid program name (%s) found in header of %s") % format % filepath)
-    );
+    // Apparently there was no header containing the program name. But we can still figure it out from what column
+    // names are present in the file.
+    smatch m2;
+    if (regex_search(header, m2, regex_detect_raremetal) && m2.size() > 1) {
+      detected_format = ScoreCovFormat::RAREMETAL;
+    }
+    else {
+      // We have to read a line from the file to get the header row, because rvtest doesn't include it in the tabix header.
+      string line;
+      getNthDataLine(filepath, line, 0);
+      smatch m3;
+      if (regex_search(line, m3, regex_detect_rvtest) && m3.size() > 1) {
+        detected_format = ScoreCovFormat::RVTEST;
+      }
+      else {
+        throw runtime_error("Could not determine whether file is rvtest or raremetal format: " + filepath);
+      }
+    }
   }
 
   /**
-   * Parse sigma2 from score file.
+   * Parse sigma2 from score file header if it is available.
    */
   if (detected_format == ScoreCovFormat::RVTEST) {
     auto regex_sigma = regex("## - Sigma2\t([0-9\\.]+)");
-    if (regex_search(header, match, regex_sigma) && !match.empty()) {
-      sigma2 = stod(match.str(1));
-    }
-    else {
-      throw runtime_error("Could not parse sigma2 from score file: " + filepath);
+    smatch m4;
+    if (regex_search(header, m4, regex_sigma) && !m4.empty()) {
+      sigma2 = stod(m4.str(1));
     }
   }
   else {
     auto regex_sigma = regex("##Sigma_e2_Hat\t(.+)");
-    if (regex_search(header, match, regex_sigma) && !match.empty()) {
-      sigma2 = stod(match.str(1));
-    }
-    else {
-      throw runtime_error("Could not parse sigma2 from score file: " + filepath);
+    smatch m5;
+    if (regex_search(header, m5, regex_sigma) && !m5.empty()) {
+      sigma2 = stod(m5.str(1));
     }
   }
 
@@ -133,11 +174,20 @@ void SummaryStatisticsLoader::parseHeader(const std::string& filepath) {
    * In both rvtest and raremetalworker files, this field is exactly the same.
    */
   auto regex_samples = regex("##AnalyzedSamples=(\\d+)");
-  if (regex_search(header, match, regex_samples) && !match.empty()) {
-    nsamples = stoul(match.str(1));
+  smatch m7;
+  if (regex_search(header, m7, regex_samples) && !m7.empty()) {
+    nsamples = stoul(m7.str(1));
   }
   else {
-    throw runtime_error("Could not parse sigma2 from score file: " + filepath);
+    // There was no sample count in the header. Use the value in the first row of the file instead.
+    // Note: with summary statistic datasets, we just return this value for informational purposes, it does not actually
+    // get used in a calculation.
+    string line;
+    getNthDataLine(filepath, line, 1);
+    vector<string> tokens;
+    auto field_sep = regex("[ \t]");
+    copy(sregex_token_iterator(line.begin(), line.end(), field_sep, -1), sregex_token_iterator(), back_inserter(tokens));
+    nsamples = stoul(tokens[4]);
   }
 }
 

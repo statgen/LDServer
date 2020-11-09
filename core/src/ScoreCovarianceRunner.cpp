@@ -281,7 +281,8 @@ void ScoreCovarianceRunner::run() {
 
   data.AddMember("variants", variants, alloc);
   data.AddMember("groups", groups, alloc);
-  data.AddMember("sigmaSquared", score_res->sigma2, alloc);
+  double& sigma2 = score_res->sigma2;
+  std::isnan(sigma2) ? data.AddMember("sigmaSquared", Value(), alloc) : data.AddMember("sigmaSquared", sigma2, alloc);
   data.AddMember("nSamples", score_res->nsamples, alloc);
 
   if (run_mode == ScoreCovRunMode::COMPUTE) {

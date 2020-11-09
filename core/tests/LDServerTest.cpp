@@ -414,7 +414,6 @@ TEST_F(LDServerTest, summary_stat_load_raremetal_test) {
     ASSERT_NEAR(gold->u_stat, score_res.score_stat, 0.001);
     ASSERT_NEAR(gold->pvalue, score_res.pvalue, 0.001);
   }
-  ASSERT_TRUE(loader.getSigma2() > 0);
   ASSERT_TRUE(loader.getNumSamples() > 0);
 }
 
@@ -448,7 +447,39 @@ TEST_F(LDServerTest, summary_stat_load_rvtest_test) {
     ASSERT_NEAR(gold->u_stat, score_res.score_stat, 0.001);
     ASSERT_NEAR(gold->pvalue, score_res.pvalue, 0.001);
   }
-  ASSERT_TRUE(loader.getSigma2() > 0);
+  ASSERT_TRUE(loader.getNumSamples() > 0);
+}
+
+TEST_F(LDServerTest, summary_stat_load_rvtest_noheader_test) {
+  // Load from disk using our new summary stat loader
+  SummaryStatisticsLoader loader({"test.smallchunk.noheader.MetaScore.assoc.gz"}, {"test.smallchunk.noheader.MetaCov.assoc.gz"});
+  loader.load_region("1", 2, 307);
+
+  // Use our testing methods to load the same data for later comparison
+  map<string, double> gold_cov;
+  this->load_rvtest_covariance("test.smallchunk.MetaCov.assoc.gz", gold_cov);
+  auto gold_scores = load_rvtest_scores("test.smallchunk.MetaScore.assoc.gz");
+
+  // Check covariance
+  auto cov_result = loader.getCovResult();
+  ASSERT_FALSE(cov_result->data.empty());
+  for (auto&& entry : cov_result->data) {
+    string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+    double value_gold = gold_cov.find(key)->second;
+    double value_test = entry.value;
+    ASSERT_NE(entry.variant1, "");
+    ASSERT_NE(entry.variant2, "");
+    ASSERT_NEAR(value_gold, value_test, 0.0001);
+  }
+
+  // Check scores
+  auto score_result = loader.getScoreResult();
+  ASSERT_FALSE(score_result->data.empty());
+  for (auto&& score_res : score_result->data) {
+    auto gold = gold_scores->get_record(score_res.variant);
+    ASSERT_NEAR(gold->u_stat, score_res.score_stat, 0.001);
+    ASSERT_NEAR(gold->pvalue, score_res.pvalue, 0.001);
+  }
   ASSERT_TRUE(loader.getNumSamples() > 0);
 }
 
