@@ -170,6 +170,14 @@ def get_covariance():
   if not (bool(args.get("masks")) ^ bool(args.get("maskDefinitions"))):
     raise FlaskException("Must provide either 'masks' or 'maskDefinitions' in request, and not both.", 400)
 
+  calc_mode = (args.get("genotypeDataset") is not None) and (args.get("phenotypeDataset") is not None)
+  precalc_mode = args.get("summaryStatisticDataset") is not None
+
+  if calc_mode and precalc_mode:
+    raise FlaskException("Must give either genotypeDataset and phenotypeDataset, or summaryStatisticDataset by itself", 400)
+  if not calc_mode and not precalc_mode:
+    raise FlaskException("No genotypeDataset, phenotypeDataset, or summaryStatisticDataset was provided in the request", 400)
+
   config = ScoreCovarianceConfig()
   config.segment_size = current_app.config["SEGMENT_SIZE_BP"]
 
