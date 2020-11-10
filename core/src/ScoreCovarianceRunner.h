@@ -18,6 +18,8 @@
 #include "Segment.h"
 #include "Types.h"
 
+enum class VariantFormat {EPACTS, COLONS};
+
 class ScoreCovarianceConfig {
 public:
   /**
@@ -61,6 +63,11 @@ public:
   uint32_t segment_size;
   std::string redis_hostname;
   uint16_t redis_port;
+
+  /**
+   * Output related settings
+   */
+  VariantFormat variant_format = VariantFormat::EPACTS;
 
   void pprint() const;
 };

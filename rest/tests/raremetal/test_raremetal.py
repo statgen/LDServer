@@ -4,6 +4,69 @@ import pytest
 def is_sha(s):
     return re.search("[A-Fa-f0-9]+",s) is not None
 
+def parse_epacts(v, strict=True):
+    """
+    Try to parse an EPACTS ID into components.
+
+    Args:
+      v (string): variant
+      strict (bool): if true, must match an EPACTS ID exactly (chr:pos_ref/alt)
+        If false, then ref/alt can be missing, but at least chr:pos must be specified.
+        In this case, ref/alt will be None in the returned tuple
+
+    Returns:
+      tuple: (chrom, pos, ref, alt)
+    """
+
+    split = v.split("_")
+
+    # Split chrom/pos
+    # This is the minimum required information. If even this isn't present,
+    # it's a bogus ID.
+    try:
+        chrom, pos = split[0].split(":")
+    except:
+        raise ValueError("EPACTS ID had no chrom/pos? " + v)
+
+    # Position should be numeric
+    try:
+        int(pos)
+    except:
+        raise ValueError("Couldn't recognize position {} for variant {}".format(pos,v))
+
+    # Try to split alleles if they were given
+    try:
+        ref, alt = split[1].split("/")
+    except:
+        if strict:
+            raise ValueError("No ref/alt alleles found in EPACTS ID " + v)
+
+        ref = None
+        alt = None
+
+    return chrom, pos, ref, alt
+
+def parse_colons(v):
+    """
+    Try to parse a colon separated ID into components.
+
+    Args:
+      v (string): variant
+
+    Returns:
+      tuple: (chrom, pos, ref, alt)
+    """
+
+    chrom, pos, ref, alt = v.split(":")
+
+    # Position should be numeric
+    try:
+        int(pos)
+    except:
+        raise ValueError("Couldn't recognize position {} for variant {}".format(pos, v))
+
+    return chrom, pos, ref, alt
+
 def test_status(client):
     resp = client.get("/status")
 
@@ -189,6 +252,72 @@ def test_summary_stat(client):
         assert variant["pvalue"] <= 1
         assert "score" in variant
 
+def test_variant_format(client):
+    byformat = dict()
+    formats = ("EPACTS", "COLONS") # EPACTS must be the first format, add others to the end
+
+    for vfmt in formats:
+        resp = client.post("/aggregation/covariance", data = {
+            "chrom": "1",
+            "start": 2,
+            "stop": 307,
+            "summaryStatisticDataset": 2,
+            "genomeBuild": "GRCh37",
+            "masks": [3],
+            "variantFormat": vfmt
+        })
+
+        assert resp.status_code == 200
+        assert resp.is_json
+
+        byformat[vfmt] = resp.json["data"]
+
+    epacts_variants = [parse_epacts(x["variant"]) for x in byformat["EPACTS"]["variants"]]
+
+    for vfmt in formats[1:]:
+        score_variants = [x["variant"] for x in byformat[vfmt]["variants"]]
+        assert len(score_variants) > 0
+
+        for i, v in enumerate(score_variants):
+            if vfmt == "COLONS":
+                chrom, pos, ref, alt = parse_colons(v)
+
+            epacts_chrom, epacts_pos, epacts_ref, epacts_alt = epacts_variants[i]
+
+            assert chrom == epacts_chrom
+            assert pos == epacts_pos
+            assert ref == epacts_ref
+            assert alt == epacts_alt
+
+        for g, group in enumerate(byformat[vfmt]["groups"]):
+            n_variants = len(group["variants"])
+            assert n_variants > 0
+
+            for i, v in enumerate(group["variants"]):
+                if vfmt == "COLONS":
+                    chrom, pos, ref, alt = parse_colons(v)
+
+                epacts_variant = byformat["EPACTS"]["groups"][g]["variants"][i]
+                epacts_chrom, epacts_pos, epacts_ref, epacts_alt = parse_epacts(epacts_variant)
+
+                assert chrom == epacts_chrom
+                assert pos == epacts_pos
+                assert ref == epacts_ref
+                assert alt == epacts_alt
+
+def test_variant_format_invalid(client):
+    resp = client.post("/aggregation/covariance", data = {
+        "chrom": "1",
+        "start": 2,
+        "stop": 307,
+        "summaryStatisticDataset": 2,
+        "genomeBuild": "GRCh37",
+        "masks": [3],
+        "variantFormat": "NOT_A_FORMAT"
+    })
+
+    assert resp.status_code == 400
+
 def test_summary_stat_chromglob(client):
     resp = client.post("/aggregation/covariance", data = {
         "chrom": "9",
@@ -333,6 +462,60 @@ def test_user_masks(client):
                 }
             }
         ]
+    })
+
+    assert resp.status_code == 200
+    assert resp.is_json
+
+    score_variants = [x["variant"] for x in resp.json["data"]["variants"]]
+
+    assert "phenotypeDataset" in resp.json["data"]
+    assert "genotypeDataset" in resp.json["data"]
+    assert "phenotype" in resp.json["data"]
+
+    for group in resp.json["data"]["groups"]:
+        n_variants = len(group["variants"])
+        n_covar = len(group["covariance"])
+        assert n_covar == (n_variants * (n_variants + 1) / 2)
+        assert isinstance(group["mask"], int)
+        assert "group" in group
+        assert "groupType" in group
+        assert group["groupType"] in ("REGION", "GENE")
+        assert all([v in score_variants for v in group["variants"]])
+
+    for variant in resp.json["data"]["variants"]:
+        assert variant["altFreq"] > 0
+        assert variant["pvalue"] > 0
+        assert variant["pvalue"] <= 1
+        assert "score" in variant
+
+def test_user_masks_colon_format(client):
+    resp = client.post("/aggregation/covariance", json = {
+        "chrom": "22",
+        "start": 50276998,
+        "stop": 50357719,
+        "genotypeDataset": 1,
+        "phenotypeDataset": 1,
+        "phenotype": "rand_qt",
+        "samples": "ALL",
+        "genomeBuild": "GRCh37",
+        "maskDefinitions": [
+            {
+                "id": 10,
+                "name": "PTV+LOF<0.01",
+                "description": "A mask generated by the user in the browser, including only variants that are PTV or LOF w/ AF < 1%",
+                "genome_build": "GRCh37",
+                "group_type": "GENE",
+                "identifier_type": "ENSEMBL",
+                "groups": {
+                    "PIM3": ["22:50354416:G:C", "22:50355407:C:T", "22:50356368:C:T", "22:50356386:C:T", "22:50356473:C:T",
+                             "22:50356497:G:A", "22:50356731:C:T", "22:50356811:G:T", "22:50356864:G:A", "22:50356875:C:T",
+                             "22:50356887:C:T", "22:50356961:C:T", "22:50356965:C:T", "22:50356994:G:A", "22:50357305:C:T",
+                             "22:50357350:G:A", "22:50357577:G:A", "22:50357657:A:G", "22:50357667:C:G"],
+                }
+            }
+        ],
+        "variantFormat": "COLONS"
     })
 
     assert resp.status_code == 200

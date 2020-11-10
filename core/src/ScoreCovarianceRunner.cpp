@@ -229,8 +229,22 @@ void ScoreCovarianceRunner::run() {
           continue;
         }
 
+        // TODO: internally at some point we should convert all variants stored in ScoreResult and related objects
+        // to a VariantMeta object
+        VariantMeta vm(v.variant);
+        std::string variant_formatted;
+        if (config->variant_format == VariantFormat::COLONS) {
+          variant_formatted = vm.as_colons();
+        }
+        else if (config->variant_format == VariantFormat::EPACTS) {
+          variant_formatted = vm.as_epacts();
+        }
+        else {
+          throw std::invalid_argument("Bad variant format given when converting variant IDs");
+        }
+
         Value this_variant(kObjectType);
-        this_variant.AddMember("variant", Value(v.variant.c_str(), alloc), alloc);
+        this_variant.AddMember("variant", Value(variant_formatted.c_str(), alloc), alloc);
         this_variant.AddMember("altFreq", v.alt_freq, alloc);
 
         std::isnan(v.pvalue) ? this_variant.AddMember("pvalue", Value(), alloc) : this_variant.AddMember("pvalue", v.pvalue, alloc);
@@ -263,12 +277,28 @@ void ScoreCovarianceRunner::run() {
         group_covar.PushBack(cov_value, alloc);
 
         if (seen_group_variants.find(pair.variant1) == seen_group_variants.end()) {
-          group_variants.PushBack(Value(pair.variant1.c_str(), alloc), alloc);
+          string variant1_formatted;
+          if (config->variant_format == VariantFormat::COLONS) {
+            variant1_formatted = VariantMeta(pair.variant1).as_colons();
+          }
+          else if (config->variant_format == VariantFormat::EPACTS) {
+            variant1_formatted = VariantMeta(pair.variant1).as_epacts();
+          }
+
+          group_variants.PushBack(Value(variant1_formatted.c_str(), alloc), alloc);
           seen_group_variants.emplace(pair.variant1);
         }
 
         if (seen_group_variants.find(pair.variant2) == seen_group_variants.end()) {
-          group_variants.PushBack(Value(pair.variant2.c_str(), alloc), alloc);
+          string variant2_formatted;
+          if (config->variant_format == VariantFormat::COLONS) {
+            variant2_formatted = VariantMeta(pair.variant2).as_colons();
+          }
+          else if (config->variant_format == VariantFormat::EPACTS) {
+            variant2_formatted = VariantMeta(pair.variant2).as_epacts();
+          }
+
+          group_variants.PushBack(Value(variant2_formatted.c_str(), alloc), alloc);
           seen_group_variants.emplace(pair.variant2);
         }
       }

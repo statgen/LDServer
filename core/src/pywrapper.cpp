@@ -165,6 +165,10 @@ BOOST_PYTHON_MODULE(pywrapper) {
     boost::python::def("make_shared_segment_vector", &make_shared_segment_vector);
     boost::python::class_<std::set<std::string>, shared_ptr<std::set<std::string>>>("StringSet");
 
+    boost::python::enum_<VariantFormat>("VariantFormat")
+      .value("EPACTS", VariantFormat::EPACTS)
+      .value("COLONS", VariantFormat::COLONS);
+
     boost::python::class_<ScoreCovarianceConfig, shared_ptr<ScoreCovarianceConfig>, boost::noncopyable>("ScoreCovarianceConfig")
             .def("pprint", &ScoreCovarianceConfig::pprint)
             .def_readwrite("chrom", &ScoreCovarianceConfig::chrom)
@@ -189,6 +193,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def_readwrite("segment_size", &ScoreCovarianceConfig::segment_size)
             .def_readwrite("redis_hostname", &ScoreCovarianceConfig::redis_hostname)
             .def_readwrite("redis_port", &ScoreCovarianceConfig::redis_port)
+            .def_readwrite("variant_format", &ScoreCovarianceConfig::variant_format)
             ;
 
     boost::python::class_<ScoreCovarianceRunner, shared_ptr<ScoreCovarianceRunner>, boost::noncopyable>("ScoreCovarianceRunner", boost::python::init<std::shared_ptr<ScoreCovarianceConfig>>())

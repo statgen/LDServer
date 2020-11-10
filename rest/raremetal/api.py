@@ -4,6 +4,7 @@ from flask_compress import Compress
 from .errors import FlaskException
 from webargs.flaskparser import parser
 from marshmallow import Schema
+from marshmallow.validate import OneOf
 from webargs import fields, ValidationError
 from functools import partial
 from raven.versioning import fetch_git_sha
@@ -13,7 +14,7 @@ import re
 import traceback
 from core.pywrapper import (
   StringVec, ColumnType, ColumnTypeMap, Mask, MaskVec, VariantGroupType,
-  ScoreCovarianceRunner, ScoreCovarianceConfig, GroupIdentifierType, VariantGroup, VariantGroupVector
+  ScoreCovarianceRunner, ScoreCovarianceConfig, GroupIdentifierType, VariantGroup, VariantGroupVector, VariantFormat
 )
 
 API_VERSION = "1.0"
@@ -107,13 +108,17 @@ class VariantField(fields.String):
 
   def _validated(self, value):
     try:
-      s1 = value.split(":")
-      chrom = s1[0]
-      pos, alleles = s1[1].split("_")
-      pos = int(pos)
-      ref, alt = alleles.split("/")
+      if "_" in value:
+        s1 = value.split(":")
+        chrom = s1[0]
+        pos, alleles = s1[1].split("_")
+        pos = int(pos)
+        ref, alt = alleles.split("/")
+      else:
+        chrom, pos, ref, alt = value.split(":")
+        pos = int(pos)
     except:
-      raise ValidationError("Invalid variant {}, should be of format: CHROM:POS_REF/ALT".format(value))
+      raise ValidationError("Invalid variant {}, should be of format: CHROM:POS_REF/ALT or CHROM:POS:REF:ALT".format(value))
 
     if chrom.startswith("chr"):
       raise ValidationError("Variant chromosome should not contain 'chr': " + value)
@@ -156,6 +161,7 @@ def get_covariance():
     'masks': fields.List(fields.Int(), validate=lambda x: len(x) > 0, error_messages={'validator_failed': "Must provide at least 1 mask ID"}),
     'maskDefinitions': fields.Nested(MaskSchema, many=True),
     'genomeBuild': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'variantFormat': fields.Str(required=False, default="EPACTS", validate=OneOf(["EPACTS", "COLONS"]))
   }
 
   args = parser.parse(
@@ -192,11 +198,19 @@ def get_covariance():
   phenotype = str(args.get("phenotype"))
   masks = args.get("masks")
   mask_definitions = args.get("maskDefinitions")
+  variant_format = args.get("variantFormat", "EPACTS")
 
   config.chrom = chrom
   config.start = start
   config.stop = stop
   config.sample_subset = str(args.get("samples"))
+
+  if variant_format == "EPACTS":
+    config.variant_format = VariantFormat.EPACTS
+  elif variant_format == "COLONS":
+    config.variant_format = VariantFormat.COLONS
+  else:
+    raise FlaskException("Invalid variant format given by variantFormat: {}".format(variant_format), 400)
 
   if (stop - start) > current_app.config["API_MAX_REGION_SIZE"]:
     raise FlaskException("Region requested for analysis exceeds maximum width of {}".format(current_app.config["API_MAX_REGION_SIZE"]), 400)
@@ -308,6 +322,12 @@ def get_covariance():
           vg = VariantGroup()
           vg.name = str(group_name)
           for v in variants:
+            if variant_format == "COLONS":
+              # Internally we still use EPACTS format but translate on read/write. Later we will move to using a
+              # native variant object type internally.
+              chrom, pos, ref, alt = v.split(":")
+              v = "{}:{}_{}/{}".format(chrom, pos, ref, alt)
+
             vg.add_variant(str(v))
 
           vg_vec.append(vg)

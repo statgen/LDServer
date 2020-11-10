@@ -11,6 +11,7 @@
 #include <cereal/external/rapidjson/document.h>
 #include <cereal/external/rapidjson/writer.h>
 #include <cereal/external/rapidjson/stringbuffer.h>
+#include <boost/format.hpp>
 #include <armadillo>
 
 using namespace std;
@@ -105,6 +106,14 @@ struct VariantMeta {
 
     bool operator<(VariantMeta const& other) const {
         return position < other.position;
+    }
+
+    string as_epacts() const {
+      return boost::str(boost::format("%s:%s_%s/%s") % chromosome % position % ref % alt);
+    }
+
+    string as_colons() const {
+      return boost::str(boost::format("%s:%s:%s:%s") % chromosome % position % ref % alt);
     }
 };
 
