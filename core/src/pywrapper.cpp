@@ -56,11 +56,8 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(phenotype_load_file_overloads, Phenotypes
 
 BOOST_PYTHON_MODULE(pywrapper) {
 
-    // This came very close to working, but there appears to be possibly a CPython bug preventing it from working, and
-    // we're currently stuck on CPython 2.7. Worth revisiting when we upgrade to the latest python.
-    // However, it still works out that if you derive your exception from std::runtime_error, or at least std::exception,
-    // boost python will do a reasonable job at translating your exception. See PhenotypeParseException in Phenotypes.cpp.
-    // exception_<PhenotypeParseException>("PhenotypeParseException", init<std::string>());
+    exception_<LDServerGenericException>("LDServerGenericException", init<std::string>())
+      .def("get_secret", &LDServerGenericException::get_secret);
 
     boost::python::enum_<correlation>("correlation")
             .value("ld_r", LD_R)

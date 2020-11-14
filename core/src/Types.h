@@ -8,6 +8,7 @@
 #include <codecvt>
 #include <locale>
 #include <cmath>
+#include <stdexcept>
 #include <cereal/external/rapidjson/document.h>
 #include <cereal/external/rapidjson/writer.h>
 #include <cereal/external/rapidjson/stringbuffer.h>
@@ -15,6 +16,15 @@
 #include <armadillo>
 
 using namespace std;
+
+class LDServerGenericException : public std::runtime_error {
+private:
+  std::string secret;
+public:
+  using std::runtime_error::runtime_error;
+  inline LDServerGenericException& set_secret(const std::string& s) { secret = s; return (*this); }
+  inline std::string get_secret() const { return secret; }
+};
 
 const auto EPACTS_REGEX = regex("(?:chr)?(.+):(\\d+)_?(\\w+)?/?([^_]+)?_?(.*)?");
 
