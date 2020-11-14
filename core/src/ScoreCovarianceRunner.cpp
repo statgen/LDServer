@@ -45,6 +45,28 @@ void ScoreCovarianceConfig::pprint() const {
       m.print_groups(5, 5);
     }
   }
+
+  cout << "Summary statistic dataset ID: " << summary_stat_dataset_id << endl;
+  cout << "Score statistic files: " << endl;
+  if (summary_stat_score_files.empty()) {
+    cout << ".. ** NO SCORE STAT FILES FOUND ** " << endl;
+  }
+  else {
+    for (auto&& f : summary_stat_score_files) {
+      cout << ".. " << f << endl;
+    }
+  }
+
+  cout << "Covariance files: " << endl;
+  if (summary_stat_cov_files.empty()) {
+    cout << ".. ** NO COV FILES FOUND ** " << endl;
+  }
+  else {
+    for (auto&& f : summary_stat_cov_files) {
+      cout << ".. " << f << endl;
+    }
+  }
+
   cout << "Segment size: " << segment_size << endl;
   cout << "Redis hostname: " << redis_hostname << endl;
   cout << "Redis port: " << redis_port << endl;
