@@ -1709,14 +1709,14 @@ TEST_F(LDServerTest, pheno_bad_float) {
 
   try {
     pheno.load_file("chr22.test.bad_float.tab", ctmap, 2504, "\t", "iid");
-    FAIL() << "Expected std::runtime_error";
+    FAIL() << "Expected LDServerGenericException";
   }
-  catch (PhenotypeParseException& e) {
-    EXPECT_THAT(e.what(), HasSubstr("Error reading line 3, column 3 (rand_qt) in phenotype file"));
+  catch (LDServerGenericException& e) {
+    EXPECT_THAT(e.what(), HasSubstr("Error reading phenotype file on line 3, column 3 (rand_qt)"));
     EXPECT_THAT(e.what(), HasSubstr("invalid value: something"));
   }
   catch (...) {
-    FAIL() << "Expected std::runtime_error";
+    FAIL() << "Expected LDServerGenericException";
   }
 }
 

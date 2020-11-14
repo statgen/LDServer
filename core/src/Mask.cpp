@@ -44,7 +44,7 @@ void Mask::load_file(const string &filepath, const string &chrom, uint64_t start
 
   bool has_chrom = find(tbfile.chroms.begin(), tbfile.chroms.end(), chrom) != tbfile.chroms.end();
   if (!has_chrom) {
-    throw std::range_error("Chromosome " + chrom + " not found within mask file");
+    throw LDServerGenericException("Chromosome " + chrom + " not found within mask file");
   }
 
   string line;
@@ -86,7 +86,7 @@ void Mask::load_file(const string &filepath, const string &chrom, uint64_t start
   }
 
   if (groups_added == 0) {
-    throw std::range_error(
+    throw LDServerGenericException(
       boost::str(boost::format("No groups loaded within genomic region %s:%i-%i for mask %s") % chrom % start % stop % id)
     );
   }

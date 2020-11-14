@@ -65,7 +65,7 @@ double SummaryStatisticsLoader::getAltFreqForPosition(uint64_t& pos) {
     return alt_freq.at(pos);
   }
   catch (std::out_of_range& e) {
-    throw ScoreCovParseException("Position " + to_string(pos) + " did not have alt allele frequency when loading scores/covariance matrix");
+    throw LDServerGenericException("Position " + to_string(pos) + " did not have alt allele frequency when loading scores/covariance matrix");
   }
 }
 
@@ -74,7 +74,7 @@ string SummaryStatisticsLoader::getVariantForPosition(uint64_t& pos) {
     return pos_variant.at(pos);
   }
   catch (std::out_of_range& e) {
-    throw ScoreCovParseException("Position " + to_string(pos) + " does not have a known variant when loading scores/covariance matrix");
+    throw LDServerGenericException("Position " + to_string(pos) + " does not have a known variant when loading scores/covariance matrix");
   }
 }
 
@@ -125,8 +125,10 @@ void SummaryStatisticsLoader::parseHeader(const std::string& filepath) {
       detected_format = ScoreCovFormat::RAREMETAL;
     }
     else {
-      throw runtime_error(
-        boost::str(boost::format("Invalid program name (%s) found in header of %s") % format % filepath)
+      throw LDServerGenericException(
+        boost::str(boost::format("Invalid program name (%s) found in header of score statistic file") % format)
+      ).set_secret(
+        "Score statistic file: " + filepath
       );
     }
   }
@@ -146,7 +148,8 @@ void SummaryStatisticsLoader::parseHeader(const std::string& filepath) {
         detected_format = ScoreCovFormat::RVTEST;
       }
       else {
-        throw runtime_error("Could not determine whether file is rvtest or raremetal format: " + filepath);
+        throw LDServerGenericException("Could not determine whether file is rvtest or raremetal format")
+          .set_secret("Score statistic file: " + filepath);
       }
     }
   }
@@ -194,17 +197,26 @@ void SummaryStatisticsLoader::parseHeader(const std::string& filepath) {
 void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start, uint64_t stop) {
   cov_result->erase();
 
-  const string& cov_path = cov_map[chromosome];
+  string cov_path;
+  try {
+    cov_path = cov_map.at(chromosome);
+  }
+  catch (std::out_of_range& e) {
+    throw LDServerGenericException(
+      boost::str(boost::format("Chromosome %s not present in covariance matrix files") % chromosome)
+    );
+  }
+
   Tabix tbfile(const_cast<string&>(cov_path));
   string region = chromosome + ":" + to_string(start) + "-" + to_string(stop);
 
   bool has_chrom = find(tbfile.chroms.begin(), tbfile.chroms.end(), chromosome) != tbfile.chroms.end();
   if (!has_chrom) {
-    throw std::range_error("Chromosome " + chromosome + " not found within covariance matrix file");
+    throw LDServerGenericException("Chromosome " + chromosome + " not found within covariance matrix file");
   }
 
   if (alt_freq.empty()) {
-    throw std::runtime_error("No alt allele frequencies available when parsing cov matrix file - did you load the scores first?");
+    throw LDServerGenericException("No alt allele frequencies available when parsing cov matrix file - did you load the scores first?");
   }
 
   string line;
@@ -318,16 +330,29 @@ void SummaryStatisticsLoader::load_scores(const string& chromosome, uint64_t sta
   score_result->sigma2 = sigma2;
   score_result->nsamples = nsamples;
 
-  if (start <= 0) { throw std::invalid_argument("Score statistic starting position was < 0"); }
-  if (stop  <= 0) { throw std::invalid_argument("Score statistic stop position was < 0"); }
+  if (start <= 0) { throw LDServerGenericException("Score statistic starting position was < 0"); }
+  if (stop  <= 0) { throw LDServerGenericException("Score statistic stop position was < 0"); }
 
-  const string& score_path = score_map[chromosome];
+  string score_path;
+  try {
+    score_path = score_map.at(chromosome);
+  }
+  catch (std::out_of_range& e) {
+    throw LDServerGenericException(
+      boost::str(boost::format("Chromosome %s not present in score statistics files") % chromosome)
+    );
+  }
+
+  #ifndef NDEBUG
+  cout << boost::str(boost::format("Loading score statistics on chromosome %s from file %s") % chromosome % score_path) << endl;
+  #endif
+
   Tabix tbfile(const_cast<string&>(score_path));
   string region = chromosome + ":" + to_string(start) + "-" + to_string(stop);
 
   bool has_chrom = find(tbfile.chroms.begin(), tbfile.chroms.end(), chromosome) != tbfile.chroms.end();
   if (!has_chrom) {
-    throw std::range_error("Chromosome " + chromosome + " not found within score statistic file");
+    throw LDServerGenericException("Chromosome " + chromosome + " not found within score statistic file");
   }
 
   string line;
@@ -371,9 +396,9 @@ void SummaryStatisticsLoader::load_scores(const string& chromosome, uint64_t sta
   }
 
   if (scores_read == 0) {
-    throw std::range_error(
+    throw LDServerGenericException(
       boost::str(boost::format("No score statistics loaded within genomic region %s:%i-%i") % chromosome % start % stop)
-    );
+    ).set_secret("Attempted loading from file: " + score_path);
   }
 }
 

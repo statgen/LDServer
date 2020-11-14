@@ -7,7 +7,6 @@
 #include <map>
 #include <memory>
 #include <limits>
-#include <stdexcept>
 #include <tabixpp.hpp>
 #include <boost/format.hpp>
 #include "Types.h"
@@ -38,8 +37,6 @@ const CovarianceColumns COV_COLUMNS_RVTEST {5, 4, 0};
 const CovarianceColumns COV_COLUMNS_RAREMETAL {3, 2, 0};
 
 enum class ScoreCovFormat {RVTEST, RAREMETAL};
-
-class ScoreCovParseException : public std::runtime_error { using std::runtime_error::runtime_error; };
 
 /**
  * Loader for "summary statistic" datasets. These are comprised of:

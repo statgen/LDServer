@@ -225,9 +225,13 @@ void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_
         }
       }
       catch (std::exception& e) {
-        auto fmt = boost::format("Error reading line %i, column %i (%s) in phenotype file (%s), invalid value: %s. Original exception was %s: %s");
-        auto s = boost::str(fmt % i % j % header[j] % path % val % typeid(e).name() % e.what());
-        throw PhenotypeParseException(s);
+        auto fmt_msg = boost::format("Error reading phenotype file on line %i, column %i (%s), invalid value: %s");
+        auto s_msg = boost::str(fmt_msg % i % j % header[j] % val);
+
+        auto fmt_secret = boost::format("Bad phenotype file: %s, original exception was %s: %s");
+        auto s_secret = boost::str(fmt_secret % path % typeid(e).name() % e.what());
+
+        throw LDServerGenericException(s_msg).set_secret(s_secret);
       }
     }
 
