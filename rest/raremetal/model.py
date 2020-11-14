@@ -3,6 +3,7 @@ from sqlalchemy import Index, inspect
 from sqlalchemy.types import Enum
 from flask.cli import with_appcontext
 from flask import current_app
+from .errors import FlaskException
 from collections import Counter, OrderedDict
 from core.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType, GroupIdentifierType, extract_samples, StringVec
 from tabulate import tabulate
@@ -357,7 +358,7 @@ def get_masks_for_summary_stats(summary_stat_dataset_id):
 def get_mask_by_id(mask_id):
   result = db.session.query(Mask).filter_by(id = mask_id).scalar()
   if result is None:
-    raise ValueError("No mask exists for ID {}".format(mask_id))
+    raise FlaskException("No mask exists for ID {}".format(mask_id))
 
   as_dict = {c.key: getattr(result, c.key) for c in inspect(result).mapper.attrs}
 
@@ -368,7 +369,7 @@ def get_mask_by_id(mask_id):
 def get_mask_by_name(mask_name, genotype_dataset_id):
   result = db.session.query(Mask).filter_by(name = mask_name, genotype_dataset_id = genotype_dataset_id).scalar()
   if result is None:
-    raise ValueError("No mask exists by the name {} for genotype dataset {}".format(mask_name, genotype_dataset_id))
+    raise FlaskException("No mask exists by the name {} for genotype dataset {}".format(mask_name, genotype_dataset_id))
 
   as_dict = {c.key: getattr(result, c.key) for c in inspect(result).mapper.column_attrs}
 
@@ -379,7 +380,7 @@ def get_mask_by_name(mask_name, genotype_dataset_id):
 def get_scorecov_files(summary_stat_id):
   result = db.session.query(SummaryStatDataset).filter_by(id = summary_stat_id).scalar()
   if result is None:
-    raise ValueError("No summary statistic dataset exists with ID {}".format(summary_stat_id))
+    raise FlaskException("No summary statistic dataset exists with ID {}".format(summary_stat_id))
 
   return result.score_files, result.cov_files
 
