@@ -12,15 +12,40 @@
 #include "Raw.h"
 using namespace boost::python;
 
-// https://stackoverflow.com/a/37799535
 //template <class E, class... Policies, class... Args>
 //class_<E, Policies...> exception_(Args&&... args) {
 //  class_<E, Policies...> cls(std::forward<Args>(args)...);
-//  register_exception_translator<E>([ptr=cls.ptr()](E const& e){
-//    PyErr_SetObject(ptr, object(e).ptr());
+//
+//  string scope_name = extract<string>(scope().attr("__name__"));
+//  string class_name = extract<string>(cls.attr("__name__"));
+//  string exc_name = scope_name + "." + class_name;
+//  PyObject* type = PyErr_NewException(exc_name.c_str(), PyExc_Exception, nullptr);
+//  if (!type) throw_error_already_set();
+//  scope().attr(exc_name.c_str()) = handle<>(borrowed(type));
+//
+//  register_exception_translator<E>([ptr=cls.ptr(), type](E const& e) {
+//    PyErr_SetObject(type, object(e).ptr());
 //  });
+//
+//  cls.def("__str__", &E::what);
 //  return cls;
 //}
+
+// General purpose boost python translator for exceptions deriving from std::exception.
+// Example:
+//   class UserDefinedException : public std::exception { using std::exception::exception; };
+//   exception_<UserDefinedException>("UserDefinedException", init<std::string>());
+template <class E, class... Policies, class... Args>
+class_<E, Policies...> exception_(Args&&... args) {
+  class_<E, Policies...> cls(std::forward<Args>(args)...);
+
+  register_exception_translator<E>([cls](E const& e) {
+    PyErr_SetObject(PyExc_Exception, object(e).ptr());
+  });
+
+  cls.def("__str__", &E::what);
+  return cls;
+}
 
 // This means generate a thin set of wrappers for versions of this function with or without default arguments
 // 2nd to last argument is minimum number of arguments the function should accept
