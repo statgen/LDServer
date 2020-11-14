@@ -52,6 +52,8 @@ def handle_all(error):
   # Also log the exception to the console.
   print("Exception thrown while handling request: " + request.url, file=sys.stderr)
   traceback.print_exc() # defaults to stderr
+  if isinstance(error, FlaskException) and error.secret is not None:
+    print(error.secret, file=sys.stderr)
 
   if isinstance(error, FlaskException):
     message = error.message
