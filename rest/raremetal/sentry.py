@@ -11,9 +11,10 @@ def init_app(app):
 
   release = "raremetal-server@{}".format(sha)
 
-  if "SENTRY_DSN" in app.config:
+  sentry_dsn = app.config.get("SENTRY_DSN")
+  if sentry_dsn is not None:
     app.config["SENTRY_CONFIG"] = {
-      "dsn": app.config["SENTRY_DSN"],
+      "dsn": sentry_dsn,
       "release": release
     }
 
