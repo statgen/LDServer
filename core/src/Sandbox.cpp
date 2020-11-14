@@ -415,9 +415,54 @@ void sumstats() {
   cout << "DONE!" << endl;
 }
 
+void tabixpp_error() {
+  string chrom = "22";
+  auto start = 1ul;
+  auto stop = 2ul;
+
+  uint64_t mask_id = 0;
+  vector<VariantGroup> vg_vec;
+  VariantGroup vg;
+  vg.chrom = "22";
+  vg.name = "PIM3";
+  vg.start = 1;
+  vg.stop = 1;
+  vg.variants = {VariantMeta("1:1_A/T")};
+  vg_vec.push_back(vg);
+  Mask mask(mask_id, VariantGroupType::GENE, GroupIdentifierType::ENSEMBL, vg_vec);
+  vector<Mask> masks;
+  masks.emplace_back(mask);
+
+  auto config = make_score_covariance_config();
+  config->chrom = chrom;
+  config->start = start;
+  config->stop = stop;
+  config->segment_size = 1000;
+  config->masks = masks;
+  config->summary_stat_dataset_id = 1;
+  config->summary_stat_score_files = {"/Users/welchr/projects/LDServer/rest/raremetal/../../data/test_sumstat_loader_rm.scores.assoc.gz"};
+  config->summary_stat_cov_files = {"/Users/welchr/projects/LDServer/rest/raremetal/../../data/test_sumstat_loader_rm.cov.assoc.gz"};
+
+  // Run score/covariance calculations
+  ScoreCovarianceRunner runner(config);
+  runner.run();
+//  auto json = runner.getJSON();
+//  rapidjson::Document doc;
+//  doc.Parse(json.c_str());
+//  auto& data = doc["data"];
+//  auto& groups = doc["data"]["groups"];
+//  auto& variants = doc["data"]["variants"];
+//  auto& group1 = doc["data"]["groups"][0];
+//  auto& group2 = doc["data"]["groups"][1];
+//  auto& group1_variant1 = doc["data"]["groups"][0]["variants"][0];
+//  auto& group2_variant1 = doc["data"]["groups"][1]["variants"][0];
+  cout << "DONE!" << endl;
+}
+
 int main() {
   //perf_sav_55k();
-  sumstats();
+  //sumstats();
+  tabixpp_error();
   //test3();
   return 0;
 }
