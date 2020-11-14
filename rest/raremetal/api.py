@@ -10,10 +10,8 @@ from functools import partial
 from raven.versioning import fetch_git_sha
 from . import model
 import os
-import re
-import traceback
 from core.pywrapper import (
-  StringVec, ColumnType, ColumnTypeMap, Mask, MaskVec, VariantGroupType,
+  StringVec, ColumnType, ColumnTypeMap, Mask, MaskVec, VariantGroupType, LDServerGenericException,
   ScoreCovarianceRunner, ScoreCovarianceConfig, GroupIdentifierType, VariantGroup, VariantGroupVector, VariantFormat
 )
 
@@ -281,11 +279,7 @@ def get_covariance():
   mask_vec = MaskVec()
   if masks:
     for mask_id in masks:
-      try:
-        mask = model.get_mask_by_id(mask_id)
-      except ValueError as e:
-        raise FlaskException(str(e), 400)
-
+      mask = model.get_mask_by_id(mask_id)
       mask_path = model.find_file(mask["filepath"])
 
       if not os.path.isfile(mask_path):
@@ -300,72 +294,39 @@ def get_covariance():
       if summary_stat_dataset_id and (summary_stat_dataset_id not in [s.id for s in mask["sumstats"]]):
         raise FlaskException("Mask ID {} is invalid for summary statistic dataset ID {}".format(mask_id, summary_stat_dataset_id), 400)
 
-      try:
-        tb = Mask(str(mask_path), mask_id, mask["group_type"], mask["identifier_type"], chrom, start, stop)
-      except RuntimeError as e:
-        msg = str(e)
-        if msg.startswith("No groups loaded within genomic region"):
-          raise FlaskException(msg, 200)
-        elif re.search("Chromosome.*not found.*", msg):
-          raise FlaskException(msg, 200)
-        else:
-          # Re-raising exception leads to general error message that does not contain a risk of leaking server-side details
-          raise
-
+      tb = Mask(str(mask_path), mask_id, mask["group_type"], mask["identifier_type"], chrom, start, stop)
       mask_vec.append(tb)
 
   elif mask_definitions:
     for mask in mask_definitions:
-      try:
-        vg_vec = VariantGroupVector()
-        for group_name, variants in mask["groups"].items():
-          vg = VariantGroup()
-          vg.name = str(group_name)
-          for v in variants:
-            if variant_format == "COLONS":
-              # Internally we still use EPACTS format but translate on read/write. Later we will move to using a
-              # native variant object type internally.
-              chrom, pos, ref, alt = v.split(":")
-              v = "{}:{}_{}/{}".format(chrom, pos, ref, alt)
+      vg_vec = VariantGroupVector()
+      for group_name, variants in mask["groups"].items():
+        vg = VariantGroup()
+        vg.name = str(group_name)
+        for v in variants:
+          if variant_format == "COLONS":
+            # Internally we still use EPACTS format but translate on read/write. Later we will move to using a
+            # native variant object type internally.
+            chrom, pos, ref, alt = v.split(":")
+            v = "{}:{}_{}/{}".format(chrom, pos, ref, alt)
 
-            vg.add_variant(str(v))
+          vg.add_variant(str(v))
 
-          vg_vec.append(vg)
+        vg_vec.append(vg)
 
-        tb = Mask(
-          mask["id"],
-          VariantGroupType.names.get(mask["group_type"]),
-          GroupIdentifierType.names.get(mask["identifier_type"]),
-          vg_vec
-        )
-      except RuntimeError as e:
-        msg = str(e)
-        if msg.startswith("No groups loaded within genomic region"):
-          raise FlaskException(msg, 200)
-        elif re.search("Chromosome.*not found.*", msg):
-          raise FlaskException(msg, 200)
-        else:
-          # Re-raising exception leads to general error message that does not contain a risk of leaking server-side details
-          raise
+      tb = Mask(
+        mask["id"],
+        VariantGroupType.names.get(mask["group_type"]),
+        GroupIdentifierType.names.get(mask["identifier_type"]),
+        vg_vec
+      )
 
       mask_vec.append(tb)
 
   config.masks = mask_vec
 
-  try:
-    runner = ScoreCovarianceRunner(config)
-    runner.run()
-  except RuntimeError as e:
-    if str(e).startswith("Error reading line"):
-      # This is an unsafe exception to throw back to the user, but we still want the console to see it.
-      traceback.print_exc()
-
-      # Now through a standard error to the user
-      raise FlaskException("An error occurred parsing a phenotype file on the server. Please ask the server admin to consult the logs for more information.", 500)
-    else:
-      # If we don't recognize the exception, we still want to raise it. The custom error handler we have defined (errors.handle_error)
-      # will raise a generic exception message and the user will not see the actual exception message.
-      raise e
+  runner = ScoreCovarianceRunner(config)
+  runner.run()
 
   json = runner.getJSON()
 
