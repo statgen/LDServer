@@ -1,9 +1,5 @@
 FROM ubuntu:18.04
 
-ARG BUILD_DATE
-ARG GIT_SHA
-ARG LDSERVER_VERSION
-
 LABEL org.label-schema.name="LDServer"
 LABEL org.label-schema.description="LDServer for calculating linkage disequilibrium of genetic variants"
 LABEL org.label-schema.vendor="University of Michigan, Center for Statistical Genetics"
@@ -75,6 +71,10 @@ COPY --chown=ldserver:ldserver . /home/ldserver/
 RUN invoke test
 
 # Frequently changing metadata here to avoid cache misses
+ARG BUILD_DATE
+ARG GIT_SHA
+ARG LDSERVER_VERSION
+
 LABEL org.label-schema.version=$LDSERVER_VERSION
 LABEL org.label-schema.vcs-ref=$GIT_SHA
 LABEL org.label-schema.build-date=$BUILD_DATE
