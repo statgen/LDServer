@@ -63,12 +63,30 @@ RUN \
 WORKDIR /home/ldserver
 USER ldserver
 
+# Install cpp dependencies
+COPY --chown=ldserver:ldserver core/requirements.txt /home/ldserver/core/requirements.txt
+COPY --chown=ldserver:ldserver core/*.cmake /home/ldserver/core/
+ARG CMAKE_BUILD_PARALLEL_LEVEL
+ARG MAKEFLAGS
+RUN cget install -f core/requirements.txt
+
 # Copy source
 COPY --chown=ldserver:ldserver . /home/ldserver/
 
-# This executes a compile, then runs C++ and python tests
-# We want the docker build to fail if the tests fail
-RUN invoke test
+# Compile ldserver cpp
+ENV CGET_PREFIX="/home/ldserver/cget"
+ENV INSTALL_PREFIX="/home/ldserver/cget"
+RUN \
+  mkdir build \
+  && cd build \
+  && cmake .. \
+    -DCMAKE_TOOLCHAIN_FILE=${CGET_PREFIX}/cget/cget.cmake \
+    -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} \
+    -DCMAKE_BUILD_TYPE=Release \
+  && cmake --build . --target install
+
+# Run test cases
+RUN tox
 
 # Frequently changing metadata here to avoid cache misses
 ARG BUILD_DATE
