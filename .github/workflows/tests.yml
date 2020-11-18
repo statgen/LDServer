@@ -1,0 +1,52 @@
+name: Run test cases for C++ and python
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        python-version: [3.6]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache python packages
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('rest/requirements.txt') }}
+      
+    - name: Cache compiled C++ dependencies
+      uses: actions/cache@v2
+      with:
+        path: cget
+        key: ${{ runner.os }}-cget-${{ hashFiles('core/requirements.txt') }}
+
+    - name: Install python dependencies
+      run: |
+        python3 -m pip install wheel tox pytest cget
+
+    - name: Install C++ dependencies
+      run: |
+        cget install -f core/requirements.txt
+
+    - name: Build C++
+      run: |
+        mkdir build
+        cd build
+        cmake .. \
+          -DCMAKE_TOOLCHAIN_FILE=${{ runner.workspace }}/LDServer/cget/cget/cget.cmake \
+          -DCMAKE_INSTALL_PREFIX=${{ runner.workspace }}/LDServer/cget \
+          -DCMAKE_BUILD_TYPE=Release 
+        cmake --build . --target install
+       
+    - name: Run all tests
+      run: |
+        tox
