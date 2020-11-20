@@ -38,6 +38,8 @@ const CovarianceColumns COV_COLUMNS_RAREMETAL {3, 2, 0};
 
 enum class ScoreCovFormat {RVTEST, RAREMETAL};
 
+class NoVariantsInRange : public std::runtime_error { using std::runtime_error::runtime_error; };
+
 /**
  * Loader for "summary statistic" datasets. These are comprised of:
  *
@@ -62,7 +64,7 @@ protected:
 
   ScoreCovFormat detected_format;
   double sigma2 = numeric_limits<double>::quiet_NaN();
-  uint64_t nsamples;
+  uint64_t nsamples = numeric_limits<double>::quiet_NaN();
 
   /**
    * Function that parses the score statistic file's header to extract:

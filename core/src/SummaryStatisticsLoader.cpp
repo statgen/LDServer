@@ -338,7 +338,7 @@ void SummaryStatisticsLoader::load_scores(const string& chromosome, uint64_t sta
     score_path = score_map.at(chromosome);
   }
   catch (std::out_of_range& e) {
-    throw LDServerGenericException(
+    throw NoVariantsInRange(
       boost::str(boost::format("Chromosome %s not present in score statistics files") % chromosome)
     );
   }
@@ -352,7 +352,7 @@ void SummaryStatisticsLoader::load_scores(const string& chromosome, uint64_t sta
 
   bool has_chrom = find(tbfile.chroms.begin(), tbfile.chroms.end(), chromosome) != tbfile.chroms.end();
   if (!has_chrom) {
-    throw LDServerGenericException("Chromosome " + chromosome + " not found within score statistic file");
+    throw NoVariantsInRange("Chromosome " + chromosome + " not found within score statistic file");
   }
 
   string line;
@@ -396,9 +396,9 @@ void SummaryStatisticsLoader::load_scores(const string& chromosome, uint64_t sta
   }
 
   if (scores_read == 0) {
-    throw LDServerGenericException(
+    throw NoVariantsInRange(
       boost::str(boost::format("No score statistics loaded within genomic region %s:%i-%i") % chromosome % start % stop)
-    ).set_secret("Attempted loading from file: " + score_path);
+    );
   }
 }
 

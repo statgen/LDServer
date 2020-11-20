@@ -225,9 +225,15 @@ void ScoreCovarianceRunner::run() {
       }
       else {
         // Here we'll use the SummaryStatisticsLoader to read already computed scores/covariances from files on disk.
-        summary_stat_loader->load_region(group.chrom, group.start, group.stop);
-        ld_res = summary_stat_loader->getCovResult();
-        score_res = summary_stat_loader->getScoreResult();
+        try {
+          summary_stat_loader->load_region(group.chrom, group.start, group.stop);
+          ld_res = summary_stat_loader->getCovResult();
+          score_res = summary_stat_loader->getScoreResult();
+        }
+        catch(NoVariantsInRange& e) {
+          // There were no variants within the region requested, we can skip this group.
+          continue;
+        }
       }
 
       ld_res->filter_by_variants(*group.get_variants());
@@ -334,8 +340,9 @@ void ScoreCovarianceRunner::run() {
   data.AddMember("variants", variants, alloc);
   data.AddMember("groups", groups, alloc);
   double& sigma2 = score_res->sigma2;
+  double& nsamples = score_res->nsamples;
   std::isnan(sigma2) ? data.AddMember("sigmaSquared", Value(), alloc) : data.AddMember("sigmaSquared", sigma2, alloc);
-  data.AddMember("nSamples", score_res->nsamples, alloc);
+  std::isnan(nsamples) ? data.AddMember("nSamples", Value(), alloc) : data.AddMember("nSamples", nsamples, alloc);
 
   if (run_mode == ScoreCovRunMode::COMPUTE) {
     data.AddMember("phenotypeDataset", config->phenotype_dataset_id, alloc);

@@ -203,8 +203,10 @@ def test_no_scores_in_region(client):
         ]
     })
 
-    assert resp.status_code == 400
-    assert re.search("No score statistics loaded within genomic region", resp.json["error"]) is not None
+    assert resp.status_code == 200
+    data = resp.json["data"]
+    assert len(data["variants"]) == 0
+    assert len(data["groups"]) == 0
 
 def test_tabixpp_file_inaccessible(client):
     resp = client.post("/aggregation/covariance", json = {
@@ -230,8 +232,11 @@ def test_tabixpp_file_inaccessible(client):
         ]
     })
 
-    assert resp.status_code == 400
-    assert "[tabix++] error reading file" not in resp.json["error"]
+    assert resp.status_code == 200
+    data = resp.json["data"]
+    assert len(data["variants"]) == 0
+    assert len(data["groups"]) == 0
+    assert "[tabix++] error reading file" not in resp.json.get("error", "")
 
 def test_covar(client):
     resp = client.post("/aggregation/covariance", data = {
