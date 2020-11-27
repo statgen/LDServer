@@ -450,6 +450,15 @@ TEST_F(LDServerTest, summary_stat_load_rvtest_test) {
   ASSERT_TRUE(loader.getNumSamples() > 0);
 }
 
+TEST_F(LDServerTest, summary_stat_load_rvtest_missing_af) {
+  // Load from disk using our new summary stat loader
+  SummaryStatisticsLoader loader({"test.afmissing.MetaScore.assoc.gz"}, {"test.smallchunk.MetaCov.assoc.gz"});
+  loader.load_region("1", 2, 2);
+
+  auto score_res = loader.getScoreResult();
+  ASSERT_NEAR(score_res->data[0].alt_freq, 0.004464285, 0.00001);
+}
+
 TEST_F(LDServerTest, summary_stat_load_rvtest_noheader_test) {
   // Load from disk using our new summary stat loader
   SummaryStatisticsLoader loader({"test.smallchunk.noheader.MetaScore.assoc.gz"}, {"test.smallchunk.noheader.MetaCov.assoc.gz"});

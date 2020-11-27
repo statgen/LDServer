@@ -23,6 +23,8 @@ struct ScoreColumns {
   uint16_t colV;
   uint16_t colEffectAllele;
   uint16_t colPvalue;
+  uint16_t colInformativeN;
+  uint16_t colInformativeAltAc;
 };
 
 struct CovarianceColumns {
@@ -31,8 +33,8 @@ struct CovarianceColumns {
   uint16_t colChrom;
 };
 
-const ScoreColumns SCORE_COLUMNS_RVTEST {0, 1, 2, 3, 5, 12, 13, 3, 15};
-const ScoreColumns SCORE_COLUMNS_RAREMETAL {0, 1, 2, 3, 5, 13, 14, 3, 16};
+const ScoreColumns SCORE_COLUMNS_RVTEST {0, 1, 2, 3, 5, 12, 13, 3, 15, 4, 6};
+const ScoreColumns SCORE_COLUMNS_RAREMETAL {0, 1, 2, 3, 5, 13, 14, 3, 16, 4, 7};
 const CovarianceColumns COV_COLUMNS_RVTEST {5, 4, 0};
 const CovarianceColumns COV_COLUMNS_RAREMETAL {3, 2, 0};
 

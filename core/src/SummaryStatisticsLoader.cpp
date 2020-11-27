@@ -376,20 +376,47 @@ void SummaryStatisticsLoader::load_scores(const string& chromosome, uint64_t sta
     copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
 
     // Extract information from line
-    ScoreResult result;
-    result.chrom = tokens.at(cols.colChrom);
-    result.position = stoul(tokens.at(cols.colPos));
-    result.score_stat = stod(tokens.at(cols.colU));
-    result.pvalue = stod(tokens.at(cols.colPvalue));
-    result.alt_freq = stod(tokens.at(cols.colAltFreq));
-    string ref = tokens.at(cols.colRef);
-    string alt = tokens.at(cols.colAlt);
-    result.variant = result.chrom + ":" + to_string(result.position) + "_" + ref + "/" + alt;
-    alt_freq[result.position] = result.alt_freq;
-    pos_variant[result.position] = result.variant;
+    try {
+      ScoreResult result;
+      result.chrom = tokens.at(cols.colChrom);
+      result.position = stoul(tokens.at(cols.colPos));
+      result.score_stat = stod(tokens.at(cols.colU));
+      result.pvalue = stod(tokens.at(cols.colPvalue));
 
-    // Store to ScoreStatQueryResult object
-    score_result->data.emplace_back(result);
+      // Get allele frequency. There is an edge case of sorts in rvtest when using related samples where the
+      // BLUE estimator for singletons causes a NA result for the allele frequency. However, we don't particularly
+      // care what the actual allele frequency is, only the relative frequency of the ALT vs REF allele to determine
+      // which is the rare allele.
+      try {
+        result.alt_freq = stod(tokens.at(cols.colAltFreq));
+      }
+      catch (...) {
+        // Allele frequency was invalid. Can we use n and alt_ac instead?
+        double n = stod(tokens.at(cols.colInformativeN));
+
+        // For case/control data, the field will have `all samples : case samples : control samples`. But stod() will
+        // automatically only take the first value up to the `:` and that's the value we want.
+        double alt_ac = stod(tokens.at(cols.colInformativeAltAc));
+        double af = alt_ac / (2.0 * n);
+        result.alt_freq = af;
+      }
+
+      string ref = tokens.at(cols.colRef);
+      string alt = tokens.at(cols.colAlt);
+      result.variant = result.chrom + ":" + to_string(result.position) + "_" + ref + "/" + alt;
+      alt_freq[result.position] = result.alt_freq;
+      pos_variant[result.position] = result.variant;
+
+      // Store to ScoreStatQueryResult object
+      score_result->data.emplace_back(result);
+    }
+    catch(...) {
+      throw LDServerGenericException(
+        "Invalid value detected while parsing score statistic file"
+      ).set_secret(
+        boost::str(boost::format("File was: %s, offending line was:\n %s") % score_path % line)
+      );
+    }
 
     scores_read++;
     tokens.clear();
