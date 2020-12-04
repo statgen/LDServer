@@ -101,4 +101,8 @@ install(FILES
         ../../data/test.twochroms.chr9.MetaScore.assoc.gz.tbi
         ../../data/test.twochroms.mask.tab.gz
         ../../data/test.twochroms.mask.tab.gz.tbi
+        ../../data/rvtest_score_fail_ustat.gz
+        ../../data/rvtest_score_fail_ustat.gz.tbi
+        ../../data/rvtest_cov_fail_base.gz
+        ../../data/rvtest_cov_fail_base.gz.tbi
         DESTINATION test)

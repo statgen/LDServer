@@ -450,6 +450,24 @@ TEST_F(LDServerTest, summary_stat_load_rvtest_test) {
   ASSERT_TRUE(loader.getNumSamples() > 0);
 }
 
+TEST_F(LDServerTest, summary_stat_load_rvtest_bad_ustat) {
+  using ::testing::HasSubstr;
+
+  // Load from disk using our new summary stat loader
+  SummaryStatisticsLoader loader({"rvtest_score_fail_ustat.gz"}, {"rvtest_cov_fail_base.gz"});
+
+  try {
+    loader.load_region("9", 22133, 22133);
+    FAIL() << "Expected LDServerGenericException";
+  }
+  catch(LDServerGenericException& e) {
+    EXPECT_THAT(e.get_secret(), HasSubstr("offending value was 'NA' in column 'U_STAT' for variant '9:22133_A/T'"));
+  }
+  catch(...) {
+    FAIL() << "Expected LDServerGenericException";
+  }
+}
+
 TEST_F(LDServerTest, summary_stat_load_rvtest_missing_af) {
   // Load from disk using our new summary stat loader
   SummaryStatisticsLoader loader({"test.afmissing.MetaScore.assoc.gz"}, {"test.smallchunk.MetaCov.assoc.gz"});
