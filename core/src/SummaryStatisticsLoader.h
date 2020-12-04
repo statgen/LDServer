@@ -13,34 +13,89 @@
 
 const uint32_t INIT_QUERY_LIMIT = 10000000;
 
-struct ScoreColumns {
-  uint16_t colChrom;
-  uint16_t colPos;
-  uint16_t colRef;
-  uint16_t colAlt;
-  uint16_t colAltFreq;
-  uint16_t colU;
-  uint16_t colV;
-  uint16_t colEffectAllele;
-  uint16_t colPvalue;
-  uint16_t colInformativeN;
-  uint16_t colInformativeAltAc;
+class ScoreCovColumn {
+protected:
+  std::string name;
+  uint16_t index;
+public:
+  ScoreCovColumn(const std::string& name, const uint16_t& index) : name(name), index(index) {}
+  inline const std::string& get_name() const { return name; }
+  inline const uint16_t& get_index() const { return index; }
+  inline operator int() const { return index; }
+  inline operator std::string() const { return name; }
 };
 
-struct CovarianceColumns {
-  uint16_t colCov;
-  uint16_t colPos;
-  uint16_t colChrom;
+struct ScoreColumnSpec {
+  const ScoreCovColumn colChrom;
+  const ScoreCovColumn colPos;
+  const ScoreCovColumn colRef;
+  const ScoreCovColumn colAlt;
+  const ScoreCovColumn colInformativeN;
+  const ScoreCovColumn colAltFreq;
+  const ScoreCovColumn colInformativeAltAc;
+  const ScoreCovColumn colU;
+  const ScoreCovColumn colV;
+  const ScoreCovColumn colEffectAllele;
+  const ScoreCovColumn colPvalue;
 };
 
-const ScoreColumns SCORE_COLUMNS_RVTEST {0, 1, 2, 3, 5, 12, 13, 3, 15, 4, 6};
-const ScoreColumns SCORE_COLUMNS_RAREMETAL {0, 1, 2, 3, 5, 13, 14, 3, 16, 4, 7};
-const CovarianceColumns COV_COLUMNS_RVTEST {5, 4, 0};
-const CovarianceColumns COV_COLUMNS_RAREMETAL {3, 2, 0};
+struct CovColumnSpec {
+  const ScoreCovColumn colChrom;
+  const ScoreCovColumn colStartPos;
+  const ScoreCovColumn colPos;
+  const ScoreCovColumn colCov;
+};
+
+const ScoreColumnSpec SCORE_COLUMNS_RVTEST = {
+  {"CHROM", 0},
+  {"POS", 1},
+  {"REF", 2},
+  {"ALT", 3},
+  {"N_INFORMATIVE", 4},
+  {"AF", 5},
+  {"INFORMATIVE_ALT_AC", 6},
+  {"U_STAT", 12},
+  {"SQRT_V_STAT", 13},
+  {"effect allele", 3},
+  {"PVALUE", 15}
+};
+
+const ScoreColumnSpec SCORE_COLUMNS_RAREMETAL = {
+  {"CHROM", 0},
+  {"POS", 1},
+  {"REF", 2},
+  {"ALT", 3},
+  {"N_INFORMATIVE", 4},
+  {"AF", 5},
+  {"INFORMATIVE_ALT_AC", 7},
+  {"U_STAT", 13},
+  {"SQRT_V_STAT", 14},
+  {"effect allele", 3},
+  {"PVALUE", 16},
+};
+
+const CovColumnSpec COV_COLUMNS_RAREMETAL = {
+  {"CHROM", 0},
+  {"CURRENT_POS", 1},
+  {"POS", 2},
+  {"COV", 3},
+};
+
+const CovColumnSpec COV_COLUMNS_RVTEST = {
+  {"CHROM", 0},
+  {"START_POS", 1},
+  {"POS", 4},
+  {"COV", 5},
+};
 
 enum class ScoreCovFormat {RVTEST, RAREMETAL};
 
 class NoVariantsInRange : public std::runtime_error { using std::runtime_error::runtime_error; };
+
+/* Single parameter versions of string conversion functions */
+inline unsigned long spstoul(const string& s) { return stoul(s); }
+inline double spstod(const string& s) { return stod(s); }
+inline int spstoi(const string& s) { return stoi(s); }
 
 /**
  * Loader for "summary statistic" datasets. These are comprised of:

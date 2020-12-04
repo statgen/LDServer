@@ -110,6 +110,17 @@ struct VariantMeta {
 
     VariantMeta(const string& variant, const string& chromosome, const string& ref, const string& alt, uint64_t position) : variant(variant), chromosome(chromosome), ref(ref), alt(alt), position(position) {}
 
+    VariantMeta(const string& chromosome, const string& ref, const string& alt, uint64_t position) : chromosome(chromosome), ref(ref), alt(alt), position(position) {
+      // These objects store variant name internally as EPACTS format.
+      this->variant.append(chromosome)
+        .append(":")
+        .append(to_string(position))
+        .append("_")
+        .append(ref)
+        .append("/")
+        .append(alt);
+    }
+
     bool operator==(VariantMeta const& result) const { // needed by boost.python
         return variant == result.variant;
     }

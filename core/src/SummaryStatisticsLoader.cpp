@@ -194,6 +194,20 @@ void SummaryStatisticsLoader::parseHeader(const std::string& filepath) {
   }
 }
 
+template <typename T>
+T extract_numeric(T func(const string&), const string& value, const ScoreCovColumn& col, const string& filepath, const string& variant) {
+  try {
+    return func(value);
+  }
+  catch (...) {
+    throw LDServerGenericException(
+      "Invalid value detected while parsing score statistic file"
+    ).set_secret(
+      boost::str(boost::format("File was: %s, offending value was '%s' in column '%s' for variant '%s'") % filepath % value % col.get_name() % variant)
+    );
+  }
+}
+
 void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start, uint64_t stop) {
   cov_result->erase();
 
@@ -226,12 +240,12 @@ void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start,
     tbfile.setRegion(region);
   }
 
-  CovarianceColumns cols;
+  const CovColumnSpec* cols;
   if (detected_format == ScoreCovFormat::RVTEST) {
-    cols = COV_COLUMNS_RVTEST;
+    cols = &COV_COLUMNS_RVTEST;
   }
   else if (detected_format == ScoreCovFormat::RAREMETAL) {
-    cols = COV_COLUMNS_RAREMETAL;
+    cols = &COV_COLUMNS_RAREMETAL;
   }
 
   auto separator_tab = regex("\t");
@@ -242,9 +256,11 @@ void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start,
     tokens.clear();
     copy(sregex_token_iterator(line.begin(), line.end(), separator_tab, -1), sregex_token_iterator(), back_inserter(tokens));
 
-    string row_positions = tokens.at(cols.colPos);
-    string row_cov = tokens.at(cols.colCov);
-    string row_chrom = tokens.at(cols.colChrom);
+    string row_positions = tokens.at(cols->colPos);
+    string row_cov = tokens.at(cols->colCov);
+    string row_chrom = tokens.at(cols->colChrom);
+    string row_startpos = tokens.at(cols->colStartPos);
+    string row_chrpos = string(row_chrom).append(row_startpos);
     vector<uint64_t> positions;
     vector<string> cov_matrices;
     vector<double> cov;
@@ -254,7 +270,9 @@ void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start,
       sregex_token_iterator(row_positions.begin(), row_positions.end(), separator_comma, -1),
       sregex_token_iterator(),
       back_inserter(positions),
-      [](const string& str) { return stoi(str); }
+      [&cols, &cov_path, &row_chrpos](const string& str) {
+        return extract_numeric<int>(spstoi, str, cols->colPos, cov_path, row_chrpos);
+      }
     );
 
     // The first element in the positions array is also the position used for this entire row
@@ -266,6 +284,8 @@ void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start,
       // This whole row stores covariances with a position we aren't interested in, so we can skip it.
       continue;
     }
+
+    string row_variant = getVariantForPosition(row_pos);
 
     // Load the covariance values on this row
     // Note: rvtest will put 3 elements within the covariance column if a binary trait was used
@@ -282,12 +302,13 @@ void SummaryStatisticsLoader::load_cov(const string& chromosome, uint64_t start,
       sregex_token_iterator(cov_matrices[0].begin(), cov_matrices[0].end(), separator_comma, -1),
       sregex_token_iterator(),
       back_inserter(cov),
-      [](const string& str) { return stod(str); }
+      [&cols, &cov_path, &row_chrpos](const string& str) {
+        return extract_numeric<double>(spstod, str, cols->colCov, cov_path, row_chrpos);
+      }
     );
 
     // Load covariance data
     double row_alt_freq = getAltFreqForPosition(row_pos);
-    string row_variant = getVariantForPosition(row_pos);
     for (uint64_t j = 0; j < cov.size(); j++) {
       uint64_t pos = positions[j];
 
@@ -362,12 +383,12 @@ void SummaryStatisticsLoader::load_scores(const string& chromosome, uint64_t sta
     tbfile.setRegion(region);
   }
 
-  ScoreColumns cols;
+  const ScoreColumnSpec* cols;
   if (detected_format == ScoreCovFormat::RVTEST) {
-    cols = SCORE_COLUMNS_RVTEST;
+    cols = &SCORE_COLUMNS_RVTEST;
   }
   else if (detected_format == ScoreCovFormat::RAREMETAL) {
-    cols = SCORE_COLUMNS_RAREMETAL;
+    cols = &SCORE_COLUMNS_RAREMETAL;
   }
 
   uint64_t scores_read = 0;
@@ -378,37 +399,40 @@ void SummaryStatisticsLoader::load_scores(const string& chromosome, uint64_t sta
     // Extract information from line
     try {
       ScoreResult result;
-      result.chrom = tokens.at(cols.colChrom);
-      result.position = stoul(tokens.at(cols.colPos));
-      result.score_stat = stod(tokens.at(cols.colU));
-      result.pvalue = stod(tokens.at(cols.colPvalue));
+      result.chrom = tokens.at(cols->colChrom);
+      result.position = extract_numeric<unsigned long>(spstoul, tokens.at(cols->colPos), cols->colPos, score_path, result.variant);
+      string ref = tokens.at(cols->colRef);
+      string alt = tokens.at(cols->colAlt);
+      result.variant = VariantMeta(result.chrom, ref, alt, result.position).as_epacts();
+      result.score_stat = extract_numeric<double>(spstod, tokens.at(cols->colU), cols->colU, score_path, result.variant);
+      result.pvalue = extract_numeric<double>(spstod, tokens.at(cols->colPvalue), cols->colPvalue, score_path, result.variant);
 
       // Get allele frequency. There is an edge case of sorts in rvtest when using related samples where the
       // BLUE estimator for singletons causes a NA result for the allele frequency. However, we don't particularly
       // care what the actual allele frequency is, only the relative frequency of the ALT vs REF allele to determine
       // which is the rare allele.
       try {
-        result.alt_freq = stod(tokens.at(cols.colAltFreq));
+        result.alt_freq = stod(tokens.at(cols->colAltFreq));
       }
       catch (...) {
         // Allele frequency was invalid. Can we use n and alt_ac instead?
-        double n = stod(tokens.at(cols.colInformativeN));
+        auto n = extract_numeric<double>(spstod, tokens.at(cols->colInformativeN), cols->colInformativeN, score_path, result.variant);
 
         // For case/control data, the field will have `all samples : case samples : control samples`. But stod() will
         // automatically only take the first value up to the `:` and that's the value we want.
-        double alt_ac = stod(tokens.at(cols.colInformativeAltAc));
+        auto alt_ac = extract_numeric<double>(spstod, tokens.at(cols->colInformativeAltAc), cols->colInformativeAltAc, score_path, result.variant);
         double af = alt_ac / (2.0 * n);
         result.alt_freq = af;
       }
 
-      string ref = tokens.at(cols.colRef);
-      string alt = tokens.at(cols.colAlt);
-      result.variant = result.chrom + ":" + to_string(result.position) + "_" + ref + "/" + alt;
       alt_freq[result.position] = result.alt_freq;
       pos_variant[result.position] = result.variant;
 
       // Store to ScoreStatQueryResult object
       score_result->data.emplace_back(result);
+    }
+    catch (LDServerGenericException& e) {
+      throw;
     }
     catch(...) {
       throw LDServerGenericException(
