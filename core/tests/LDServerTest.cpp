@@ -1759,6 +1759,12 @@ TEST_F(LDServerTest, pheno_read_ped) {
     ASSERT_EQ(phenos_loaded[0], "fid");
 }
 
+TEST_F(LDServerTest, pheno_no_exist) {
+  Phenotypes pheno;
+  ColumnTypeMap ctmap;
+  ASSERT_THROW(pheno.load_file("does-not-exist.ped", ctmap, 2504, "\t", "iid"), LDServerGenericException);
+}
+
 TEST_F(LDServerTest, pheno_reorder) {
     Phenotypes pheno;
     ColumnTypeMap ctmap;
