@@ -89,6 +89,8 @@ install(FILES
         ../../data/test.smallchunk.noheader.MetaScore.assoc.gz
         ../../data/test.smallchunk.noheader.MetaCov.assoc.gz.tbi
         ../../data/test.smallchunk.noheader.MetaCov.assoc.gz
+        ../../data/test.afmissing.MetaScore.assoc.gz
+        ../../data/test.afmissing.MetaScore.assoc.gz.tbi
         ../../data/test.twochroms.chr1.MetaCov.assoc.gz
         ../../data/test.twochroms.chr1.MetaCov.assoc.gz.tbi
         ../../data/test.twochroms.chr1.MetaScore.assoc.gz
