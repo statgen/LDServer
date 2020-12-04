@@ -51,8 +51,10 @@ void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_
   string line;
   auto separator = regex(delim);
 
-  if (!input_file.good()) {
-    throw std::invalid_argument("Cannot access file: " + path);
+  if (!input_file.is_open()) {
+    auto msg_full = boost::str(boost::format("Error opening phenotype file %s, error was: %s") % path % strerror(errno));
+    auto msg_safe = string("Error opening phenotype file");
+    throw LDServerGenericException(msg_safe).set_secret(msg_full);
   }
 
   this->file_path = path;
@@ -237,6 +239,12 @@ void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_
 
     tokens.clear();
     i++;
+  }
+
+  if (input_file.bad()) {
+    auto msg_full = boost::str(boost::format("Error reading phenotype file %s, error was: %s") % path % strerror(errno));
+    auto msg_safe = string("Error while reading phenotype file");
+    throw LDServerGenericException(msg_safe).set_secret(msg_full);
   }
 
   // In a tab-delimited file, we assume the first column contains the sample IDs.
