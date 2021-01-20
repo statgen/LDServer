@@ -32,7 +32,8 @@ enum VariantGroupType : uint8_t {
 
 // Enum for type of identifier for each group
 enum GroupIdentifierType : uint8_t {
-  ENSEMBL
+  ENSEMBL,
+  COORDINATES
 };
 
 typedef std::set<VariantMeta, VariantSort<VariantMeta>> SortedVariantSet;
