@@ -12,7 +12,8 @@ from . import model
 import os
 from core.pywrapper import (
   StringVec, ColumnType, ColumnTypeMap, Mask, MaskVec, VariantGroupType, LDServerGenericException,
-  ScoreCovarianceRunner, ScoreCovarianceConfig, GroupIdentifierType, VariantGroup, VariantGroupVector, VariantFormat
+  ScoreCovarianceRunner, ScoreCovarianceConfig, GroupIdentifierType, VariantGroup, VariantGroupVector, VariantFormat,
+  VariantFilter
 )
 
 API_VERSION = "1.0"
@@ -94,38 +95,70 @@ def return_error(error_message, http_code):
   response = {"data": None, "error": error_message}
   return make_response(jsonify(response), http_code)
 
-class VariantField(fields.String):
-  alleles = ("A","C","G","T","N","U")
+ALLELES = ("A","C","G","T","N","U")
 
-  def _serialize(self, value, attr, obj):
+def validate_variant(value):
+  try:
+    if "_" in value:
+      s1 = value.split(":")
+      chrom = s1[0]
+      pos, alleles = s1[1].split("_")
+      pos = int(pos)
+      ref, alt = alleles.split("/")
+    else:
+      chrom, pos, ref, alt = value.split(":")
+      pos = int(pos)
+  except:
+    raise ValidationError("Invalid variant {}, should be of format: CHROM:POS_REF/ALT or CHROM:POS:REF:ALT".format(value))
+
+  if chrom.startswith("chr"):
+    raise ValidationError("Variant chromosome should not contain 'chr': " + value)
+
+  if not all((x in ALLELES for x in ref)):
+    raise ValidationError("Variant {} had invalid alleles".format(value))
+
+  if not all((x in ALLELES for x in alt)):
+    raise ValidationError("Variant {} had invalid alleles".format(value))
+
+  return value
+
+class GroupDefinitionField(fields.Field):
+  keys = ("start", "stop", "filters")
+  ops = ("gte", "lte", "eq")
+
+  def _serialize(self, value, attr, obj, **kwargs):
     validated = str(self._validated(value)) if value is not None else None
-    return super(fields.String, self)._serialize(validated, attr, obj)
+    return super(fields.Field, self)._serialize(validated, attr, obj)
 
   def _deserialize(self, value, attr, data, **kwargs):
     return self._validated(value)
 
   def _validated(self, value):
-    try:
-      if "_" in value:
-        s1 = value.split(":")
-        chrom = s1[0]
-        pos, alleles = s1[1].split("_")
-        pos = int(pos)
-        ref, alt = alleles.split("/")
-      else:
-        chrom, pos, ref, alt = value.split(":")
-        pos = int(pos)
-    except:
-      raise ValidationError("Invalid variant {}, should be of format: CHROM:POS_REF/ALT or CHROM:POS:REF:ALT".format(value))
+    if not (isinstance(value, list) or isinstance(value, dict)):
+      raise ValidationError("Each group must be either a list of variants, or dict (key/value) pairs specifying region parameters")
 
-    if chrom.startswith("chr"):
-      raise ValidationError("Variant chromosome should not contain 'chr': " + value)
+    if isinstance(value, dict):
+      if "start" not in value:
+        raise ValidationError("Must provide start position for region")
 
-    if not all((x in VariantField.alleles for x in ref)):
-      raise ValidationError("Variant {} had invalid alleles".format(value))
+      if "stop" not in value:
+        raise ValidationError("Must provide stop position for region")
 
-    if not all((x in VariantField.alleles for x in alt)):
-      raise ValidationError("Variant {} had invalid alleles".format(value))
+      if "filter" in value:
+        for f in value["filters"]:
+          if f["op"] not in GroupDefinitionField.ops:
+            raise ValidationError(f"Invalid op, must be one of: {', '.join(GroupDefinitionField.ops)}")
+
+          if f["field"] == "maf":
+            if f["value"] < 0 or f["value"] > 1:
+              raise ValidationError("Filter for 'maf' must specify value between 0 and 1 inclusive")
+
+    if isinstance(value, list):
+      if len(value) == 0:
+        raise ValidationError("List of variants in group definition must have at least 1 variant")
+
+      for v in value:
+        validate_variant(v)
 
     return value
 
@@ -136,7 +169,7 @@ class MaskSchema(Schema):
   genome_build = fields.Str(required=True)
   group_type = fields.Str(required=True)
   identifier_type = fields.Str(required=True)
-  groups = fields.Dict(keys=fields.Str(), values=fields.List(VariantField))
+  groups = fields.Dict(keys=fields.Str(), values=GroupDefinitionField)
 
 @bp.route('/aggregation/covariance', methods = ['POST'])
 def get_covariance():
@@ -300,17 +333,32 @@ def get_covariance():
   elif mask_definitions:
     for mask in mask_definitions:
       vg_vec = VariantGroupVector()
-      for group_name, variants in mask["groups"].items():
+      for group_name, group_def in mask["groups"].items():
         vg = VariantGroup()
         vg.name = str(group_name)
-        for v in variants:
-          if variant_format == "COLONS":
-            # Internally we still use EPACTS format but translate on read/write. Later we will move to using a
-            # native variant object type internally.
-            chrom, pos, ref, alt = v.split(":")
-            v = "{}:{}_{}/{}".format(chrom, pos, ref, alt)
 
-          vg.add_variant(str(v))
+        if isinstance(group_def, list):
+          for v in group_def:
+            if variant_format == "COLONS":
+              # Internally we still use EPACTS format but translate on read/write. Later we will move to using a
+              # native variant object type internally.
+              v_chrom, pos, ref, alt = v.split(":")
+              v = "{}:{}_{}/{}".format(v_chrom, pos, ref, alt)
+
+            vg.add_variant(str(v))
+        else:
+          vg.chrom = chrom
+          vg.start = group_def["start"]
+          vg.stop = group_def["stop"]
+
+          if "filters" in group_def:
+            for f in group_def["filters"]:
+              vf = VariantFilter()
+              vf.op = f["op"]
+              vf.field = f["field"]
+              vf.set_value(f["value"])
+
+              vg.filters.append(vf)
 
         vg_vec.append(vg)
 
