@@ -9,6 +9,8 @@
 #include <locale>
 #include <cmath>
 #include <stdexcept>
+#include <memory>
+#include <set>
 #include <cereal/external/rapidjson/document.h>
 #include <cereal/external/rapidjson/writer.h>
 #include <cereal/external/rapidjson/stringbuffer.h>
@@ -412,6 +414,19 @@ struct ScoreStatQueryResult {
           last_i = std::stoll(tokens[1]);
           page = std::stoull(tokens[2]);
       }
+  }
+
+  std::shared_ptr<std::set<std::string>> get_variants() const {
+    auto vs = make_shared<std::set<std::string>>();
+    transform(
+      data.begin(),
+      data.end(),
+      inserter(*vs, vs->begin()),
+      [](const auto& v) {
+        return v.variant;
+      }
+    );
+    return vs;
   }
 
   void sort_by_variant() {
