@@ -548,6 +548,140 @@ def test_user_masks(client):
         assert variant["pvalue"] <= 1
         assert "score" in variant
 
+def test_region_covar(client):
+    resp = client.post("/aggregation/covariance", json = {
+        "chrom": "22",
+        "start": 50276998,
+        "stop": 50357719,
+        "genotypeDataset": 1,
+        "phenotypeDataset": 1,
+        "phenotype": "rand_qt",
+        "samples": "ALL",
+        "genomeBuild": "GRCh37",
+        "maskDefinitions": [
+            {
+                "id": 1,
+                "name": "Testing regions",
+                "description": "Random region picked for testing",
+                "genome_build": "GRCh37",
+                "group_type": "REGION",
+                "identifier_type": "COORDINATES",
+                "groups": {
+                    "22:50276998-50300000": {
+                        "start": 50276998,
+                        "stop":  50300000,
+                        "filters": [
+                            {
+                                "field": "maf",
+                                "op": "gte",
+                                "value": 0.05
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    })
+
+    assert resp.status_code == 200
+    assert resp.is_json
+
+    score_variants = [x["variant"] for x in resp.json["data"]["variants"]]
+
+    assert "phenotypeDataset" in resp.json["data"]
+    assert "genotypeDataset" in resp.json["data"]
+    assert "phenotype" in resp.json["data"]
+
+    for group in resp.json["data"]["groups"]:
+        n_variants = len(group["variants"])
+        n_covar = len(group["covariance"])
+        assert n_covar == (n_variants * (n_variants + 1) / 2)
+        assert isinstance(group["mask"], int)
+        assert "group" in group
+        assert "groupType" in group
+        assert group["groupType"] in ("REGION", "GENE")
+        assert all([v in score_variants for v in group["variants"]])
+
+    for variant in resp.json["data"]["variants"]:
+        assert variant["altFreq"] > 0
+        assert variant["pvalue"] > 0
+        assert variant["pvalue"] <= 1
+        assert "score" in variant
+
+def test_region_filter_maf(client):
+    resp_filter = client.post("/aggregation/covariance", json = {
+        "chrom": "22",
+        "start": 50276998,
+        "stop": 50357719,
+        "genotypeDataset": 1,
+        "phenotypeDataset": 1,
+        "phenotype": "rand_qt",
+        "samples": "ALL",
+        "genomeBuild": "GRCh37",
+        "maskDefinitions": [
+            {
+                "id": 1,
+                "name": "Testing regions",
+                "description": "Random region picked for testing",
+                "genome_build": "GRCh37",
+                "group_type": "REGION",
+                "identifier_type": "COORDINATES",
+                "groups": {
+                    "22:50276998-50300000": {
+                        "start": 50276998,
+                        "stop":  50300000,
+                        "filters": [
+                            {
+                                "field": "maf",
+                                "op": "gte",
+                                "value": 0.05
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    })
+
+    resp_nofilter = client.post("/aggregation/covariance", json = {
+        "chrom": "22",
+        "start": 50276998,
+        "stop": 50357719,
+        "genotypeDataset": 1,
+        "phenotypeDataset": 1,
+        "phenotype": "rand_qt",
+        "samples": "ALL",
+        "genomeBuild": "GRCh37",
+        "maskDefinitions": [
+            {
+                "id": 1,
+                "name": "Testing regions",
+                "description": "Random region picked for testing",
+                "genome_build": "GRCh37",
+                "group_type": "REGION",
+                "identifier_type": "COORDINATES",
+                "groups": {
+                    "22:50276998-50300000": {
+                        "start": 50276998,
+                        "stop":  50300000
+                    }
+                }
+            }
+        ]
+    })
+
+    group_filt = resp_filter.json["data"]["groups"][0]
+    group_nofilt = resp_nofilter.json["data"]["groups"][0]
+
+    assert len(group_filt["variants"]) < len(group_nofilt["variants"])
+    assert len(group_filt["covariance"]) < len(group_nofilt["covariance"])
+
+    def ncovar(n):
+        return n * (n + 1) / 2
+
+    assert ncovar(len(group_filt["variants"])) == len(group_filt["covariance"])
+    assert ncovar(len(group_nofilt["variants"])) == len(group_nofilt["covariance"])
+
 def test_user_masks_colon_format(client):
     resp = client.post("/aggregation/covariance", json = {
         "chrom": "22",
