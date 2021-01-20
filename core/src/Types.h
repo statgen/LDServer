@@ -35,6 +35,62 @@ enum correlation : uint8_t {
     LD_RSQUARE_APPROX
 };
 
+enum class FilterValueType {STRING, DOUBLE};
+
+/**
+ * Class to represent a variant filter.
+ *
+ * This would be much easier with templates, but that makes the C++/python bindings much more difficult (at least
+ * with boost python. It's possible pybind11 improves the situation.)
+ *
+ * Instead, here we opt for an ersatz RTTI/union type system that works easily with python, but makes code complexity
+ * worse for the C++ parts that must use it.
+ */
+struct VariantFilter {
+  std::string op;
+  std::string field;
+
+  FilterValueType type;
+  std::string value_string;
+  double value_double = numeric_limits<double>::quiet_NaN();
+
+  void set_value(const std::string& v) {
+    value_string = v;
+    type = FilterValueType::STRING;
+  }
+
+  void set_value(const double& v) {
+    value_double = v;
+    type = FilterValueType::DOUBLE;
+  }
+
+  template<typename T>
+  T get_value() {
+    switch (type) {
+      case FilterValueType::STRING:
+        return value_string;
+      case FilterValueType::DOUBLE:
+        return value_double;
+    }
+  }
+
+  bool operator==(const VariantFilter& other) {
+    bool both_nan = std::isnan(value_double) && std::isnan(other.value_double);
+    bool one_nan = std::isnan(value_double) ^ std::isnan(other.value_double);
+
+    if (one_nan) { return false; }
+    if (!both_nan) {
+      if (value_double != other.value_double) {
+        return false;
+      }
+    }
+
+    return (op == other.op) &&
+           (field == other.field) &&
+           (value_string == other.value_string);
+  }
+};
+
 /**
  * Enum for column type when reading phenotype files.
  */
