@@ -433,6 +433,48 @@ struct ScoreStatQueryResult {
     data = new_data;
   }
 
+  /**
+   * Restrict this object down to only variants passing a specific filter.
+   * @param f VariantFilter object specifying the field (maf, pvalue, etc.), operator (gte is >=, lte is <=), and the value
+   *    to compare against.
+   */
+  void filter(const VariantFilter& f) {
+    vector<ScoreResult> new_data;
+    for (auto& it : data) {
+      if (f.field == "maf") {
+        double maf = min(it.alt_freq, 1-it.alt_freq);
+
+        if (f.op == "gte") {
+          if (maf >= f.value_double) {
+            new_data.emplace_back(it);
+          }
+        }
+
+        if (f.op == "lte") {
+          if (maf <= f.value_double) {
+            new_data.emplace_back(it);
+          }
+        }
+      }
+
+      else if (f.field == "pvalue") {
+        if (f.op == "gte") {
+          if (it.pvalue >= f.value_double) {
+            new_data.emplace_back(it);
+          }
+        }
+
+        if (f.op == "lte") {
+          if (it.pvalue <= f.value_double) {
+            new_data.emplace_back(it);
+          }
+        }
+      }
+    }
+
+    data = new_data;
+  }
+
   bool has_next() const {
       return last_i >= 0;
   }
