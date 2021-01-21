@@ -1,11 +1,3 @@
----
-header-includes:
-  - |
-    ```{=latex}
-    \usepackage[margins=raggedright]{floatrow}
-    ```
-...
-
 # raremetal API
 
 <!-- @import "[TOC]" {cmd="toc" depthFrom=2 depthTo=6 orderedList=false} -->
