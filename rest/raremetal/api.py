@@ -338,6 +338,7 @@ def get_covariance():
         vg.name = str(group_name)
 
         if isinstance(group_def, list):
+          # This type of group definition is a list of variants.
           for v in group_def:
             if variant_format == "COLONS":
               # Internally we still use EPACTS format but translate on read/write. Later we will move to using a
@@ -347,6 +348,7 @@ def get_covariance():
 
             vg.add_variant(str(v))
         else:
+          # This type of group definition is a dictionary, with keys for start/stop position, and optional filters.
           vg.chrom = chrom
           vg.start = group_def["start"]
           vg.stop = group_def["stop"]
@@ -359,6 +361,11 @@ def get_covariance():
               vf.set_value(f["value"])
 
               vg.filters.append(vf)
+
+        # vg.stop and vg.start are either specified by the query (in the case of regions)
+        # or computed by VariantGroup.add_variant (list of variants)
+        if (vg.stop - vg.start) > current_app.config["API_MAX_COV_REGION_SIZE"]:
+          raise FlaskException("Region requested for analysis exceeds maximum width of {}".format(current_app.config["API_MAX_COV_REGION_SIZE"]), 400)
 
         vg_vec.append(vg)
 

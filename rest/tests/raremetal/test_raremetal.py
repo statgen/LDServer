@@ -682,6 +682,43 @@ def test_region_filter_maf(client):
     assert ncovar(len(group_filt["variants"])) == len(group_filt["covariance"])
     assert ncovar(len(group_nofilt["variants"])) == len(group_nofilt["covariance"])
 
+def test_region_covar_too_big(client):
+    resp = client.post("/aggregation/covariance", json = {
+        "chrom": "22",
+        "start": 50276998,
+        "stop": 51300000,
+        "genotypeDataset": 1,
+        "phenotypeDataset": 1,
+        "phenotype": "rand_qt",
+        "samples": "ALL",
+        "genomeBuild": "GRCh37",
+        "maskDefinitions": [
+            {
+                "id": 1,
+                "name": "Testing regions",
+                "description": "Random region picked for testing",
+                "genome_build": "GRCh37",
+                "group_type": "REGION",
+                "identifier_type": "COORDINATES",
+                "groups": {
+                    "22:50276998-51300000": {
+                        "start": 50276998,
+                        "stop":  51300000,
+                        "filters": [
+                            {
+                                "field": "maf",
+                                "op": "gte",
+                                "value": 0.05
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    })
+
+    assert resp.status_code == 400
+
 def test_user_masks_colon_format(client):
     resp = client.post("/aggregation/covariance", json = {
         "chrom": "22",
