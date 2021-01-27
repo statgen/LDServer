@@ -30,8 +30,8 @@ RawVCF::~RawVCF() {
 }
 
 void RawVCF::open(const string& chromosome, const vector<string>& samples, bool coded012) {
-    f.release();
-    f = unique_ptr<savvy::vcf::indexed_reader<1>>(new savvy::vcf::indexed_reader<1>(file, {chromosome}, coded012 ? savvy::fmt::ac : savvy::fmt::gt));
+    f.reset();
+    f = std::make_unique<savvy::vcf::indexed_reader<1>>(file, chromosome, coded012 ? savvy::fmt::ac : savvy::fmt::gt);
     f->subset_samples({samples.begin(), samples.end()});
     has_cached = false;
 }
@@ -101,7 +101,7 @@ RawSAV::~RawSAV() {
 }
 
 void RawSAV::open(const string& chromosome, const vector<string>& samples, bool coded012) {
-    f.release();
+    f.reset();
     f = unique_ptr<savvy::indexed_reader>(new savvy::indexed_reader(file, {chromosome}, coded012 ? savvy::fmt::ac : savvy::fmt::gt));
     f->subset_samples({samples.begin(), samples.end()});
     has_cached = false;
@@ -170,11 +170,11 @@ void RawSAV::load_genotypes(Segment &segment) {
 
 shared_ptr<Raw> RawFactory::create(const string &file) {
     if ((file.length() >= 4) && (file.compare(file.length() - 4, 4, ".sav") == 0)) {
-        return shared_ptr<RawSAV>(new RawSAV(file));
+        return make_shared<RawSAV>(file);
     } else if ((file.length() >= 7) && (file.compare(file.length() - 7, 7, ".vcf.gz") == 0)) {
-        return shared_ptr<RawVCF>(new RawVCF(file));
+        return make_shared<RawVCF>(file);
     } else if ((file.length() >= 4) && (file.compare(file.length() - 4, 4, ".bcf") == 0)) {
-        return shared_ptr<RawVCF>(new RawVCF(file));
+        return make_shared<RawVCF>(file);
     }
     throw runtime_error("Unknown genotype file type");
 }
