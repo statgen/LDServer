@@ -28,6 +28,11 @@ This project contains multiple components that work together to provide these fe
   - [Documentation](#documentation)
   - [Installation](#installation)
     - [Docker](#docker)
+      - [Getting started](#getting-started)
+      - [.env](#env)
+      - [docker-compose config](#docker-compose-config)
+      - [Redis config](#redis-config)
+      - [Flask config](#flask-config)
       - [Configuration for ldserver app](#configuration-for-ldserver-app)
       - [Configuration for raremetal app](#configuration-for-raremetal-app)
       - [Running the services](#running-the-services)
@@ -71,13 +76,24 @@ This project contains multiple components that work together to provide these fe
 
 ### Docker
 
+#### Getting started
+
 To run LDServer in production, we recommend using [docker-compose](https://docs.docker.com/compose/install/). We provide a base configuration `docker-compose.yml` that specifies the core services.
 
 To customize the config to your environment, either create a [docker-compose.override.yml](https://docs.docker.com/compose/extends/#example-use-case) file, or copy the base `docker-compose.yml` to a new file to edit, for example `docker-compose.prod.yml`.
 
 Using an override file is convenient because you can continue using `docker-compose <command>` as you normally would. Using a new compose file, such as `docker-compose.prod.yml` requires an additional flag upon each invocation: `docker-compose -f docker-compose.prod.yml <command>`.
 
-You will also want to create a `.env` file to specify additional settings. For example:
+To begin, first checkout a copy of the repository with git clone:
+
+```bash
+git clone https://github.com/statgen/LDServer.git
+cd LDServer
+```
+
+#### .env
+
+Create a `.env` file to specify docker configuration settings:
 
 ```bash
 LDSERVER_PORT=4546
@@ -88,13 +104,38 @@ RAREMETAL_WORKERS=4
 RAREMETAL_PORT=4545
 ```
 
-In your override file, you can provide your own settings. For example:
+* `LDSERVER_PORT` is the exposed port that the ldserver app will run on. You will likely want to put apache or nginx
+  in front of the server as an HTTP proxy.
+* `LDSERVER_CONFIG_SCRIPT` is the path *inside the container* to the startup script. Usually you will create this
+  script on your local filesystem and mount it into the container with a volume directive (see the example
+  `docker-compose.override.yml` file below.)
+* `LDSERVER_WORKERS` is the number of asynchronous workers to be started to serve ldserver requests.
+* `RAREMETAL_CONFIG_DATA` is the path *inside the container* to the raremetal app's data config yaml, which
+  specifies all of the datasets to load. Similarly to the `LDSERVER_CONFIG_SCRIPT`, this should be mounted into the
+  container in the `docker-compose.override.yml` file.
+* `RAREMETAL_WORKERS` see `LDSERVER_WORKERS`
+* `RAREMETAL_PORT` see `LDSERVER_PORT`
+
+
+#### docker-compose config
+
+Create a `docker-compose.override.yml` file where you can provide your own additional docker configuration. For
+example:
 
 ```YAML
 version: '3'
 services:
   ldserver:
-    restart: "on-failure"
+    build:
+      args:
+        UID: 1000
+        GID: 1001
+    volumes:
+      - /opt/ld/ld_panels:/data/ld_panels
+      - /opt/ld/logs:/data/logs
+      - /opt/ld/config.py:/home/ldserver/rest/instance/config.py
+      - /opt/ld/startup.sh:/home/ldserver/startup.sh
+    restart: "unless-stopped"
     command: >
       /bin/bash -c "
       source $$LDSERVER_CONFIG_SCRIPT &&
@@ -109,23 +150,90 @@ services:
         UID: 1000
         GID: 1001
     volumes:
-      - /data/raremetal:/home/ldserver/var
-      - /data/raremetal/config.py:/home/ldserver/rest/instance/config.py
-    restart: "on-failure"
+      - /opt/raremetal:/home/ldserver/var
+      - /opt/raremetal/config.py:/home/ldserver/rest/instance/config.py
+    restart: "unless-stopped"
 
   redis:
-    restart: "on-failure"
+    volumes:
+      - /opt/ld/redis_cache:/data/redis/redis_cache
+      - /opt/ld/logs:/data/redis/logs
+      - /opt/ld/redis.conf:/usr/local/etc/redis/redis.conf
+    command: "/usr/local/etc/redis/redis.conf"
+    restart: "unless-stopped"
 ```
 
-In the above example, we overrode a few pieces of the various services:
+In the above example, we overrode a few pieces of the various services.
 
-* For the `ldserver` service:
+For the `ldserver` service:
   * We overrode the command that is executed when the container first runs to pass additional arguments to gunicorn, which starts the `ldserver` flask app. In this case we've added new logfile arguments `--access-logfile` and `--error-logfile`.
-* For the `raremetal` service:
-  * We decided to override the UID and GID of the user inside the docker image.
+  * We specified a number of directories and files to mount within the container using `volumes`. The syntax is
+  `HOST_PATH:CONTAINER_PATH`. For example, the file `/opt/ld/startup.sh` on the host machine will appear as
+  `/home/ldserver/startup.sh` within the ldserver container when it runs.
+
+For the `raremetal` service:
   * We're also mounting a directory `/data/raremetal` and config file `/data/raremetal/config.py` from the host when the container runs. Volumes have the format `/path/to/data`:`/path/to/mount/in/container`.
-* For both services:
-  * We've turned on `restart: "on-failure"`. This means the services will be restarted if they fail, or if the docker daemon is restarted. They will not restart if they are manually stopped.
+
+For both services:
+  * We've turned on `restart: "unless-stopped"`. This means the services will be restarted if they fail, or if the docker daemon is restarted. They will not restart if they are manually stopped.
+  * We decided to override the UID and GID of the user inside the docker image. It is important to specify UID/GID
+    for both the ldserver and raremetal images to avoid cache misses during the docker build process. **WARNING**:
+    do not specify a very large UID or GID, or the build process will take a long time due to a [known bug in docker](https://github.com/moby/moby/issues/5419).
+
+#### Redis config
+
+You must supply a slightly modified `redis.conf` for running under docker. You can grab a copy of the default `redis.conf` to modify by going to https://redis.io/topics/config (we are currently using [redis 5.0](https://raw.githubusercontent.com/redis/redis/5.0/redis.conf)).
+
+It is a good idea to customize redis to control memory usage, and path to where the periodic database saves are done. The `docker-compose.override.yml` file above shows to how to mount your own `redis.conf` into the redis service container when it runs.
+
+The following settings should be set in your `redis.conf`:
+
+```
+bind 0.0.0.0
+port 6379
+logfile "/data/redis/logs/redis.log"
+save 14400 1
+dbfilename ld.rdb
+dir /data/redis/redis_cache/
+maxmemory 4g
+maxmemory-policy allkeys-lru
+```
+
+`bind 0.0.0.0` is needed to allow redis to connect to other docker containers (such as the ldserver or raremetal services).
+
+Change `maxmemory` to something sensible considering the amount of available RAM on your server.
+
+#### Flask config
+
+There is a default config file that can be used as a starting place in `rest/config/default.py`. It looks like:
+
+```
+SQLALCHEMY_DATABASE_URI = 'sqlite:///sql.db'
+SQLALCHEMY_TRACK_MODIFICATIONS = False
+PROXY_PASS = None # set if Apache mod_proxy is used e.g. http://my.host.com/prefix/
+API_MAX_PAGE_SIZE = 100000
+API_MAX_REGION_SIZE = 4000000
+API_MAX_COV_REGION_SIZE = 1000000
+SEGMENT_SIZE_BP = 1000
+CACHE_ENABLED = True
+CACHE_REDIS_HOSTNAME = '127.0.0.1'
+CACHE_REDIS_PORT = 6379
+GZIP_COMPRESSION = True # enable build-in response compression if for any reason it was not possible to enable it through Apache
+API_BASE_URL = 'http://127.0.0.1:5000' # specify the base URL address of the LD server. It is used by the Playground.
+SENTRY_DSN = None # include your Sentry DSN for error reporting to your own Sentry instance
+SENTRY_ENV = None # name of your deployment - usually 'production' or 'staging' or 'travis'
+```
+
+You can copy this file and customize it. It should be placed in a location you have specified in your `docker-compose.override.yml` (see above), for example: `/opt/ld/config.py` or `/opt/raremetal/config.py`.
+
+:warning: For docker, **you must change** `CACHE_REDIS_HOSTNAME` to `redis`.
+
+If you have an Apache proxy forwarding requests, you should specify `PROXY_PASS`. For example, let's say your server has Apache setup to do:  
+
+* https://myserver.com/ld/ -> http://localhost:4546
+* https://myserver.com/raremetal/ -> http://localhost:4545
+
+Then, in your ldserver's config.py, specify `PROXYPASS = 'https://myserver.com/ld/'`. And so forth for the raremetal server as well.
 
 #### Configuration for ldserver app
 
@@ -133,12 +241,33 @@ Mount a configuration script into the container by changing:
 
 ```YAML
 volumes:
-  - XXX:/home/ldserver/var/ldserver.config.sh`.
+  - XXX:/home/ldserver/startup.sh
 ```
 
 The `XXX` is a path on your local filesystem to a script that contains commands for adding datasets to the ldserver. See the [Configuring the ldserver app](#configuring-the-ldserver-app) section for commands to use for adding reference genotype files. If desired, you can modify the name of this script, but you must also modify the `LDSERVER_CONFIG_SCRIPT` variable to refer to the new path (as it would appear inside the container.)
 
-You will also need to mount your data into the container. As an example, the line `/mnt/data:/home/ldserver/var` mounts a directory of data `/mnt/data` on your local filesystem into the container at `/home/ldserver/var`.
+You will also need to mount your data into the container. As an example, the line `/opt/ld/ld_panels:/data/ld_panels
+` mounts a directory of data `/opt/ld/ld_panels` on your local filesystem into the container at `/data/ld_panels`.
+
+An example `startup.sh` looks like:
+
+```bash
+#!/bin/bash
+
+# If the database already exists, then we don't want to run the commands below or they will fail.
+# This can happen when the container is being restarted, instead of a clean down/up. The volume
+# persists, and therefore so does the database. Remember to always do `docker-compose down && docker-compose up -d`.
+if [[ ! -f "rest/ldserver/sql.db" ]]; then
+  echo "Running startup flask add commands..."
+
+  flask add-reference 1000G "1000 Genomes Project Phase 3" GRCh37 /data/ld_panels/sav/1000G_GRCh37/ALL.samples.txt /data/ld_panels/sav/1000G_GRCh37/1000G_phase3_GRCh37_ALL_chr*sav
+  flask add-reference 1000G "1000 Genomes Project Phase 3" GRCh38 /data/ld_panels/sav/1000G_GRCh38/ALL.samples.txt /data/ld_panels/sav/1000G_GRCh38/1000G_phase3_GRCh38_ALL_chr*sav
+  flask create-population GRCh37 1000G AFR /data/ld_panels/sav/1000G_GRCh37/AFR.samples.txt
+  flask create-population GRCh37 1000G EUR /data/ld_panels/sav/1000G_GRCh37/EUR.samples.txt
+else
+  echo "Database file already existed (docker container restart?), skipping flask add commands..."
+fi
+```
 
 #### Configuration for raremetal app
 
@@ -169,6 +298,26 @@ bin/docker_build_compose.sh
 ```
 
 You don't have to use the above script, and could instead directly run `docker-compose build`, but it does set a few extra labels on the resulting docker image that can be useful.
+
+You can also customize your build with your own script, which can be useful for setting various settings, such as parallel build CPUs:
+
+```bash
+#!/bin/bash
+LDSERVER_VERSION=`git describe --tags --abbrev=11 | sed 's/^v//' | sed 's/-g/-/'`
+GIT_SHA=`git rev-parse HEAD`
+BUILD_DATE=`date -u +'%Y-%m-%dT%H:%M:%SZ'`
+
+docker-compose build --pull \
+  --build-arg MAKEFLAGS="-j 9" \
+  --build-arg CMAKE_BUILD_PARALLEL_LEVEL=9 \
+  --build-arg BUILD_DATE=${BUILD_DATE} \
+  --build-arg GIT_SHA=${GIT_SHA} \
+  --build-arg LDSERVER_VERSION=${LDSERVER_VERSION} "$@"
+```
+
+In the example above, we added some extra args (`MAKEFLAGS` and `CMAKE_BUILD_PARALLEL_LEVEL`) to specify 9 CPUs should be used in parallel when compiling the C++ components.
+
+:warning: **Stick with your build script consistently.** Removing build args like the ones above can cause a docker build cache miss, and require you to recompile far more than you would like.
 
 Now, you can run all services once the build is finished using:
 
@@ -661,7 +810,7 @@ For example, in rvtests: https://github.com/zhanxw/rvtests#meta-analysis-models
 
 The score statistic (`score_path`) and covariance matrix (`cov_path`) files must both be tabix indexed. RAREMETALWORKER or rvtest should do this automatically for you (there will be a `.tbi` tabix index file created for each score/cov file.)
 
-If your files are split by chromosome, you can specify both paths as a glob with the `*` character. For example: 
+If your files are split by chromosome, you can specify both paths as a glob with the `*` character. For example:
 
 ```YAML
   score_path: "topmed.chr*.metascore.txt.gz"
