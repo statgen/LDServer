@@ -25,4 +25,4 @@ services:
     command: /bin/bash -c "flask add-yaml $$RAREMETAL_CONFIG_DATA && gunicorn -b 0.0.0.0:$$RAREMETAL_PORT -w $$RAREMETAL_WORKERS -k gevent --pythonpath rest 'raremetal:create_app()'"
 
   redis:
-    image: "redis:alpine"
+    image: "redis:5.0-alpine"
