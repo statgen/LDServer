@@ -373,6 +373,30 @@ void mask_segfault() {
   );
 }
 
+void perf_ld_server() {
+  auto time_start = std::chrono::system_clock::now();
+
+  LDServer server(100);
+  LDQueryResult result(100000);
+  server.set_file("../../../data/chr22.test.sav");
+
+  string json;
+  for (int i = 0; i < 30; i++) {
+    result.erase();
+    server.compute_region_ld("22", 50244251, 51244237, correlation::LD_RSQUARE, result);
+
+    // Get JSON
+    json = result.get_json("blah");
+  }
+
+  // Parse back out JSON
+  rapidjson::Document doc;
+  doc.Parse(json.c_str());
+
+  std::chrono::duration<double> elapsed = std::chrono::system_clock::now() - time_start;
+  cout << "Time required: " << elapsed.count() << endl;
+}
+
 void sumstats() {
 //  SummaryStatisticsLoader loader(
 //    "../../../data/test.smallchunk.MetaScore.assoc.gz",
@@ -462,7 +486,8 @@ void tabixpp_error() {
 int main() {
   //perf_sav_55k();
   //sumstats();
-  tabixpp_error();
+  //tabixpp_error();
   //test3();
+  perf_ld_server();
   return 0;
 }
