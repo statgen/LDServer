@@ -243,8 +243,8 @@ void test4() {
 void perf_sav_55k() {
   auto time_start = std::chrono::system_clock::now();
 
-  string genotype_file = "../../../private/55k.clean.chrX.sav";
-  string phenotype_file = "../../../private/55kQTsRemoved.ped";
+  string genotype_file = "../../../private/55k-exomes/55k.clean.chrX.sav";
+  string phenotype_file = "../../../private/55k-exomes/55kQTsRemoved.ped";
 
   ColumnTypeMap ctmap;
   ctmap.add("fid", ColumnType::TEXT);
