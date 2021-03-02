@@ -338,9 +338,12 @@ void perf_sav_55k() {
   config->phenotype_delim = "\t";
 
   // Run score/covariance calculations
-  ScoreCovarianceRunner runner(config);
-  runner.run();
-  string json = runner.getJSON();
+  string json;
+  for (int i = 0; i < 10; i++) {
+    ScoreCovarianceRunner runner(config);
+    runner.run();
+    json = runner.getJSON();
+  }
 
   std::chrono::duration<double> elapsed = std::chrono::system_clock::now() - time_start;
   cout << "Time required: " << elapsed.count() << endl;
