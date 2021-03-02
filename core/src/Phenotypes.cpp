@@ -46,6 +46,18 @@ inline bool is_integer(const std::string &s) {
 //  return most_common;
 //}
 
+void split(std::string const& original, const char& separator, std::vector<std::string>& results) {
+  std::string::const_iterator start = original.begin();
+  std::string::const_iterator end = original.end();
+  std::string::const_iterator next = std::find(start, end, separator);
+  while (next != end) {
+    results.emplace_back(std::string(start, next));
+    start = next + 1;
+    next = std::find(start, end, separator);
+  }
+  results.emplace_back(std::string(start, next));
+}
+
 void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_t nrows, const string& delim, const string& sample_column, SharedVector<string> analysis_cols) {
   ifstream input_file(path);
   string line;
@@ -143,7 +155,7 @@ void Phenotypes::load_file(const string &path, const ColumnTypeMap &types, size_
     if (line.empty()) { continue; }
 
     // Parse line.
-    copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
+    split(line, delim[0], tokens);
     for (auto&& j : parse_cols) {
       col = header[j];
       string& val = tokens[j];
