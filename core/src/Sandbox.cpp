@@ -488,6 +488,6 @@ int main() {
   //sumstats();
   //tabixpp_error();
   //test3();
-  perf_ld_server();
+  perf_sav_55k();
   return 0;
 }
