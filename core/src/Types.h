@@ -14,6 +14,9 @@
 #include <cereal/external/rapidjson/stringbuffer.h>
 #include <boost/format.hpp>
 #include <armadillo>
+#include <msgpack.hpp>
+#include <Python.h>
+#include <boost/python.hpp>
 
 using namespace std;
 
@@ -153,20 +156,24 @@ struct VariantFrequency {
     }
 };
 
-struct VariantsPair {
-    string variant1;
-    string variant2;
-    string chromosome1;
-    string chromosome2;
-    uint64_t position1;
-    uint64_t position2;
-    double value;
-    VariantsPair() : variant1(""), variant2(""), chromosome1(""), chromosome2(""), position1(0ul), position2(0ul), value(0.0) {}
-    VariantsPair(const string& variant1, const string& chromosome1, uint64_t position1, const string& variant2, const string& chromosome2, uint64_t position2, double value):
-            variant1(variant1), variant2(variant2), chromosome1(chromosome1), chromosome2(chromosome2), position1(position1), position2(position2), value(value) {}
-    bool operator==(VariantsPair const& pair) const { // needed by boost.python
-        return (variant1.compare(pair.variant1) == 0 && variant2.compare(pair.variant2) == 0);
+/*
+ * Struct to store the LD results as upper triangular matrix. This struct is serialized to MessagePack and JSON as a dictionary.
+ * All variants are sorted by their position. The order is guaranteed by LDQueryResult.get_variant_index() and LDQueryResult.add_correlation() methods.
+ * */
+struct LDQueryResultMatrix {
+    vector<string> variants;
+    vector<string> chromosomes;
+    vector<uint64_t> positions;
+    vector<int32_t> offsets;
+    vector<vector<double>> correlations;
+    void clear() {
+        variants.clear();
+        chromosomes.clear();
+        positions.clear();
+        offsets.clear();
+        correlations.clear();
     }
+    MSGPACK_DEFINE_MAP(variants, chromosomes, positions, offsets, correlations) // tell msgpack what fields do we want to put into the JSON-like map
 };
 
 /**
@@ -184,10 +191,28 @@ struct LDQueryResult {
     int last_i;
     int last_j;
     int page;
-    vector<VariantsPair> data;
-    LDQueryResult(uint32_t page_limit): limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0) {
-        data.reserve(page_limit);
+    unsigned int n_correlations;
+
+    // BEGIN: this is a payload for JSON and MessagePack
+    LDQueryResultMatrix data;
+    string error;
+    string next;
+    // END: this is a payload for JSON and MessagePack
+    MSGPACK_DEFINE_MAP(data, error, next) // tell msgpack what fields do we want to put into the JSON-like map
+
+    vector<pair<uint64_t, int>> raw_variants; // <segment, index within segment> -- used for temporary collecting all extracted variants
+
+    // defines comparison for <segment, index within segment> pairs to keep variants ordered by chromosomal position
+    static bool compare_raw_variants (const pair<uint64_t, int>& v1, const pair<uint64_t, int>& v2) {
+        if (v1.first < v2.first) {
+            return true;
+        }
+        return v1.first > v2.first ? false : v1.second < v2.second;
     }
+
+    // We need this constructor only for MessagePack unit test.
+    LDQueryResult(): limit(1000), last_cell(0), last_i(-1), last_j(-1), page(0), n_correlations(0), error(""), next("") { }
+    LDQueryResult(uint32_t page_limit): limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0), n_correlations(0), error(""), next("") { }
 
     /**
      * Construct an LDQueryResult
@@ -195,8 +220,7 @@ struct LDQueryResult {
      * @param last This appears to be a string of the form "last_cell:last_i:last_j:page". last_cell is the morton code
      *   of the last cell that was retrieved.
      */
-    LDQueryResult(uint32_t page_limit, const string& last) : limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0) {
-        data.reserve(page_limit);
+    LDQueryResult(uint32_t page_limit, const string& last) : limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0), n_correlations(0), error(""), next("") {
         vector<std::string> tokens;
         auto separator = regex(":");
         copy(sregex_token_iterator(last.begin(), last.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
@@ -208,30 +232,197 @@ struct LDQueryResult {
         }
     }
 
-    void sort_by_variant() {
-      std::sort(data.begin(), data.end(), [](const VariantsPair& p1, const VariantsPair& p2) {
-        // Because of how the LDServer creates VariantPairs, it is guaranteed that the first variant in the pair
-        // is always before the second variant on the chromosome.
-        if (p1.variant1 == p2.variant1) {
-            return p1.position2 < p2.position2;
-        }
-        else {
-            return p1.position1 < p2.position1;
-        }
-      });
-    }
-
     /**
      * Restrict this result object down to only variants given in the set.
      * @param variants Set of variants.
      */
     template<template <typename...> class C>
     void filter_by_variants(const C<string>& variants) {
-        vector<VariantsPair> new_data;
-        copy_if(data.begin(), data.end(), back_inserter(new_data), [&](const VariantsPair& p) -> bool {
-          return (variants.find(p.variant1) != variants.end()) && (variants.find(p.variant2) != variants.end());
-        });
+        LDQueryResultMatrix new_data;
+        unordered_map<uint32_t, uint32_t> index_mapping;
+        auto index_mapping_it = index_mapping.end();
+        for (unsigned int i = 0u; i < data.variants.size(); ++i) {
+            if (variants.find(data.variants[i]) != variants.end()) {
+                new_data.variants.push_back(move(data.variants[i]));
+                new_data.chromosomes.push_back(move(data.chromosomes[i]));
+                new_data.positions.push_back(move(data.positions[i]));
+                new_data.offsets.push_back(INT32_MIN);
+                new_data.correlations.emplace_back();
+                index_mapping.emplace(i, new_data.variants.size() - 1);
+            }
+        }
+        for (unsigned int i1 = 0u; i1 < data.correlations.size(); ++i1) {
+            if ((index_mapping_it = index_mapping.find(i1)) == index_mapping.end()) {
+                continue;
+            }
+            auto new_i1 = index_mapping_it->second;
+            for (unsigned int j = 0u; j < data.correlations[i1].size(); ++j) {
+                auto i2 = j + data.offsets[i1];
+                if ((index_mapping_it = index_mapping.find(i2)) == index_mapping.end()) {
+                    continue;
+                }
+                auto new_i2 = index_mapping_it->second;
+                new_data.correlations[new_i1].push_back(data.correlations[i1][j]);
+                if (new_data.offsets[new_i1] == INT32_MIN) {
+                    new_data.offsets[new_i1] = new_i2;
+                }
+            }
+        }
         data = new_data;
+    }
+
+    /*
+     * If variant is present in "raw_variants", then returns its index there (raw_variants stores variants ordered by chromosomal position).
+     * If variant is not present in "raw_variants", then inserts the variant into "raw_variants" and to othe associated data structures (and keeps the ordering).
+     * Returns a pair where first element is the index of the variant, and the second element is 0(new variant was not inserted) or 1 (new variant inserted).
+     * */
+    pair<unsigned int, unsigned int> get_variant(uint64_t segment, int i) {
+        auto raw_variant = pair<uint64_t, int>(segment, i);
+        unsigned int index = distance(raw_variants.begin(), upper_bound(raw_variants.begin(), raw_variants.end(), raw_variant, compare_raw_variants));
+        if ((index > 0) && (raw_variants[index - 1].first == segment) && (raw_variants[index - 1].second == i)) {
+            return make_pair(index - 1, 0);
+        }
+        raw_variants.emplace(raw_variants.begin() + index, move(raw_variant));
+        data.offsets.emplace(data.offsets.begin() + index, INT32_MIN);
+        data.correlations.emplace(data.correlations.begin() + index, vector<double>());
+        for (auto &&o: data.offsets) {
+            if ((o != INT32_MIN) && (index <= o)) {
+                ++o;
+            }
+        }
+        return make_pair(index, 1);
+    }
+
+    // Adds new variant to the result and return its index in sorted data.variants array. If the variant already exists, then does nothing and return its index.
+    pair<unsigned int, bool> get_variant_index(const string& variant, const string& chromosome, uint64_t position) {
+        unsigned int index = distance(data.positions.begin(), upper_bound(data.positions.begin(), data.positions.end(), position));
+        int cmp = 0;
+        while ((index > 0) && (data.positions[index - 1] == position)) { // if position in front matches, then we "slide left" comparing variant names.
+            cmp = data.variants[index - 1].compare(variant);
+            if (cmp == 0) {
+                return make_pair(index - 1, false);
+            } else if (cmp > 0) {
+                --index;
+            } else {
+                break;
+            }
+        }
+        data.positions.emplace(data.positions.begin() + index, position);
+        data.chromosomes.emplace(data.chromosomes.begin() + index, chromosome);
+        data.variants.emplace(data.variants.begin() + index, variant);
+        data.offsets.emplace(data.offsets.begin() + index, INT32_MIN);
+        data.correlations.emplace(data.correlations.begin() + index, vector<double>());
+        if (data.offsets.size() - index != 1) {
+            for (auto &&o: data.offsets) {
+                if ((o != INT32_MIN) && (index <= o)) {
+                    ++o;
+                }
+            }
+        }
+        return make_pair(index, true);
+    }
+
+    tuple<unsigned int, unsigned int, unsigned int> get_variants_range(uint64_t segment, int first_i, int last_i) {
+        auto n = last_i - first_i;
+        auto last_raw_variant = pair<uint64_t, int>(segment, last_i - 1);
+        unsigned int last_index = distance(raw_variants.begin(), upper_bound(raw_variants.begin(), raw_variants.end(), last_raw_variant));
+        if (last_index == 0) {
+            // all exisiting positions are greater than the last position to insert, so we append everything to the beggining and increment all offsets by number of new variants.
+            vector<pair<uint64_t, int>> new_raw_variants(n);
+            for (unsigned int i = 0; i < new_raw_variants.size(); ++i) {
+                new_raw_variants[i].first = segment;
+                new_raw_variants[i].second = first_i + i;
+            }
+            raw_variants.insert(raw_variants.begin(), new_raw_variants.begin(), new_raw_variants.end());
+            data.offsets.insert(data.offsets.begin(), n, INT32_MIN);
+            data.correlations.insert(data.correlations.begin(), n, move(vector<double>()));
+            for (auto &&o: data.offsets) {
+                if (o != INT32_MIN) {
+                    o += n;
+                }
+            }
+            return make_tuple(0, 0, n);
+        }
+        auto first_raw_variant = pair<uint64_t, int>(segment, first_i);
+        unsigned int first_index = distance(raw_variants.begin(), lower_bound(raw_variants.begin(), raw_variants.end(), first_raw_variant));
+        if (first_index == raw_variants.size()) {
+            // all existing positions are smaller than the first position to insert, so we append everything to the end.
+            vector<pair<uint64_t, int>> new_raw_variants(n);
+            for (unsigned int i = 0; i < new_raw_variants.size(); ++i) {
+                new_raw_variants[i].first = segment;
+                new_raw_variants[i].second = first_i + i;
+            }
+            raw_variants.insert(raw_variants.end(), new_raw_variants.begin(), new_raw_variants.end());
+            data.offsets.insert(data.offsets.end(), n, INT32_MIN);
+            data.correlations.insert(data.correlations.end(), n, move(vector<double>()));
+            return make_tuple(raw_variants.size() - n, raw_variants.size() - n, n);
+        }
+        if (last_index - first_index < n) {
+            auto n_new = n - (last_index - first_index);
+            vector<pair<uint64_t, int>> new_raw_variants(n_new);
+            unsigned int inserted_from = 0u;
+            if ((last_index == raw_variants.size()) && ((raw_variants[last_index - 1].first != last_raw_variant.first) || (raw_variants[last_index - 1].second != last_raw_variant.second))) {
+                // overlap start
+                for (unsigned int i = 0u; i < new_raw_variants.size(); ++i) {
+                    new_raw_variants[i].first = segment;
+                    new_raw_variants[i].second = first_i + (n - n_new) + i;
+                }
+                inserted_from = raw_variants.size();
+                raw_variants.insert(raw_variants.end(), new_raw_variants.begin(), new_raw_variants.end());
+                data.offsets.insert(data.offsets.end(), n_new, INT32_MIN);
+                data.correlations.insert(data.correlations.end(), n_new, move(vector<double>()));
+            } else {
+                // overlap end
+                for (unsigned int i = 0u; i < new_raw_variants.size(); ++i) {
+                    new_raw_variants[i].first = segment;
+                    new_raw_variants[i].second = first_i + i;
+                }
+                inserted_from = first_index;
+                raw_variants.insert(raw_variants.begin() + first_index, new_raw_variants.begin(), new_raw_variants.end());
+                data.offsets.insert(data.offsets.begin() + first_index, n_new, INT32_MIN);
+                data.correlations.insert(data.correlations.begin() + first_index, n_new, move(vector<double>()));
+                for (auto &&o: data.offsets) {
+                    if ((o != INT32_MIN) && (first_index <= o)) {
+                        o += n_new;
+                    }
+                }
+            }
+            return make_tuple(first_index, inserted_from, n_new);
+        }
+        return make_tuple(first_index, 0, 0);
+    }
+
+    // Adds new correlation value between variants at index1 and index2. Must be called only once for a pair i.e. there is no check if the correlation value already exists.
+    void add_correlation(uint32_t index1, uint32_t index2, double value) {
+        if (index1 > index2) {
+            auto temp = index1;
+            index1 = index2;
+            index2 = temp;
+        }
+        data.correlations[index1].push_back(value);
+        if (data.offsets[index1] == INT32_MIN) {
+            data.offsets[index1] = index2;
+        }
+        ++n_correlations;
+    }
+
+    void add_correlations(uint32_t index1, uint32_t start_index2, const float* values, unsigned int n) {
+        if (index1 <= start_index2) {
+            data.correlations[index1].insert(data.correlations[index1].end(), values, values + n);
+            if (data.offsets[index1] == INT32_MIN) {
+                data.offsets[index1] = start_index2;
+            }
+            n_correlations += n;
+        } else {
+            for (unsigned int i = 0u; i < n; ++i) {
+                data.correlations[start_index2 + i].insert(data.correlations[start_index2 + i].end(), values, values + 1);
+                if (data.offsets[start_index2 + i] == INT32_MIN) {
+                    data.offsets[start_index2 + i] = index1;
+                }
+                ++values;
+                ++n_correlations;
+            }
+        }
     }
 
     bool has_next() const {
@@ -247,18 +438,22 @@ struct LDQueryResult {
      * where last_cell is the morton code of the cell to load, and last_i/j are the
      * segment indexes.
      *
-     * This function is called by LDQueryResult::get_json() to provide as part of the "next URL".
+     * This function is called by LDQueryResult::get_json() and LDQueryResult::get_messagepack() to provide as part of the "next URL".
      *
-     * @return
-     */
-    string get_last() const {
+     * */
+    void set_next(const string& url) {
         if (has_next()) {
-            return string(to_string(last_cell) + ":" + to_string(last_i) + ":" + to_string(last_j) + ":" + to_string(page));
+            next = url + "&last=" + to_string(last_cell) + ":" + to_string(last_i) + ":" + to_string(last_j) + ":" + to_string(page);
+        } else {
+            next = "";
         }
-        return string("");
     }
     void clear_data() {
+        n_correlations = 0u;
         data.clear();
+        raw_variants.clear();
+        error = "";
+        next = "";
     }
     void clear_last() {
         last_cell = 0u;
@@ -269,59 +464,105 @@ struct LDQueryResult {
         clear_last();
         page = 0;
     }
-    string get_json(const string& url) {
-        rapidjson::Document document;
-        document.SetObject();
-        rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
+    string get_json(const string& url, int precision = 0) {
+        set_next(url);
 
-        rapidjson::Value data(rapidjson::kObjectType);
-
-        rapidjson::Value variant1(rapidjson::kArrayType);
-        rapidjson::Value chromosome1(rapidjson::kArrayType);
-        rapidjson::Value position1(rapidjson::kArrayType);
-        rapidjson::Value variant2(rapidjson::kArrayType);
-        rapidjson::Value chromosome2(rapidjson::kArrayType);
-        rapidjson::Value position2(rapidjson::kArrayType);
-        rapidjson::Value correlation(rapidjson::kArrayType);
-
-        for (auto&& p: this->data) {
-            variant1.PushBack(rapidjson::StringRef(p.variant1.c_str()), allocator);
-            chromosome1.PushBack(rapidjson::StringRef(p.chromosome1.c_str()), allocator);
-            position1.PushBack(p.position1, allocator);
-            variant2.PushBack(rapidjson::StringRef(p.variant2.c_str()), allocator);
-            chromosome2.PushBack(rapidjson::StringRef(p.chromosome2.c_str()), allocator);
-            position2.PushBack(p.position2, allocator);
-            if (std::isnan(p.value)) { // nan is not allowed by JSON, so we replace it with null
-                correlation.PushBack(rapidjson::Value(), allocator);
-            } else {
-                correlation.PushBack(p.value, allocator);
-            }
-        }
-
-        data.AddMember("variant1", variant1, allocator);
-        data.AddMember("chromosome1", chromosome1, allocator);
-        data.AddMember("position1", position1, allocator);
-        data.AddMember("variant2", variant2, allocator);
-        data.AddMember("chromosome2", chromosome2, allocator);
-        data.AddMember("position2", position2, allocator);
-        data.AddMember("correlation", correlation, allocator);
-
-        document.AddMember("data", data, allocator);
-        document.AddMember("error", rapidjson::Value(), allocator);
-        if (is_last()) {
-            document.AddMember("next", rapidjson::Value(), allocator);
-        } else {
-            rapidjson::Value next;
-            string link = url + "&last=" + get_last();
-            next.SetString(link.c_str(), allocator); // by providing allocator we make a copy
-            document.AddMember("next", next, allocator);
-        }
         rapidjson::StringBuffer strbuf;
         rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
-        if (!document.Accept(writer)) {
-            throw runtime_error("Error while saving to JSON");
+
+        if (precision > 0) {
+            writer.SetMaxDecimalPlaces(precision);
         }
+
+//        auto start = std::chrono::system_clock::now();
+        writer.StartObject();
+        writer.Key("data");
+        writer.StartObject();
+        writer.Key("variants");
+        writer.StartArray();
+        for (auto&& v: data.variants) {
+            writer.String(v.c_str());
+        }
+        writer.EndArray();
+        writer.Key("chromosomes");
+        writer.StartArray();
+        for (auto&& v: data.chromosomes) {
+            writer.String(v.c_str());
+        }
+        writer.EndArray();
+        writer.Key("positions");
+        writer.StartArray();
+        for (auto&& v: data.positions) {
+            writer.Uint64(v);
+        }
+        writer.EndArray();
+        writer.Key("offsets");
+        writer.StartArray();
+        for (auto&& v: data.offsets) {
+            writer.Int(v);
+        }
+        writer.EndArray();
+        writer.Key("correlations");
+        writer.StartArray();
+        if (precision > 0) {
+            double d = pow(10.0, precision);
+            for (auto &&v_correlations : data.correlations) {
+                writer.StartArray();
+                for (auto &&v: v_correlations) {
+                    if (std::isnan(v)) {
+                        writer.Null();
+                    } else {
+                        writer.Double(round(v * d) / d);
+                    }
+                }
+                writer.EndArray();
+            }
+        } else {
+            for (auto &&v_correlations : data.correlations) {
+                writer.StartArray();
+                for (auto &&v: v_correlations) {
+                    if (std::isnan(v)) {
+                        writer.Null();
+                    } else {
+                        writer.Double(v);
+                    }
+                }
+                writer.EndArray();
+            }
+        }
+        writer.EndArray();
+        writer.EndObject();
+        writer.Key("error");
+        writer.String(error.c_str());
+        writer.Key("next");
+        writer.String(next.c_str());
+        writer.EndObject();
+//        auto end = std::chrono::system_clock::now();
+//        std::chrono::duration<double>  elapsed = end - start;
+//        std::cout << "Writing JSON to string elapsed time: " << elapsed.count() << " s\n";
         return strbuf.GetString();
+    }
+
+    // Only for unit tests in C/C++
+    pair<char*, unsigned int> get_messagepack(const string& url) {
+        set_next(url);
+//        auto start = std::chrono::system_clock::now();
+        msgpack::sbuffer msgpack_buffer;
+        msgpack::pack(msgpack_buffer, *this);
+//        auto end = std::chrono::system_clock::now();
+//        std::chrono::duration<double>  elapsed = end - start;
+//        std::cout << "Packing msgpack elapsed time: " << elapsed.count() << " s\n";
+        unsigned int size = msgpack_buffer.size();
+        return make_pair(msgpack_buffer.release(), size);
+    }
+
+    PyObject* get_messagepack_py(const string& url) {
+        auto msgpack = get_messagepack(url);
+        PyObject* msgpack_py = PyBytes_FromStringAndSize(msgpack.first, msgpack.second);
+        free(msgpack.first);
+//        boost::python::object memoryView(boost::python::handle<>(PyMemoryView_FromMemory(msgpack_buffer.data(), msgpack_buffer.size(), PyBUF_READ)));
+//        boost::python::object memoryView(boost::python::handle<>(PyBytes_FromStringAndSize(msgpack_buffer.data(), msgpack_buffer.size())));
+        return msgpack_py;
     }
 };
 

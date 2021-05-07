@@ -245,7 +245,6 @@ void ScoreCovarianceRunner::run() {
         continue;
       }
 
-      ld_res->sort_by_variant();
       score_res->sort_by_variant();
 
       for (auto&& v : score_res->data) {
@@ -295,39 +294,48 @@ void ScoreCovarianceRunner::run() {
       Value group_variants(kArrayType);
       Value group_covar(kArrayType);
       set<string> seen_group_variants;
-      for (auto&& pair : ld_res->data) {
-        double cov_value = pair.value;
-        if (run_mode == ScoreCovRunMode::COMPUTE) {
-          // When we compute from genotype/phenotype files, the covariance hasn't been normalized by the
-          // residual variance yet, so we need to do so here. In the covariance matrix files, this has already been done.
-          cov_value /= score_res->sigma2;
-        }
-        group_covar.PushBack(cov_value, alloc);
 
-        if (seen_group_variants.find(pair.variant1) == seen_group_variants.end()) {
-          string variant1_formatted;
-          if (config->variant_format == VariantFormat::COLONS) {
-            variant1_formatted = VariantMeta(pair.variant1).as_colons();
-          }
-          else if (config->variant_format == VariantFormat::EPACTS) {
-            variant1_formatted = VariantMeta(pair.variant1).as_epacts();
-          }
+      for (unsigned int index1 = 0u; index1 < ld_res->data.variants.size(); ++index1) {
+        auto& variant1 = ld_res->data.variants[index1];
+        auto& offset1 = ld_res->data.offsets[index1];
+        auto& correlations1 = ld_res->data.correlations[index1];
 
-          group_variants.PushBack(Value(variant1_formatted.c_str(), alloc), alloc);
-          seen_group_variants.emplace(pair.variant1);
-        }
+        for (unsigned int i = 0u; i < correlations1.size(); ++i) {
+            auto& variant2 = ld_res->data.variants[i + offset1];
+            double cov_value = correlations1[i];
 
-        if (seen_group_variants.find(pair.variant2) == seen_group_variants.end()) {
-          string variant2_formatted;
-          if (config->variant_format == VariantFormat::COLONS) {
-            variant2_formatted = VariantMeta(pair.variant2).as_colons();
-          }
-          else if (config->variant_format == VariantFormat::EPACTS) {
-            variant2_formatted = VariantMeta(pair.variant2).as_epacts();
-          }
+            if (run_mode == ScoreCovRunMode::COMPUTE) {
+                // When we compute from genotype/phenotype files, the covariance hasn't been normalized by the
+                // residual variance yet, so we need to do so here. In the covariance matrix files, this has already been done.
+                cov_value /= score_res->sigma2;
+            }
+            group_covar.PushBack(cov_value, alloc);
 
-          group_variants.PushBack(Value(variant2_formatted.c_str(), alloc), alloc);
-          seen_group_variants.emplace(pair.variant2);
+            if (seen_group_variants.find(variant1) == seen_group_variants.end()) {
+                string variant1_formatted;
+                if (config->variant_format == VariantFormat::COLONS) {
+                    variant1_formatted = VariantMeta(variant1).as_colons();
+                }
+                else if (config->variant_format == VariantFormat::EPACTS) {
+                    variant1_formatted = VariantMeta(variant1).as_epacts();
+                }
+
+                group_variants.PushBack(Value(variant1_formatted.c_str(), alloc), alloc);
+                seen_group_variants.emplace(variant1);
+            }
+
+            if (seen_group_variants.find(variant2) == seen_group_variants.end()) {
+                string variant2_formatted;
+                if (config->variant_format == VariantFormat::COLONS) {
+                    variant2_formatted = VariantMeta(variant2).as_colons();
+                }
+                else if (config->variant_format == VariantFormat::EPACTS) {
+                    variant2_formatted = VariantMeta(variant2).as_epacts();
+                }
+
+                group_variants.PushBack(Value(variant2_formatted.c_str(), alloc), alloc);
+                seen_group_variants.emplace(variant2);
+            }
         }
       }
 

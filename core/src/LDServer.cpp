@@ -334,7 +334,7 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
           z = get_next_z(segment_i, segment_j, z_min, z_max, ++z);
         }
 
-        if (result.data.size() >= result.limit) {
+        if (result.n_correlations >= result.limit) {
             // If we reach this point, the following is true:
             //   1. The result object is full
             //   2. Cell extraction stopped because the cell had been parsed completely
@@ -346,6 +346,19 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
                 result.last_j = 0;
             }
             break;
+        }
+    }
+
+//  Before returning the result, fill out full variant names, chromosomes, and positions
+    if (result.raw_variants.size() > 0) {
+        result.data.variants.reserve(result.raw_variants.size());
+        result.data.chromosomes.reserve(result.raw_variants.size());
+        result.data.positions.reserve(result.raw_variants.size());
+        for (auto&& entry: result.raw_variants) {
+            auto segment = segments[entry.first];
+            result.data.variants.push_back(segment->get_name(entry.second));
+            result.data.chromosomes.push_back(segment->get_chromosome());
+            result.data.positions.push_back(segment->get_position(entry.second));
         }
     }
 
@@ -444,7 +457,7 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
             break;
         }
         z = get_next_z(segment_index, segment_i, segment_j, z_min, z_max, ++z);
-        if (result.data.size() >= result.limit) {
+        if (result.n_correlations >= result.limit) {
             if (z <= z_max) {
                 result.last_cell = z;
                 result.last_j = 0;
@@ -452,5 +465,19 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
             break;
         }
     }
+
+    //  Before returning the result, fill out full variant names, chromosomes, and positions
+    if (result.raw_variants.size() > 0) {
+        result.data.variants.reserve(result.raw_variants.size());
+        result.data.chromosomes.reserve(result.raw_variants.size());
+        result.data.positions.reserve(result.raw_variants.size());
+        for (auto&& entry: result.raw_variants) {
+            auto segment = segments[entry.first];
+            result.data.variants.push_back(segment->get_name(entry.second));
+            result.data.chromosomes.push_back(segment->get_chromosome());
+            result.data.positions.push_back(segment->get_position(entry.second));
+        }
+    }
+
     return true;
 }

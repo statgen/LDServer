@@ -23,7 +23,8 @@ endif()
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(SOURCE_FILES LDServer.cpp LDServer.h ScoreServer.cpp ScoreServer.h Raw.h Raw.cpp Segment.cpp Segment.h ScoreSegment.cpp ScoreSegment.h Cell.cpp Cell.h Types.h Morton.cpp Morton.h Phenotypes.h Phenotypes.cpp Mask.cpp Mask.h SummaryStatisticsLoader.h SummaryStatisticsLoader.cpp ScoreCovarianceRunner.cpp ScoreCovarianceRunner.h)
 add_library(LDServer ${SOURCE_FILES})
-target_link_libraries(LDServer ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${Boost_LIBRARIES} ${TABIXPP_LIB})
+target_include_directories(LDServer PUBLIC ${Python3_INCLUDE_DIRS})
+target_link_libraries(LDServer ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${TABIXPP_LIB} ${Boost_LIBRARIES} ${Python3_LIBRARIES})
 
 add_library(pywrapper SHARED pywrapper.cpp LDServer.cpp ScoreServer.cpp Raw.cpp Segment.cpp Segment.h ScoreSegment.cpp ScoreSegment.h Cell.cpp Cell.h Types.h Morton.cpp Morton.h Phenotypes.h Phenotypes.cpp Mask.cpp Mask.h SummaryStatisticsLoader.h SummaryStatisticsLoader.cpp ScoreCovarianceRunner.cpp ScoreCovarianceRunner.h)
 set_target_properties(pywrapper PROPERTIES SUFFIX ".so")
@@ -32,6 +33,7 @@ target_include_directories(pywrapper PUBLIC ${Python3_INCLUDE_DIRS})
 target_link_libraries(pywrapper ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${MKL_RT_LIB} ${TABIXPP_LIB} ${Boost_LIBRARIES} ${Python3_LIBRARIES})
 
 add_executable(sandbox Sandbox.cpp ${SOURCE_FILES})
+target_include_directories(sandbox PUBLIC ${Python3_INCLUDE_DIRS})
 target_link_libraries(sandbox Threads::Threads ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${MKL_RT_LIB} ${TABIXPP_LIB} ${Boost_LIBRARIES} ${Python3_LIBRARIES})
 
 install(TARGETS pywrapper DESTINATION ${PROJECT_SOURCE_DIR}/../rest/core)

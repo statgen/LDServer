@@ -49,3 +49,4 @@ Werkzeug==1.0.1
 zipp==3.4.0
 zope.event==4.5.0
 zope.interface==5.1.2
+msgpack==1.0.2
