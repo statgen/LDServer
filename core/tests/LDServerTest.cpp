@@ -1335,27 +1335,21 @@ TEST_F(LDServerTest, variant_without_paging_1) {
     this->load_variant_goldstandard("variant_ld_22_51241101_vs_51241101_51241385.hap.ld", goldstandard);
 
     LDServer server(100);
-    LDQueryResult result(1000000);
+    SingleVariantLDQueryResult result(1000000);
 
     server.set_file("chr22.test.sav");
     ASSERT_TRUE(server.compute_variant_ld("22:51241101_A/T", "22", 51241101, 51241385, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY));
-    ASSERT_TRUE(this->result_has_correct_dims(result));
-    ASSERT_TRUE(this->result_has_nonempty_variants(result));
-    ASSERT_EQ(result.n_correlations, result.data.variants.size());
+    ASSERT_EQ(result.data.index_variant, "22:51241101_A/T");
+    ASSERT_EQ(result.data.index_chromosome, "22");
+    ASSERT_EQ(result.data.index_position, 51241101);
     ASSERT_EQ(result.n_correlations, goldstandard.size());
-    for (unsigned int index1 = 0u; index1 < result.data.variants.size(); ++index1) {
-        auto offset1 = result.data.offsets[index1];
-        auto& correlations1 = result.data.correlations[index1];
-        for (unsigned int i = 0u; i < correlations1.size(); ++i) {
-            auto index2 = offset1 + i;
-            auto corr_value = correlations1[i];
-            string key(to_string(result.data.positions.at(index1)) + "_" + to_string(result.data.positions.at(index2)));
-            if (goldstandard.count(key) == 0) {
-                key = to_string(result.data.positions.at(index2)) + "_" + to_string(result.data.positions.at(index1));
-                ASSERT_EQ(goldstandard.count(key), 1);
-            }
-            ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
-        }
+    ASSERT_EQ(result.n_correlations, result.data.correlations.size());
+    ASSERT_EQ(result.n_correlations, result.data.variants.size());
+    for (unsigned int i = 0u; i < result.data.variants.size(); ++i) {
+        auto corr_value = result.data.correlations[i];
+        string key(to_string(result.data.index_position) + "_" + to_string(result.data.positions.at(i)));
+        ASSERT_EQ(goldstandard.count(key), 1);
+        ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
     }
 }
 
@@ -1364,27 +1358,21 @@ TEST_F(LDServerTest, variant_without_paging_2) {
     this->load_variant_goldstandard("variant_ld_22_51241386_vs_51241101_51241385.hap.ld", goldstandard);
 
     LDServer server(100);
-    LDQueryResult result(1000000);
+    SingleVariantLDQueryResult result(1000000);
 
     server.set_file("chr22.test.sav");
     ASSERT_TRUE(server.compute_variant_ld("22:51241386_C/G", "22", 51241101, 51241385, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY));
-    ASSERT_TRUE(this->result_has_correct_dims(result));
-    ASSERT_TRUE(this->result_has_nonempty_variants(result));
-    ASSERT_LT(result.n_correlations, result.data.variants.size());
+    ASSERT_EQ(result.data.index_variant, "22:51241386_C/G");
+    ASSERT_EQ(result.data.index_chromosome, "22");
+    ASSERT_EQ(result.data.index_position, 51241386);
     ASSERT_EQ(result.n_correlations, goldstandard.size());
-    for (unsigned int index1 = 0u; index1 < result.data.variants.size(); ++index1) {
-        auto offset1 = result.data.offsets[index1];
-        auto& correlations1 = result.data.correlations[index1];
-        for (unsigned int i = 0u; i < correlations1.size(); ++i) {
-            auto index2 = offset1 + i;
-            auto corr_value = correlations1[i];
-            string key(to_string(result.data.positions.at(index1)) + "_" + to_string(result.data.positions.at(index2)));
-            if (goldstandard.count(key) == 0) {
-                key = to_string(result.data.positions.at(index2)) + "_" + to_string(result.data.positions.at(index1));
-                ASSERT_EQ(goldstandard.count(key), 1);
-            }
-            ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.0000001);
-        }
+    ASSERT_EQ(result.n_correlations, result.data.correlations.size());
+    ASSERT_EQ(result.n_correlations, result.data.variants.size());
+    for (unsigned int i = 0u; i < result.data.variants.size(); ++i) {
+        auto corr_value = result.data.correlations[i];
+        string key(to_string(result.data.index_position) + "_" + to_string(result.data.positions.at(i)));
+        ASSERT_EQ(goldstandard.count(key), 1);
+        ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.0000001);
     }
 }
 
@@ -1393,28 +1381,21 @@ TEST_F(LDServerTest, variant_without_paging_3) {
     this->load_variant_goldstandard("variant_ld_22_51241309_vs_51241101_51244237.hap.ld", goldstandard);
 
     LDServer server(100);
-    LDQueryResult result(1000000);
+    SingleVariantLDQueryResult result(1000000);
 
     server.set_file("chr22.test.sav");
     ASSERT_TRUE(server.compute_variant_ld("22:51241309_C/T", "22", 51241101, 51244237, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY));
-    ASSERT_TRUE(this->result_has_correct_dims(result));
-    ASSERT_TRUE(this->result_has_nonempty_variants(result));
-    ASSERT_EQ(result.n_correlations, result.data.variants.size());
+    ASSERT_EQ(result.data.index_variant, "22:51241309_C/T");
+    ASSERT_EQ(result.data.index_chromosome, "22");
+    ASSERT_EQ(result.data.index_position, 51241309);
     ASSERT_EQ(result.n_correlations, goldstandard.size());
-
-    for (unsigned int index1 = 0u; index1 < result.data.variants.size(); ++index1) {
-        auto offset1 = result.data.offsets[index1];
-        auto& correlations1 = result.data.correlations[index1];
-        for (unsigned int i = 0u; i < correlations1.size(); ++i) {
-            auto index2 = offset1 + i;
-            auto corr_value = correlations1[i];
-            string key(to_string(result.data.positions.at(index1)) + "_" + to_string(result.data.positions.at(index2)));
-            if (goldstandard.count(key) == 0) {
-                key = to_string(result.data.positions.at(index2)) + "_" + to_string(result.data.positions.at(index1));
-                ASSERT_EQ(goldstandard.count(key), 1);
-            }
-            ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
-        }
+    ASSERT_EQ(result.n_correlations, result.data.correlations.size());
+    ASSERT_EQ(result.n_correlations, result.data.variants.size());
+    for (unsigned int i = 0u; i < result.data.variants.size(); ++i) {
+        auto corr_value = result.data.correlations[i];
+        string key(to_string(result.data.index_position) + "_" + to_string(result.data.positions.at(i)));
+        ASSERT_EQ(goldstandard.count(key), 1);
+        ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
     }
 }
 
@@ -1423,28 +1404,22 @@ TEST_F(LDServerTest, variant_with_paging_1) {
     this->load_variant_goldstandard("variant_ld_22_51241101_vs_51241101_51241385.hap.ld", goldstandard);
 
     LDServer server(100);
-    LDQueryResult result(2);
+    SingleVariantLDQueryResult result(2);
     int result_total_size = 0;
 
     server.set_file("chr22.test.sav");
     while (server.compute_variant_ld("22:51241101_A/T", "22", 51241101, 51241385, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
-        ASSERT_TRUE(this->result_has_correct_dims(result));
-        ASSERT_TRUE(this->result_has_nonempty_variants(result));
-        ASSERT_LE(result.n_correlations, 2);
-        for (unsigned int index1 = 0u; index1 < result.data.variants.size(); ++index1) {
-            auto offset1 = result.data.offsets[index1];
-            auto& correlations1 = result.data.correlations[index1];
-            for (unsigned int i = 0u; i < correlations1.size(); ++i) {
-                auto index2 = offset1 + i;
-                auto corr_value = correlations1[i];
-                string key(to_string(result.data.positions.at(index1)) + "_" + to_string(result.data.positions.at(index2)));
-                if (goldstandard.count(key) == 0) {
-                    key = to_string(result.data.positions.at(index2)) + "_" + to_string(result.data.positions.at(index1));
-                    ASSERT_EQ(goldstandard.count(key), 1);
-                }
-                ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
-            }
+        ASSERT_EQ(result.data.index_variant, "22:51241101_A/T");
+        ASSERT_EQ(result.data.index_chromosome, "22");
+        ASSERT_EQ(result.data.index_position, 51241101);
+        ASSERT_EQ(result.n_correlations, result.data.variants.size());
+        ASSERT_EQ(result.n_correlations, result.data.correlations.size());
+        for (unsigned int i = 0u; i < result.data.variants.size(); ++i) {
+            auto corr_value = result.data.correlations[i];
+            string key(to_string(result.data.index_position) + "_" + to_string(result.data.positions.at(i)));
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
         }
         result_total_size += result.n_correlations;
     }
@@ -1456,28 +1431,22 @@ TEST_F(LDServerTest, variant_with_paging_2) {
     this->load_variant_goldstandard("variant_ld_22_51241386_vs_51241101_51241385.hap.ld", goldstandard);
 
     LDServer server(100);
-    LDQueryResult result(2);
+    SingleVariantLDQueryResult result(2);
     int result_total_size = 0;
 
     server.set_file("chr22.test.sav");
     while (server.compute_variant_ld("22:51241386_C/G", "22", 51241101, 51241385, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
-        ASSERT_TRUE(this->result_has_correct_dims(result));
-        ASSERT_TRUE(this->result_has_nonempty_variants(result));
-        ASSERT_LE(result.n_correlations, 2);
-        for (unsigned int index1 = 0u; index1 < result.data.variants.size(); ++index1) {
-            auto offset1 = result.data.offsets[index1];
-            auto& correlations1 = result.data.correlations[index1];
-            for (unsigned int i = 0u; i < correlations1.size(); ++i) {
-                auto index2 = offset1 + i;
-                auto corr_value = correlations1[i];
-                string key(to_string(result.data.positions.at(index1)) + "_" + to_string(result.data.positions.at(index2)));
-                if (goldstandard.count(key) == 0) {
-                    key = to_string(result.data.positions.at(index2)) + "_" + to_string(result.data.positions.at(index1));
-                    ASSERT_EQ(goldstandard.count(key), 1);
-                }
-                ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.0000001);
-            }
+        ASSERT_EQ(result.data.index_variant, "22:51241386_C/G");
+        ASSERT_EQ(result.data.index_chromosome, "22");
+        ASSERT_EQ(result.data.index_position, 51241386);
+        ASSERT_EQ(result.n_correlations, result.data.variants.size());
+        ASSERT_EQ(result.n_correlations, result.data.correlations.size());
+        for (unsigned int i = 0u; i < result.data.variants.size(); ++i) {
+            auto corr_value = result.data.correlations[i];
+            string key(to_string(result.data.index_position) + "_" + to_string(result.data.positions.at(i)));
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.0000001);
         }
         result_total_size += result.n_correlations;
     }
@@ -1489,28 +1458,22 @@ TEST_F(LDServerTest, variant_with_paging_3) {
     this->load_variant_goldstandard("variant_ld_22_51241309_vs_51241101_51244237.hap.ld", goldstandard);
 
     LDServer server(100);
-    LDQueryResult result(2);
+    SingleVariantLDQueryResult result(2);
     int result_total_size = 0;
 
     server.set_file("chr22.test.sav");
     while (server.compute_variant_ld("22:51241309_C/T", "22", 51241101, 51244237, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
-        ASSERT_TRUE(this->result_has_correct_dims(result));
-        ASSERT_TRUE(this->result_has_nonempty_variants(result));
-        ASSERT_LE(result.n_correlations, 2);
-        for (unsigned int index1 = 0u; index1 < result.data.variants.size(); ++index1) {
-            auto offset1 = result.data.offsets[index1];
-            auto& correlations1 = result.data.correlations[index1];
-            for (unsigned int i = 0u; i < correlations1.size(); ++i) {
-                auto index2 = offset1 + i;
-                auto corr_value = correlations1[i];
-                string key(to_string(result.data.positions.at(index1)) + "_" + to_string(result.data.positions.at(index2)));
-                if (goldstandard.count(key) == 0) {
-                    key = to_string(result.data.positions.at(index2)) + "_" + to_string(result.data.positions.at(index1));
-                    ASSERT_EQ(goldstandard.count(key), 1);
-                }
-                ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
-            }
+        ASSERT_EQ(result.data.index_variant, "22:51241309_C/T");
+        ASSERT_EQ(result.data.index_chromosome, "22");
+        ASSERT_EQ(result.data.index_position, 51241309);
+        ASSERT_EQ(result.n_correlations, result.data.variants.size());
+        ASSERT_EQ(result.n_correlations, result.data.correlations.size());
+        for (unsigned int i = 0u; i < result.data.variants.size(); ++i) {
+            auto corr_value = result.data.correlations[i];
+            string key(to_string(result.data.index_position) + "_" + to_string(result.data.positions.at(i)));
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
         }
         result_total_size += result.n_correlations;
     }
@@ -1519,14 +1482,17 @@ TEST_F(LDServerTest, variant_with_paging_3) {
 
 TEST_F(LDServerTest, variant_with_paging_no_variant_1) {
     LDServer server(100);
-    LDQueryResult result(2);
+    SingleVariantLDQueryResult result(2);
     int result_total_size = 0;
     server.set_file("chr22.test.sav");
     while (server.compute_variant_ld("22:51241101_A/C", "22", 51241101, 51241385, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
-        ASSERT_TRUE(this->result_has_correct_dims(result));
-        ASSERT_TRUE(this->result_has_nonempty_variants(result));
-        ASSERT_LE(result.n_correlations, 2);
+        ASSERT_EQ(result.data.index_variant, "");
+        ASSERT_EQ(result.data.index_chromosome, "");
+        ASSERT_EQ(result.data.index_position, 0);
+        ASSERT_EQ(result.data.variants.size(), 0);
+        ASSERT_EQ(result.data.correlations.size(), 0);
+        ASSERT_LE(result.n_correlations, 0);
         result_total_size += result.n_correlations;
     }
     ASSERT_EQ(result_total_size, 0);
@@ -1534,14 +1500,17 @@ TEST_F(LDServerTest, variant_with_paging_no_variant_1) {
 
 TEST_F(LDServerTest, variant_with_paging_no_variant_2) {
     LDServer server(100);
-    LDQueryResult result(2);
+    SingleVariantLDQueryResult result(2);
     int result_total_size = 0;
     server.set_file("chr22.test.sav");
     while (server.compute_variant_ld("22:51241386_C/T", "22", 51241101, 51241385, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
-        ASSERT_TRUE(this->result_has_correct_dims(result));
-        ASSERT_TRUE(this->result_has_nonempty_variants(result));
-        ASSERT_LE(result.n_correlations, 2);
+        ASSERT_EQ(result.data.index_variant, "");
+        ASSERT_EQ(result.data.index_chromosome, "");
+        ASSERT_EQ(result.data.index_position, 0);
+        ASSERT_EQ(result.data.variants.size(), 0);
+        ASSERT_EQ(result.data.correlations.size(), 0);
+        ASSERT_LE(result.n_correlations, 0);
         result_total_size += result.n_correlations;
     }
     ASSERT_EQ(result_total_size, 0);
@@ -1549,14 +1518,17 @@ TEST_F(LDServerTest, variant_with_paging_no_variant_2) {
 
 TEST_F(LDServerTest, variant_with_paging_no_variant_3) {
     LDServer server(100);
-    LDQueryResult result(2);
+    SingleVariantLDQueryResult result(2);
     int result_total_size = 0;
     server.set_file("chr22.test.sav");
     while (server.compute_variant_ld("22:51241309_C/A", "22", 51241101, 51244237, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 2);
-        ASSERT_TRUE(this->result_has_correct_dims(result));
-        ASSERT_TRUE(this->result_has_nonempty_variants(result));
-        ASSERT_LE(result.n_correlations, 2);
+        ASSERT_EQ(result.data.index_variant, "");
+        ASSERT_EQ(result.data.index_chromosome, "");
+        ASSERT_EQ(result.data.index_position, 0);
+        ASSERT_EQ(result.data.variants.size(), 0);
+        ASSERT_EQ(result.data.correlations.size(), 0);
+        ASSERT_LE(result.n_correlations, 0);
         result_total_size += result.n_correlations;
     }
     ASSERT_EQ(result_total_size, 0);
@@ -1685,27 +1657,21 @@ TEST_F(LDServerTest, large_variant_without_paging) {
     this->load_variant_goldstandard("variant_ld_22_50546666_vs_50544251_50549251.hap.ld", goldstandard);
 
     LDServer server(100);
-    LDQueryResult result(10000000);
+    SingleVariantLDQueryResult result(10000000);
 
     server.set_file("chr22.test.sav");
     ASSERT_TRUE(server.compute_variant_ld("22:50546666_C/T", "22", 50544251, 50549251, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY));
-    ASSERT_TRUE(this->result_has_correct_dims(result));
-    ASSERT_TRUE(this->result_has_nonempty_variants(result));
-    ASSERT_EQ(result.n_correlations, result.data.variants.size());
+    ASSERT_EQ(result.data.index_variant, "22:50546666_C/T");
+    ASSERT_EQ(result.data.index_chromosome, "22");
+    ASSERT_EQ(result.data.index_position, 50546666);
     ASSERT_EQ(result.n_correlations, goldstandard.size());
-    for (unsigned int index1 = 0u; index1 < result.data.variants.size(); ++index1) {
-        auto offset1 = result.data.offsets[index1];
-        auto& correlations1 = result.data.correlations[index1];
-        for (unsigned int i = 0u; i < correlations1.size(); ++i) {
-            auto index2 = offset1 + i;
-            auto corr_value = correlations1[i];
-            string key(to_string(result.data.positions.at(index1)) + "_" + to_string(result.data.positions.at(index2)));
-            if (goldstandard.count(key) == 0) {
-                key = to_string(result.data.positions.at(index2)) + "_" + to_string(result.data.positions.at(index1));
-                ASSERT_EQ(goldstandard.count(key), 1);
-            }
-            ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.000001);
-        }
+    ASSERT_EQ(result.n_correlations, result.data.correlations.size());
+    ASSERT_EQ(result.n_correlations, result.data.variants.size());
+    for (unsigned int i = 0u; i < result.data.variants.size(); ++i) {
+        auto corr_value = result.data.correlations[i];
+        string key(to_string(result.data.index_position) + "_" + to_string(result.data.positions.at(i)));
+        ASSERT_EQ(goldstandard.count(key), 1);
+        ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.000001);
     }
 }
 
@@ -1714,28 +1680,22 @@ TEST_F(LDServerTest, large_variant_with_paging) {
     this->load_variant_goldstandard("variant_ld_22_50546666_vs_50544251_50549251.hap.ld", goldstandard);
 
     LDServer server(100);
-    LDQueryResult result(1000);
+    SingleVariantLDQueryResult result(1000);
     int result_total_size = 0;
 
     server.set_file("chr22.test.sav");
     while (server.compute_variant_ld("22:50546666_C/T", "22", 50544251, 50549251, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY)) {
         ASSERT_LE(result.limit, 1000);
-        ASSERT_TRUE(this->result_has_correct_dims(result));
-        ASSERT_TRUE(this->result_has_nonempty_variants(result));
-        ASSERT_LE(result.n_correlations, 1000);
-        for (unsigned int index1 = 0u; index1 < result.data.variants.size(); ++index1) {
-            auto offset1 = result.data.offsets[index1];
-            auto& correlations1 = result.data.correlations[index1];
-            for (unsigned int i = 0u; i < correlations1.size(); ++i) {
-                auto index2 = offset1 + i;
-                auto corr_value = correlations1[i];
-                string key(to_string(result.data.positions.at(index1)) + "_" + to_string(result.data.positions.at(index2)));
-                if (goldstandard.count(key) == 0) {
-                    key = to_string(result.data.positions.at(index2)) + "_" + to_string(result.data.positions.at(index1));
-                    ASSERT_EQ(goldstandard.count(key), 1);
-                }
-                ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.000001);
-            }
+        ASSERT_EQ(result.data.index_variant, "22:50546666_C/T");
+        ASSERT_EQ(result.data.index_chromosome, "22");
+        ASSERT_EQ(result.data.index_position, 50546666);
+        ASSERT_EQ(result.n_correlations, result.data.variants.size());
+        ASSERT_EQ(result.n_correlations, result.data.correlations.size());
+        for (unsigned int i = 0u; i < result.data.variants.size(); ++i) {
+            auto corr_value = result.data.correlations[i];
+            string key(to_string(result.data.index_position) + "_" + to_string(result.data.positions.at(i)));
+            ASSERT_EQ(goldstandard.count(key), 1);
+            ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 000001);
         }
         result_total_size += result.n_correlations;
     }
@@ -2025,7 +1985,7 @@ TEST_F(LDServerTest, SAV_one_page_no_segment_intersect_2) {
 TEST_F(LDServerTest, known_memory_leak_test) {
     LDServer server(1000);
     server.enable_cache(1, hostname.c_str(), port);
-    LDQueryResult result(100000);
+    SingleVariantLDQueryResult result(100000);
     server.set_file("../../data/ALL.chr22.sav");
     while (server.compute_variant_ld("22:45186606_C/T", "22", 45186270, 45286270, correlation::LD_RSQUARE, result, LDServer::ALL_SAMPLES_KEY));
 }
@@ -2067,7 +2027,7 @@ TEST_F(LDServerTest, rsquare_approx_test) {
             auto corr_value = correlations1[i];
             string key(to_string(result.data.positions.at(index1)) + "_" + to_string(result.data.positions.at(index2)));
             ASSERT_EQ(goldstandard.count(key), 1);
-            ASSERT_NEAR(goldstandard.find(key)->second , corr_value, 0.00000000001);
+            ASSERT_NEAR(goldstandard.find(key)->second, corr_value, 0.00000000001);
         }
     }
 }

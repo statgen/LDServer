@@ -1,6 +1,8 @@
 #ifndef LDSERVER_SEGMENT_H
 #define LDSERVER_SEGMENT_H
 
+#define  ARMA_DONT_USE_WRAPPER
+
 #include <stdexcept>
 #include <iostream>
 #include <vector>
@@ -13,6 +15,8 @@
 #include <savvy/reader.hpp>
 #include <armadillo>
 #include "Types.h"
+
+
 
 using namespace std;
 
@@ -80,6 +84,7 @@ public:
     uint64_t get_n_haplotypes() const;
     uint64_t get_n_genotypes() const;
     uint32_t get_n_variants() const;
+    uint32_t get_ac() const;
     const string& get_name(int i) const;
     uint64_t get_position(int i) const;
     arma::sp_fmat get_genotypes();
@@ -89,6 +94,7 @@ public:
     genotypes_store get_store() const;
 
     static void create_pairs(uint64_t segment1, uint64_t segment2, int i, int start_j, int stop_j, const float* values, LDQueryResult& result);
+    static void create_pairs(uint64_t segment1, uint64_t segment2, int i, int start_j, int stop_j, const float* values, SingleVariantLDQueryResult& result);
     bool overlaps_region(uint64_t region_start_bp, uint64_t region_stop_bp, int& from_index, int& to_index) const;
     bool overlaps_variant(const string& name, uint64_t bp, int& index) const;
 

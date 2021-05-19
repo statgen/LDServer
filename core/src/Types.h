@@ -1,6 +1,8 @@
 #ifndef LDSERVER_TYPES_H
 #define LDSERVER_TYPES_H
 
+#define  ARMA_DONT_USE_WRAPPER
+
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -157,7 +159,7 @@ struct VariantFrequency {
 };
 
 /*
- * Struct to store the LD results as upper triangular matrix. This struct is serialized to MessagePack and JSON as a dictionary.
+ * Struct to store the LD results as upper triangular matrix (for region LD query). This struct is serialized to MessagePack and JSON as a dictionary.
  * All variants are sorted by their position. The order is guaranteed by LDQueryResult.get_variant_index() and LDQueryResult.add_correlation() methods.
  * */
 struct LDQueryResultMatrix {
@@ -174,6 +176,31 @@ struct LDQueryResultMatrix {
         correlations.clear();
     }
     MSGPACK_DEFINE_MAP(variants, chromosomes, positions, offsets, correlations) // tell msgpack what fields do we want to put into the JSON-like map
+};
+
+/*
+ * Struct to store the LD results as a vector (for single variant LD query). This struct is serialized to MessagePack and JSON as a dictionary.
+ * All variants are sorted by their position. The order is guaranteed by SingleVariantLDQueryResult.get_variant_index() and SingleVariantLDQueryResult.add_correlation() methods.
+ * */
+struct LDQueryResultVector {
+    string index_variant;
+    string index_chromosome;
+    uint64_t index_position;
+    vector<string> variants;
+    vector<string> chromosomes;
+    vector<uint64_t> positions;
+    vector<double> correlations;
+    void clear() {
+        index_variant.clear();
+        index_chromosome.clear();
+        index_position = 0u;
+        variants.clear();
+        chromosomes.clear();
+        positions.clear();
+        correlations.clear();
+    }
+    LDQueryResultVector(): index_variant(""), index_chromosome(""), index_position(0u) {}
+    MSGPACK_DEFINE_MAP(index_variant, index_chromosome, index_position, variants, chromosomes, positions, correlations) // tell msgpack what fields do we want to put into the JSON-like map
 };
 
 /**
@@ -210,8 +237,7 @@ struct LDQueryResult {
         return v1.first > v2.first ? false : v1.second < v2.second;
     }
 
-    // We need this constructor only for MessagePack unit test.
-    LDQueryResult(): limit(1000), last_cell(0), last_i(-1), last_j(-1), page(0), n_correlations(0), error(""), next("") { }
+    LDQueryResult(): limit(1000), last_cell(0), last_i(-1), last_j(-1), page(0), n_correlations(0), error(""), next("") { }  // We need this constructor only for MessagePack unit test.
     LDQueryResult(uint32_t page_limit): limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0), n_correlations(0), error(""), next("") { }
 
     /**
@@ -528,6 +554,309 @@ struct LDQueryResult {
                     }
                 }
                 writer.EndArray();
+            }
+        }
+        writer.EndArray();
+        writer.EndObject();
+        writer.Key("error");
+        writer.String(error.c_str());
+        writer.Key("next");
+        writer.String(next.c_str());
+        writer.EndObject();
+//        auto end = std::chrono::system_clock::now();
+//        std::chrono::duration<double>  elapsed = end - start;
+//        std::cout << "Writing JSON to string elapsed time: " << elapsed.count() << " s\n";
+        return strbuf.GetString();
+    }
+
+    // Only for unit tests in C/C++
+    pair<char*, unsigned int> get_messagepack(const string& url) {
+        set_next(url);
+//        auto start = std::chrono::system_clock::now();
+        msgpack::sbuffer msgpack_buffer;
+        msgpack::pack(msgpack_buffer, *this);
+//        auto end = std::chrono::system_clock::now();
+//        std::chrono::duration<double>  elapsed = end - start;
+//        std::cout << "Packing msgpack elapsed time: " << elapsed.count() << " s\n";
+        unsigned int size = msgpack_buffer.size();
+        return make_pair(msgpack_buffer.release(), size);
+    }
+
+    PyObject* get_messagepack_py(const string& url) {
+        auto msgpack = get_messagepack(url);
+        PyObject* msgpack_py = PyBytes_FromStringAndSize(msgpack.first, msgpack.second);
+        free(msgpack.first);
+//        boost::python::object memoryView(boost::python::handle<>(PyMemoryView_FromMemory(msgpack_buffer.data(), msgpack_buffer.size(), PyBUF_READ)));
+//        boost::python::object memoryView(boost::python::handle<>(PyBytes_FromStringAndSize(msgpack_buffer.data(), msgpack_buffer.size())));
+        return msgpack_py;
+    }
+};
+
+
+struct SingleVariantLDQueryResult {
+    uint32_t limit;
+    uint64_t last_cell;
+    int last_i;
+    int last_j;
+    int page;
+    unsigned int n_correlations;
+
+    // BEGIN: this is a payload for JSON and MessagePack
+    LDQueryResultVector data;
+    string error;
+    string next;
+    // END: this is a payload for JSON and MessagePack
+    MSGPACK_DEFINE_MAP(data, error, next) // tell msgpack what fields do we want to put into the JSON-like map
+
+    pair<uint64_t, int> raw_index_variant; // <segment, index within segment> -- used for temporary storing index variant
+    vector<pair<uint64_t, int>> raw_variants; // <segment, index within segment> -- used for temporary collecting all extracted variants
+
+    // defines comparison for <segment, index within segment> pairs to keep variants ordered by chromosomal position
+    static bool compare_raw_variants (const pair<uint64_t, int>& v1, const pair<uint64_t, int>& v2) {
+        if (v1.first < v2.first) {
+            return true;
+        }
+        return v1.first > v2.first ? false : v1.second < v2.second;
+    }
+
+    SingleVariantLDQueryResult(): limit(1000), last_cell(0), last_i(-1), last_j(-1), page(0), n_correlations(0), error(""), next(""), raw_index_variant(0, -1) { }  // We need this constructor only for MessagePack unit test.
+    SingleVariantLDQueryResult(uint32_t page_limit): limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0), n_correlations(0), error(""), next(""), raw_index_variant(0, -1) { }
+
+    /**
+     * Construct an SingleVariantLDQueryResult
+     * @param page_limit
+     * @param last This appears to be a string of the form "last_cell:last_i:last_j:page". last_cell is the morton code
+     *   of the last cell that was retrieved.
+     */
+    SingleVariantLDQueryResult(uint32_t page_limit, const string& last) : limit(page_limit), last_cell(0), last_i(-1), last_j(-1), page(0), n_correlations(0), error(""), next(""), raw_index_variant(0, -1) {
+        vector<std::string> tokens;
+        auto separator = regex(":");
+        copy(sregex_token_iterator(last.begin(), last.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
+        if (tokens.size() > 3) {
+            last_cell = std::stoull(tokens[0]);
+            last_i = std::stoi(tokens[1]);
+            last_j = std::stoi(tokens[2]);
+            page = std::stoi(tokens[3]);
+        }
+    }
+
+    // returns 1 - if new variant was set; returns 0 if no new index variant was set
+    int get_index_variant(uint64_t segment, int i) {
+        if (raw_index_variant.second > 0) {
+            return 0;
+        }
+        raw_index_variant.first = segment;
+        raw_index_variant.second = i;
+        return i;
+    }
+
+//    /*
+//     * If variant is present in "raw_variants", then returns its index there (raw_variants stores variants ordered by chromosomal position).
+//     * If variant is not present in "raw_variants", then inserts the variant into "raw_variants" and to othe associated data structures (and keeps the ordering).
+//     * Returns a pair where first element is the index of the variant, and the second element is 0(new variant was not inserted) or 1 (new variant inserted).
+//     * */
+//    pair<unsigned int, unsigned int> get_variant(uint64_t segment, int i) {
+//        auto raw_variant = pair<uint64_t, int>(segment, i);
+//        unsigned int index = distance(raw_variants.begin(), upper_bound(raw_variants.begin(), raw_variants.end(), raw_variant, compare_raw_variants));
+//        if ((index > 0) && (raw_variants[index - 1].first == segment) && (raw_variants[index - 1].second == i)) {
+//            return make_pair(index - 1, 0);
+//        }
+//        raw_variants.emplace(raw_variants.begin() + index, move(raw_variant));
+////        data.offsets.emplace(data.offsets.begin() + index, INT32_MIN);
+////        data.correlations.emplace(data.correlations.begin() + index, vector<double>());
+////        for (auto &&o: data.offsets) {
+////            if ((o != INT32_MIN) && (index <= o)) {
+////                ++o;
+////            }
+////        }
+//        return make_pair(index, 1);
+//    }
+
+    tuple<unsigned int, unsigned int, unsigned int> get_variants_range(uint64_t segment, int first_i, int last_i) {
+        auto n = last_i - first_i;
+        auto last_raw_variant = pair<uint64_t, int>(segment, last_i - 1);
+        unsigned int last_index = distance(raw_variants.begin(), upper_bound(raw_variants.begin(), raw_variants.end(), last_raw_variant));
+        if (last_index == 0) {
+            // all exisiting positions are greater than the last position to insert, so we append everything to the beggining and increment all offsets by number of new variants.
+            vector<pair<uint64_t, int>> new_raw_variants(n);
+            for (unsigned int i = 0; i < new_raw_variants.size(); ++i) {
+                new_raw_variants[i].first = segment;
+                new_raw_variants[i].second = first_i + i;
+            }
+            raw_variants.insert(raw_variants.begin(), new_raw_variants.begin(), new_raw_variants.end());
+            return make_tuple(0, 0, n);
+        }
+        auto first_raw_variant = pair<uint64_t, int>(segment, first_i);
+        unsigned int first_index = distance(raw_variants.begin(), lower_bound(raw_variants.begin(), raw_variants.end(), first_raw_variant));
+        if (first_index == raw_variants.size()) {
+            // all existing positions are smaller than the first position to insert, so we append everything to the end.
+            vector<pair<uint64_t, int>> new_raw_variants(n);
+            for (unsigned int i = 0; i < new_raw_variants.size(); ++i) {
+                new_raw_variants[i].first = segment;
+                new_raw_variants[i].second = first_i + i;
+            }
+            raw_variants.insert(raw_variants.end(), new_raw_variants.begin(), new_raw_variants.end());
+            return make_tuple(raw_variants.size() - n, raw_variants.size() - n, n);
+        }
+        if (last_index - first_index < n) {
+            auto n_new = n - (last_index - first_index);
+            vector<pair<uint64_t, int>> new_raw_variants(n_new);
+            unsigned int inserted_from = 0u;
+            if ((last_index == raw_variants.size()) && ((raw_variants[last_index - 1].first != last_raw_variant.first) || (raw_variants[last_index - 1].second != last_raw_variant.second))) {
+                // overlap start
+                for (unsigned int i = 0u; i < new_raw_variants.size(); ++i) {
+                    new_raw_variants[i].first = segment;
+                    new_raw_variants[i].second = first_i + (n - n_new) + i;
+                }
+                inserted_from = raw_variants.size();
+                raw_variants.insert(raw_variants.end(), new_raw_variants.begin(), new_raw_variants.end());
+            } else {
+                // overlap end
+                for (unsigned int i = 0u; i < new_raw_variants.size(); ++i) {
+                    new_raw_variants[i].first = segment;
+                    new_raw_variants[i].second = first_i + i;
+                }
+                inserted_from = first_index;
+                raw_variants.insert(raw_variants.begin() + first_index, new_raw_variants.begin(), new_raw_variants.end());
+            }
+            return make_tuple(first_index, inserted_from, n_new);
+        }
+        return make_tuple(first_index, 0, 0);
+    }
+
+//    // Adds new correlation value between variants at index1 and index2. Must be called only once for a pair i.e. there is no check if the correlation value already exists.
+//    void add_correlation(uint32_t index1, uint32_t index2, double value) {
+////        if (index1 > index2) {
+////            auto temp = index1;
+////            index1 = index2;
+////            index2 = temp;
+////        }
+////        data.correlations[index1].push_back(value);
+////        if (data.offsets[index1] == INT32_MIN) {
+////            data.offsets[index1] = index2;
+////        }
+//        ++n_correlations;
+//    }
+
+    void add_correlations(uint32_t start_index, const float* values, unsigned int n) {
+        data.correlations.insert(data.correlations.begin() + start_index, values, values + n);
+        n_correlations += n;
+    }
+
+    bool has_next() const {
+        return ((last_i >= 0) || (last_j >= 0));
+    }
+
+    bool is_last() const {
+        return ((page > 0) && (last_i < 0) && (last_j < 0));
+    }
+
+    /**
+     * Construct a string that represents where to begin loading from. The format is:
+     *   "last_cell:last_i:last_j:page",
+     * where last_cell is the morton code of the cell to load, and last_i/j are the
+     * segment indexes.
+     *
+     * This function is called by LDQueryResult::get_json() and LDQueryResult::get_messagepack() to provide as part of the "next URL".
+     *
+     * */
+    void set_next(const string& url) {
+        if (has_next()) {
+            next = url + "&last=" + to_string(last_cell) + ":" + to_string(last_i) + ":" + to_string(last_j) + ":" + to_string(page);
+        } else {
+            next = "";
+        }
+    }
+
+    void clear_data() {
+        n_correlations = 0u;
+        data.clear();
+        raw_index_variant.first = 0u;
+        raw_index_variant.second = -1;
+        raw_variants.clear();
+        error = "";
+        next = "";
+    }
+
+    void clear_last() {
+        last_cell = 0u;
+        last_i = last_j = -1;
+    }
+
+    void erase() {
+        clear_data();
+        clear_last();
+        page = 0;
+    }
+
+    string get_json(const string& url, int precision = 0) {
+        set_next(url);
+
+        rapidjson::StringBuffer strbuf;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
+
+        if (precision > 0) {
+            writer.SetMaxDecimalPlaces(precision);
+        }
+
+//        auto start = std::chrono::system_clock::now();
+        writer.StartObject();
+        writer.Key("data");
+        writer.StartObject();
+        writer.Key("index_variant");
+        if (!data.index_variant.empty()) {
+            writer.String(data.index_variant.c_str());
+        } else {
+            writer.Null();
+        }
+        writer.Key("index_chromosome");
+        if (!data.index_chromosome.empty()) {
+            writer.String(data.index_chromosome.c_str());
+        } else {
+            writer.Null();
+        }
+        writer.Key("index_position");
+        if (data.index_position > 0) {
+            writer.Uint64(data.index_position);
+        } else {
+            writer.Null();
+        }
+        writer.Key("variants");
+        writer.StartArray();
+        for (auto&& v: data.variants) {
+            writer.String(v.c_str());
+        }
+        writer.EndArray();
+        writer.Key("chromosomes");
+        writer.StartArray();
+        for (auto&& v: data.chromosomes) {
+            writer.String(v.c_str());
+        }
+        writer.EndArray();
+        writer.Key("positions");
+        writer.StartArray();
+        for (auto&& v: data.positions) {
+            writer.Uint64(v);
+        }
+        writer.EndArray();
+        writer.Key("correlations");
+        writer.StartArray();
+        if (precision > 0) {
+            double d = pow(10.0, precision);
+            for (auto& v : data.correlations) {
+                if (std::isnan(v)) {
+                    writer.Null();
+                } else {
+                    writer.Double(round(v * d) / d);
+                }
+            }
+        } else {
+            for (auto& v : data.correlations) {
+                if (std::isnan(v)) {
+                    writer.Null();
+                } else {
+                    writer.Double(v);
+                }
             }
         }
         writer.EndArray();

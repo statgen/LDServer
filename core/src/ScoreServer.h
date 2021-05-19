@@ -1,6 +1,8 @@
 #ifndef LDSERVER_SCORESERVER_H
 #define LDSERVER_SCORESERVER_H
 
+#define  ARMA_DONT_USE_WRAPPER
+
 #include <string>
 #include <vector>
 #include <set>
@@ -10,7 +12,10 @@
 #include <savvy/reader.hpp>
 #include <savvy/armadillo_vector.hpp>
 #include <hiredis/hiredis.h>
+
+#define  ARMA_DONT_USE_WRAPPER
 #include <armadillo>
+
 #include <cmath>
 #include <regex>
 #include <chrono>

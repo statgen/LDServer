@@ -5,7 +5,7 @@ from webargs.flaskparser import parser
 from webargs import fields, ValidationError
 from functools import partial
 from . import model
-from core.pywrapper import LDServer, LDQueryResult, StringVec, correlation
+from core.pywrapper import LDServer, LDQueryResult, StringVec, correlation, SingleVariantLDQueryResult
 import time
 
 API_VERSION = "1.0"
@@ -120,7 +120,7 @@ def get_chromosomes(genome_build, reference_name):
     return make_response(jsonify(response), 200 if response['data'] is not None else 404)
 
 def correlation_type(correlation_name):
-    return { 'r': correlation.ld_r, 'rsquare': correlation.ld_rsquare, 'cov': correlation.cov }[correlation_name]
+    return { 'r': correlation.ld_r, 'rsquare': correlation.ld_rsquare, 'rsquare_approx': correlation.ld_rsquare_approx, 'cov': correlation.cov }[correlation_name]
 
 @bp.route('/genome_builds/<genome_build>/references/<reference_name>/populations/<population_name>/regions', methods = ['GET'])
 def get_region_ld(genome_build, reference_name, population_name):
@@ -212,9 +212,9 @@ def get_variant_ld(genome_build, reference_name, population_name):
     for f in model.get_files(reference_id):
         ldserver.set_file(f)
     if 'last' in args:
-        result = LDQueryResult(args['limit'], str(args['last']))
+        result = SingleVariantLDQueryResult(args['limit'], str(args['last']))
     else:
-        result = LDQueryResult(args['limit'])
+        result = SingleVariantLDQueryResult(args['limit'])
     if population_name != 'ALL':
         s = StringVec()
         s.extend(model.get_samples(reference_id, population_name))

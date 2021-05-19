@@ -64,6 +64,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .value("ld_r", LD_R)
             .value("ld_rsquare", LD_RSQUARE)
             .value("cov", COV)
+            .value("ld_rsquare_approx", LD_RSQUARE_APPROX)
             ;
 
     boost::python::enum_<ColumnType>("ColumnType")
@@ -96,6 +97,16 @@ BOOST_PYTHON_MODULE(pywrapper) {
         .def_readonly("positions", &LDQueryResultMatrix::positions)
         .def_readonly("offsets", &LDQueryResultMatrix::offsets)
         .def_readonly("correlations", &LDQueryResultMatrix::correlations)
+        ;
+
+    boost::python::class_<LDQueryResultVector, boost::noncopyable>("LDQueryResultVector")
+        .def_readonly("index_variant", &LDQueryResultVector::index_variant)
+        .def_readonly("index_chromosome", &LDQueryResultVector::index_chromosome)
+        .def_readonly("index_position", &LDQueryResultVector::index_position)
+        .def_readonly("variants", &LDQueryResultVector::variants)
+        .def_readonly("chromosomes", &LDQueryResultVector::chromosomes)
+        .def_readonly("positions", &LDQueryResultVector::positions)
+        .def_readonly("correlations", &LDQueryResultVector::correlations)
         ;
 
     boost::python::class_<ScoreResult>("ScoreResult")
@@ -132,6 +143,19 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("get_json", &LDQueryResult::get_json)
             .def("get_messagepack_py", &LDQueryResult::get_messagepack_py)
             ;
+
+    boost::python::class_<SingleVariantLDQueryResult, boost::noncopyable>("SingleVariantLDQueryResult", boost::python::init<boost::uint32_t>())
+        .def(boost::python::init<boost::uint32_t, const string&>())
+        .def_readonly("limit", &SingleVariantLDQueryResult::limit)
+        .def_readonly("data", &SingleVariantLDQueryResult::data)
+        .def_readonly("next", &SingleVariantLDQueryResult::next)
+        .def_readonly("error", &SingleVariantLDQueryResult::error)
+        .def("is_last", &SingleVariantLDQueryResult::is_last)
+        .def("has_next", &SingleVariantLDQueryResult::has_next)
+        .def("set_next", &SingleVariantLDQueryResult::set_next)
+        .def("get_json", &SingleVariantLDQueryResult::get_json)
+        .def("get_messagepack_py", &SingleVariantLDQueryResult::get_messagepack_py)
+        ;
 
     boost::python::class_<ScoreStatQueryResult, boost::noncopyable>("ScoreStatQueryResult", boost::python::init<boost::uint32_t>())
             .def(boost::python::init<boost::uint32_t, const string&>())

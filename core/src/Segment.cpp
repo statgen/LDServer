@@ -59,6 +59,14 @@ uint32_t Segment::get_n_variants() const {
     return names.size();
 }
 
+uint32_t Segment::get_ac() const {
+    if ((store == CSC_ALL_ONES) || (store == CSC)) {
+        return sp_mat_rowind.size();
+    } else {
+        return 0u; // this function is called for CSC_ALL_ONES or CSC stores. No case of calling it for BITSET, so we don't implement this case at the moment.
+    }
+}
+
 const string& Segment::get_name(int i) const {
     return names[i];
 }
@@ -293,6 +301,11 @@ void Segment::create_pairs(uint64_t segment_i, uint64_t segment_j, int i, int st
     } else {
         result.add_correlations(get<0>(res1), get<0>(res2), values, stop_j - start_j);
     }
+}
+
+void Segment::create_pairs(uint64_t segment_i, uint64_t segment_j, int i, int start_j, int stop_j, const float* values, SingleVariantLDQueryResult& result) {
+    auto res = result.get_variants_range(segment_j, start_j, stop_j);
+    result.add_correlations(get<0>(res), values, stop_j - start_j);
 }
 
 bool Segment::overlaps_region(uint64_t region_start_bp, uint64_t region_stop_bp, int &segment_start_index, int &segment_stop_index) const {

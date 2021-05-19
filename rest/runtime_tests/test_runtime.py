@@ -78,7 +78,7 @@ if __name__ == '__main__':
         else:
             if '&msgpack=1' in query:
                 query = query.replace('&msgpack=1', '')
-        if 'decimals' in args:
+        if args.decimals:
             if '&precision' not in query:
                 query += f'&precision={args.decimals}'
         url = 'http://{}{}/{}'.format(args.hostname, ':' + str(args.port) if args.port else '', query)
@@ -97,10 +97,16 @@ if __name__ == '__main__':
                 result = response.json()
             data = result['data']
             total_time += (end - start)
-            assert len(data['variants']) == len(data['chromosomes'])
-            assert len(data['variants']) == len(data['positions'])
-            assert len(data['variants']) == len(data['offsets'])
-            total_results += sum([len(x) for x in data['correlations']])
+            if not 'index_variant' in data:
+                assert len(data['variants']) == len(data['chromosomes'])
+                assert len(data['variants']) == len(data['positions'])
+                assert len(data['variants']) == len(data['offsets'])
+                total_results += sum([len(x) for x in data['correlations']])
+            else:
+                assert len(data['variants']) == len(data['chromosomes'])
+                assert len(data['variants']) == len(data['positions'])
+                assert len(data['variants']) == len(data['correlations'])
+                total_results += len(data['correlations'])
             total_pages += 1
             url = result['next']
         print('{}\t{}\t{}\t{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}'.format(query, region_length, page_size, len(data['variants']), total_results, total_pages, total_time, response.elapsed.total_seconds(), len(response.content) / (1024.0 * 1024.0), int(response.headers['Content-Length']) / (1024.0 * 1024.0)))

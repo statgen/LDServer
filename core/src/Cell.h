@@ -1,6 +1,8 @@
 #ifndef LDSERVER_CELL_H
 #define LDSERVER_CELL_H
 
+#define  ARMA_DONT_USE_WRAPPER
+
 #include <stdexcept>
 #include <iostream>
 #include <memory>
@@ -70,7 +72,7 @@ public:
     virtual void compute() = 0;
 
     void extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result, bool diagonal = false);
-    void extract(const std::string& index_variant, std::uint64_t index_bp, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result);
+    void extract(const std::string& index_variant, std::uint64_t index_bp, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct SingleVariantLDQueryResult& result);
 
 };
 

@@ -10,7 +10,10 @@
 #include "ScoreCovarianceRunner.h"
 #include "Raw.h"
 #include <chrono>
+
+#define  ARMA_DONT_USE_WRAPPER
 #include <armadillo>
+
 using namespace std;
 
 void test1() {

@@ -11,7 +11,7 @@ def test_correlations(client):
     assert all(x in result for x in ['data', 'error'])
     assert result['error'] is None
     data = result['data']
-    assert len(data) == 3
+    assert len(data) == 4
     for correlation in data:
         assert all(x in correlation for x in ['name', 'label', 'description', 'type'])
 
@@ -154,6 +154,31 @@ def test_region_ld(client, goldstandard_ld):
         assert (offset1 >= i1) and (offset1 < len(data['variants']))
         for i2, value in enumerate(correlations1, offset1):
             key = str(data['positions'][i1]) + '_' + str(data['positions'][i2])
+            assert key in goldstandard
+            assert pytest.approx(value, 0.00001) == goldstandard[key]
+
+    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/regions?chrom=22&start=51241101&stop=51241385&correlation=rsquare_approx')
+    assert response.status_code == 200
+    assert response.content_type == 'application/json'
+    result = response.get_json()
+    assert all(x in result for x in ['data', 'error', 'next'])
+    assert result['error'] is ''
+    assert result['next'] is ''
+    data = result['data']
+    assert all(x in data for x in ['variants', 'chromosomes', 'positions', 'offsets', 'correlations'])
+    assert all(len(data['variants']) == len(data[x]) for x in ['chromosomes', 'positions', 'offsets', 'correlations'])
+    n_correlations = sum(len(x) for x in data['correlations'])
+    goldstandard = goldstandard_ld('../data/region_ld_22_51241101_51241385.hap.ld')
+    assert len(goldstandard) == n_correlations
+    for i1, correlations1 in enumerate(data['correlations']):
+        offset1 = data['offsets'][i1]
+        if len(correlations1) == 0:
+            assert offset1 < 0
+            continue
+        assert (offset1 >= i1) and (offset1 < len(data['variants']))
+        for i2, value in enumerate(correlations1, offset1):
+            key = str(data['positions'][i1]) + '_' + str(data['positions'][i2])
+            print(key, value, goldstandard[key])
             assert key in goldstandard
             assert pytest.approx(value, 0.00001) == goldstandard[key]
 
@@ -344,23 +369,15 @@ def test_variant_ld(client, goldstandard_ld):
     assert result['error'] is ''
     assert result['next'] is ''
     data = result['data']
-    assert all(x in data for x in ['variants', 'chromosomes', 'positions', 'offsets', 'correlations'])
-    assert all(len(data['variants']) == len(data[x]) for x in ['chromosomes', 'offsets', 'positions', 'correlations'])
-    n_correlations = sum(len(x) for x in data['correlations'])
+    assert all(x in data for x in ['index_variant', 'index_chromosome', 'index_position', 'variants', 'chromosomes', 'positions', 'correlations'])
+    assert all(len(data['variants']) == len(data[x]) for x in ['chromosomes', 'positions', 'correlations'])
+    n_correlations = len(data['correlations'])
     goldstandard = goldstandard_ld('../data/variant_ld_22_51241101_vs_51241101_51241385.hap.ld')
     assert len(goldstandard) == n_correlations
-    for i1, correlations1 in enumerate(data['correlations']):
-        offset1 = data['offsets'][i1]
-        if len(correlations1) == 0:
-            assert offset1 < 0
-            continue
-        assert (offset1 >= i1) and (offset1 < len(data['variants']))
-        for i2, value in enumerate(correlations1, offset1):
-            key = str(data['positions'][i1]) + '_' + str(data['positions'][i2])
-            if key not in goldstandard:
-                key = str(data['positions'][i2]) + '_' + str(data['positions'][i1])
-            assert key in goldstandard
-            assert pytest.approx(value, 0.00001) == goldstandard[key]
+    for i, correlation in enumerate(data['correlations']):
+        key = str(data['index_position']) + '_' + str(data['positions'][i])
+        assert key in goldstandard
+        assert pytest.approx(correlation, 0.00001) == goldstandard[key]
 
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=r')
     assert response.status_code == 200
@@ -370,22 +387,15 @@ def test_variant_ld(client, goldstandard_ld):
     assert result['error'] is ''
     assert result['next'] is ''
     data = result['data']
-    assert all(x in data for x in ['variants', 'chromosomes', 'positions', 'offsets', 'correlations'])
-    assert all(len(data['variants']) == len(data[x]) for x in ['chromosomes', 'offsets', 'positions', 'correlations'])
+    assert all(x in data for x in ['index_variant', 'index_chromosome', 'index_position', 'variants', 'chromosomes', 'positions', 'correlations'])
+    assert all(len(data['variants']) == len(data[x]) for x in ['chromosomes', 'positions', 'correlations'])
+    n_correlations = len(data['correlations'])
     goldstandard = goldstandard_ld('../data/variant_ld_22_51241101_vs_51241101_51241385.hap.ld')
     assert len(goldstandard) == n_correlations
-    for i1, correlations1 in enumerate(data['correlations']):
-        offset1 = data['offsets'][i1]
-        if len(correlations1) == 0:
-            assert offset1 < 0
-            continue
-        assert (offset1 >= i1) and (offset1 < len(data['variants']))
-        for i2, value in enumerate(correlations1, offset1):
-            key = str(data['positions'][i1]) + '_' + str(data['positions'][i2])
-            if key not in goldstandard:
-                key = str(data['positions'][i2]) + '_' + str(data['positions'][i1])
-            assert key in goldstandard
-            assert pytest.approx(value**2, 0.00001) == goldstandard[key]
+    for i, correlation in enumerate(data['correlations']):
+        key = str(data['index_position']) + '_' + str(data['positions'][i])
+        assert key in goldstandard
+        assert pytest.approx(correlation**2, 0.00001) == goldstandard[key]
 
 
 def test_variant_ld_with_msgpack(client, goldstandard_ld):
@@ -397,24 +407,15 @@ def test_variant_ld_with_msgpack(client, goldstandard_ld):
     assert result['error'] is ''
     assert result['next'] is ''
     data = result['data']
-    assert all(x in data for x in ['variants', 'chromosomes', 'positions', 'offsets', 'correlations'])
-    assert all(len(data['variants']) == len(data[x]) for x in ['chromosomes', 'offsets', 'positions', 'correlations'])
-    n_correlations = sum(len(x) for x in data['correlations'])
+    assert all(x in data for x in ['index_variant', 'index_chromosome', 'index_position', 'variants', 'chromosomes', 'positions', 'correlations'])
+    assert all(len(data['variants']) == len(data[x]) for x in ['chromosomes', 'positions', 'correlations'])
+    n_correlations = len(data['correlations'])
     goldstandard = goldstandard_ld('../data/variant_ld_22_51241101_vs_51241101_51241385.hap.ld')
     assert len(goldstandard) == n_correlations
-    for i1, correlations1 in enumerate(data['correlations']):
-        offset1 = data['offsets'][i1]
-        if len(correlations1) == 0:
-            assert offset1 < 0
-            continue
-        assert (offset1 >= i1) and (offset1 < len(data['variants']))
-        for i2, value in enumerate(correlations1, offset1):
-            key = str(data['positions'][i1]) + '_' + str(data['positions'][i2])
-            if key not in goldstandard:
-                key = str(data['positions'][i2]) + '_' + str(data['positions'][i1])
-            assert key in goldstandard
-            print((key, goldstandard[key], value))
-            assert pytest.approx(value, 0.00001) == goldstandard[key]
+    for i, correlation in enumerate(data['correlations']):
+        key = str(data['index_position']) + '_' + str(data['positions'][i])
+        assert key in goldstandard
+        assert pytest.approx(correlation, 0.00001) == goldstandard[key]
 
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=r&msgpack=1')
     assert response.status_code == 200
@@ -424,24 +425,15 @@ def test_variant_ld_with_msgpack(client, goldstandard_ld):
     assert result['error'] is ''
     assert result['next'] is ''
     data = result['data']
-    assert all(x in data for x in ['variants', 'chromosomes', 'positions', 'offsets', 'correlations'])
-    assert all(len(data['variants']) == len(data[x]) for x in ['chromosomes', 'offsets', 'positions', 'correlations'])
-    n_correlations = sum(len(x) for x in data['correlations'])
+    assert all(x in data for x in ['index_variant', 'index_chromosome', 'index_position', 'variants', 'chromosomes', 'positions', 'correlations'])
+    assert all(len(data['variants']) == len(data[x]) for x in ['chromosomes', 'positions', 'correlations'])
+    n_correlations = len(data['correlations'])
     goldstandard = goldstandard_ld('../data/variant_ld_22_51241101_vs_51241101_51241385.hap.ld')
     assert len(goldstandard) == n_correlations
-    for i1, correlations1 in enumerate(data['correlations']):
-        offset1 = data['offsets'][i1]
-        if len(correlations1) == 0:
-            assert offset1 < 0
-            continue
-        assert (offset1 >= i1) and (offset1 < len(data['variants']))
-        for i2, value in enumerate(correlations1, offset1):
-            key = str(data['positions'][i1]) + '_' + str(data['positions'][i2])
-            if key not in goldstandard:
-                key = str(data['positions'][i2]) + '_' + str(data['positions'][i1])
-            assert key in goldstandard
-            print((key, goldstandard[key], value))
-            assert pytest.approx(value**2, 0.00001) == goldstandard[key]
+    for i, correlation in enumerate(data['correlations']):
+        key = str(data['index_position']) + '_' + str(data['positions'][i])
+        assert key in goldstandard
+        assert pytest.approx(correlation**2, 0.00001) == goldstandard[key]
 
 
 def test_variant_ld_precision(client, goldstandard_ld):
@@ -453,23 +445,15 @@ def test_variant_ld_precision(client, goldstandard_ld):
     assert result['error'] is ''
     assert result['next'] is ''
     data = result['data']
-    assert all(x in data for x in ['variants', 'chromosomes', 'positions', 'offsets', 'correlations'])
-    assert all(len(data['variants']) == len(data[x]) for x in ['chromosomes', 'offsets', 'positions', 'correlations'])
-    n_correlations = sum(len(x) for x in data['correlations'])
+    assert all(x in data for x in ['index_variant', 'index_chromosome', 'index_position', 'variants', 'chromosomes', 'positions', 'correlations'])
+    assert all(len(data['variants']) == len(data[x]) for x in ['chromosomes', 'positions', 'correlations'])
+    n_correlations = len(data['correlations'])
     goldstandard = goldstandard_ld('../data/variant_ld_22_51241101_vs_51241101_51241385.hap.ld')
     assert len(goldstandard) == n_correlations
-    for i1, correlations1 in enumerate(data['correlations']):
-        offset1 = data['offsets'][i1]
-        if len(correlations1) == 0:
-            assert offset1 < 0
-            continue
-        assert (offset1 >= i1) and (offset1 < len(data['variants']))
-        for i2, value in enumerate(correlations1, offset1):
-            key = str(data['positions'][i1]) + '_' + str(data['positions'][i2])
-            if key not in goldstandard:
-                key = str(data['positions'][i2]) + '_' + str(data['positions'][i1])
-            assert key in goldstandard
-            assert pytest.approx(value, 0.00001) == round(goldstandard[key], 7)
+    for i, correlation in enumerate(data['correlations']):
+        key = str(data['index_position']) + '_' + str(data['positions'][i])
+        assert key in goldstandard
+        assert pytest.approx(correlation, 0.00001) == round(goldstandard[key], 7)
 
 
 def test_variant_ld_different_chromosomes(client):
@@ -480,8 +464,11 @@ def test_variant_ld_different_chromosomes(client):
     assert result['error'] is ''
     assert result['next'] is ''
     data = result['data']
-    assert all(x in data for x in ['variants', 'chromosomes', 'positions', 'offsets', 'correlations'])
-    assert all(len(data[x]) == 0 for x in ['variants', 'chromosomes', 'positions', 'offsets', 'correlations'])
+    assert all(x in data for x in ['index_variant', 'index_chromosome', 'index_position', 'variants', 'chromosomes', 'positions', 'correlations'])
+    assert all(len(data[x]) == 0 for x in ['variants', 'chromosomes', 'positions', 'correlations'])
+    assert data['index_variant'] is None
+    assert data['index_chromosome'] is None
+    assert data['index_position'] is None
 
 
 def test_variant_ld_with_paging(client):
@@ -491,14 +478,10 @@ def test_variant_ld_with_paging(client):
     assert response.content_type == 'application/json'
     data = response.get_json()['data']
     single_page_result = {}
-    for i1, correlations1 in enumerate(data['correlations']):
-        offset1 = data['offsets'][i1]
-        if len(correlations1) == 0:
-            continue
-        for i2, value in enumerate(correlations1, offset1):
-            key = str(data['positions'][i1]) + '_' + str(data['positions'][i2])
-            assert key not in single_page_result
-            single_page_result[key] = value
+    for i, correlation in enumerate(data['correlations']):
+        key = str(data['index_position']) + '_' + str(data['positions'][i])
+        single_page_result[key] = correlation
+
     url += '&limit=2'
     multi_page_result = {}
     while True:
@@ -507,14 +490,10 @@ def test_variant_ld_with_paging(client):
         assert response.content_type == 'application/json'
         result = response.get_json()
         data = result['data']
-        for i1, correlations1 in enumerate(data['correlations']):
-            offset1 = data['offsets'][i1]
-            if len(correlations1) == 0:
-                continue
-            for i2, value in enumerate(correlations1, offset1):
-                key = str(data['positions'][i1]) + '_' + str(data['positions'][i2])
-                assert key not in multi_page_result
-                multi_page_result[key] = value
+        for i, correlation in enumerate(data['correlations']):
+            key = str(data['index_position']) + '_' + str(data['positions'][i])
+            assert key not in multi_page_result
+            multi_page_result[key] = correlation
         url = result['next']
         if url == '':
             break

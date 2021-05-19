@@ -1,6 +1,8 @@
 #ifndef LDSERVER_LDSERVER_H
 #define LDSERVER_LDSERVER_H
 
+#define  ARMA_DONT_USE_WRAPPER
+
 #include <string>
 #include <vector>
 #include <set>
@@ -19,6 +21,7 @@
 #include "Segment.h"
 #include "Cell.h"
 #include "Types.h"
+#include <omp.h>
 
 using namespace std;
 
@@ -76,7 +79,7 @@ public:
      * @return
      */
     bool compute_region_ld(const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, correlation correlation_type, struct LDQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY, bool diagonal = false, SharedSegmentVector segments_out = nullptr) const;
-    bool compute_variant_ld(const string& index_variant, const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, correlation correlation_type, struct LDQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY) const;
+    bool compute_variant_ld(const string& index_variant, const string& region_chromosome, uint64_t region_start_bp, uint64_t region_stop_bp, correlation correlation_type, struct SingleVariantLDQueryResult& result, const string& samples_name = ALL_SAMPLES_KEY) const;
 };
 
 #endif

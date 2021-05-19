@@ -3,7 +3,6 @@
 const std::string LDServer::ALL_SAMPLES_KEY("ALL");
 
 LDServer::LDServer(uint32_t segment_size) : segment_size(segment_size), cache_enabled(false), cache_key(0u), cache_hostname(""), cache_port(0), cache_context(nullptr) {
-
 }
 
 LDServer::~LDServer() {
@@ -376,7 +375,120 @@ bool LDServer::compute_region_ld(const std::string& region_chromosome, std::uint
     return true;
 }
 
-bool LDServer::compute_variant_ld(const std::string& index_variant, const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, correlation correlation_type, struct LDQueryResult& result, const std::string& samples_name) const {
+//bool LDServer::compute_variant_ld(const std::string& index_variant, const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, correlation correlation_type, struct SingleVariantLDQueryResult& result, const std::string& samples_name) const {
+//    if (result.is_last()) {
+//        return false;
+//    }
+//
+//    result.page += 1;
+//
+//    std::string index_chromosome, index_ref_allele, index_alt_allele;
+//    std::uint64_t index_bp;
+//
+//    parse_variant(index_variant, index_chromosome, index_bp, index_ref_allele, index_alt_allele);
+//
+//    if (index_chromosome.compare(region_chromosome) != 0) {
+//        result.clear_last();
+//        return false; // todo: raise exception - index variant must be from the same chromosome as the region
+//    }
+//
+//    result.clear_data();
+//
+//    auto raw_it = raw.find(index_chromosome);
+//    if (raw_it == raw.end()) { // no such chromosome - return empty result
+//        result.clear_last();
+//        return false;
+//    }
+//
+//    auto samples_it = this->samples.find(samples_name);
+//    if (samples_it == this->samples.end()) { // no such samples - return empty result
+//        result.clear_last();
+//        return false;
+//    }
+//
+//    raw_it->second->open(index_chromosome, samples_it->second, correlation_type == correlation::COV);
+//    genotypes_store store = genotypes_store::CSC_ALL_ONES;
+//    if (correlation_type == correlation::COV) {
+//        store = genotypes_store::CSC;
+//    } else if (correlation_type == correlation::LD_RSQUARE_APPROX) {
+//        store = genotypes_store::BITSET;
+//    }
+//
+//    std::map<std::uint64_t, shared_ptr<Segment>> segments;
+//
+//    uint64_t segment_index = index_bp / segment_size;
+//    uint64_t segment_i = region_start_bp / segment_size;
+//    uint64_t segment_j = region_stop_bp / segment_size;
+//    uint64_t z_min = 0,z_max = 0;
+//    if (segment_index <= segment_i) { // only upper triangle of the matrix must be used
+//        z_min = to_morton_code(segment_i, segment_index);
+//        z_max = to_morton_code(segment_j, segment_index);
+//    } else if ((segment_index > segment_i) && (segment_index < segment_j)) {
+//        z_min = to_morton_code(segment_index, segment_i);
+//        z_max = to_morton_code(segment_j, segment_index);
+//    } else {
+//        z_min = to_morton_code(segment_index, segment_i);
+//        z_max = to_morton_code(segment_index, segment_j);
+//    }
+//    uint64_t z = get_next_z(segment_index, segment_i, segment_j, z_min, z_max, result.last_cell > z_min ? result.last_cell : z_min);
+//    uint64_t i = 0u, j = 0u;
+//    CellFactory factory;
+//    while (z <= z_max) {
+//        string key = make_cell_cache_key(cache_key, samples_name, correlation_type, region_chromosome, z);
+//        from_morton_code(z, i, j);
+//        shared_ptr<Cell> cell = factory.create(correlation_type, i, j);
+//        if (cache_enabled) {
+//            cell->load(cache_context, key);
+//        }
+//        cell->segment_i = load_segment(raw_it->second, store, samples_name, cell->is_cached(), region_chromosome, cell->get_i(), segments);
+//        if (!cell->is_diagonal()) {
+//            cell->segment_j = load_segment(raw_it->second, store, samples_name, cell->is_cached(), region_chromosome, cell->get_j(), segments);
+//        }
+//        if (!cell->is_cached()) {
+//            cell->compute();
+//            if (cache_enabled) {
+//                cell->save(cache_context, key);
+//            }
+//        }
+//        cell->extract(index_variant, index_bp, region_start_bp, region_stop_bp, result);
+//        if (result.last_j >= 0) {
+//            result.last_cell = z;
+//            break;
+//        }
+//        z = get_next_z(segment_index, segment_i, segment_j, z_min, z_max, ++z);
+//        if (result.n_correlations >= result.limit) {
+//            if (z <= z_max) {
+//                result.last_cell = z;
+//                result.last_j = 0;
+//            }
+//            break;
+//        }
+//    }
+//
+//    //  Before returning the result, fill out full variant names, chromosomes, and positions
+//    if (result.raw_index_variant.second >= 0) {
+//        auto segment = segments[result.raw_index_variant.first];
+//        result.data.index_variant = segment->get_name(result.raw_index_variant.second);
+//        result.data.index_chromosome = segment->get_chromosome();
+//        result.data.index_position = segment->get_position(result.raw_index_variant.second);
+//    }
+//
+//    if (result.raw_variants.size() > 0) {
+//        result.data.variants.reserve(result.raw_variants.size());
+//        result.data.chromosomes.reserve(result.raw_variants.size());
+//        result.data.positions.reserve(result.raw_variants.size());
+//        for (auto&& entry: result.raw_variants) {
+//            auto segment = segments[entry.first];
+//            result.data.variants.push_back(segment->get_name(entry.second));
+//            result.data.chromosomes.push_back(segment->get_chromosome());
+//            result.data.positions.push_back(segment->get_position(entry.second));
+//        }
+//    }
+//
+//    return true;
+//}
+
+bool LDServer::compute_variant_ld(const std::string& index_variant, const std::string& region_chromosome, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, correlation correlation_type, struct SingleVariantLDQueryResult& result, const std::string& samples_name) const {
     if (result.is_last()) {
         return false;
     }
@@ -431,42 +543,111 @@ bool LDServer::compute_variant_ld(const std::string& index_variant, const std::s
         z_min = to_morton_code(segment_index, segment_i);
         z_max = to_morton_code(segment_index, segment_j);
     }
-    uint64_t z = get_next_z(segment_index, segment_i, segment_j, z_min, z_max, result.last_cell > z_min ? result.last_cell : z_min);
+
+//    uint64_t z = get_next_z(segment_index, segment_i, segment_j, z_min, z_max, result.last_cell > z_min ? result.last_cell : z_min);
     uint64_t i = 0u, j = 0u;
     CellFactory factory;
-    while (z <= z_max) {
-        string key = make_cell_cache_key(cache_key, samples_name, correlation_type, region_chromosome, z);
-        from_morton_code(z, i, j);
-        shared_ptr<Cell> cell = factory.create(correlation_type, i, j);
-        if (cache_enabled) {
-            cell->load(cache_context, key);
-        }
-        cell->segment_i = load_segment(raw_it->second, store, samples_name, cell->is_cached(), region_chromosome, cell->get_i(), segments);
-        if (!cell->is_diagonal()) {
-            cell->segment_j = load_segment(raw_it->second, store, samples_name, cell->is_cached(), region_chromosome, cell->get_j(), segments);
-        }
-        if (!cell->is_cached()) {
-            cell->compute();
+
+    uint64_t z_init = result.last_cell > z_min ? result.last_cell : z_min;
+    unsigned int max_n_lookahead = 16u;
+    if (omp_get_max_threads() < max_n_lookahead) {
+        max_n_lookahead = omp_get_max_threads();
+    }
+    vector<tuple<uint64_t, string, shared_ptr<Cell>>> cell_fifo;
+    bool filled = false;
+    while (!filled) {
+        cell_fifo.clear();
+
+        for (unsigned int i_lookahead = 0u; i_lookahead < max_n_lookahead; ++i_lookahead) {
+            uint64_t z = get_next_z(segment_index, segment_i, segment_j, z_min, z_max, z_init);
+            string key = make_cell_cache_key(cache_key, samples_name, correlation_type, region_chromosome, z);
+            from_morton_code(z, i, j);
+            shared_ptr<Cell> cell = factory.create(correlation_type, i, j);
             if (cache_enabled) {
-                cell->save(cache_context, key);
+                cell->load(cache_context, key);
+            }
+            cell->segment_i = load_segment(raw_it->second, store, samples_name, cell->is_cached(), region_chromosome, cell->get_i(), segments);
+            if (!cell->is_diagonal()) {
+                cell->segment_j = load_segment(raw_it->second, store, samples_name, cell->is_cached(), region_chromosome, cell->get_j(), segments);
+            }
+            cell_fifo.emplace_back(z, move(key), move(cell));
+            if (z == z_max) {
+                filled = true;
+                break;
+            }
+            z_init = ++z;
+        }
+
+        #pragma omp parallel for schedule(static, 1)
+        for (unsigned int i = 0; i < cell_fifo.size(); ++i) { // parallelize ?
+            auto& cell = cell_fifo[i];
+            if (!get<2>(cell)->is_cached()) {
+                get<2>(cell)->compute();
+                if (cache_enabled) {
+                    get<2>(cell)->save(cache_context, get<1>(cell));
+                }
             }
         }
-        cell->extract(index_variant, index_bp, region_start_bp, region_stop_bp, result);
-        if (result.last_j >= 0) {
-            result.last_cell = z;
-            break;
-        }
-        z = get_next_z(segment_index, segment_i, segment_j, z_min, z_max, ++z);
-        if (result.n_correlations >= result.limit) {
-            if (z <= z_max) {
-                result.last_cell = z;
-                result.last_j = 0;
+
+        for (unsigned int i = 0; i < cell_fifo.size(); ++i) {
+            auto& cell = cell_fifo[i];
+            get<2>(cell)->extract(index_variant, index_bp, region_start_bp, region_stop_bp, result);
+            if (result.last_j >= 0) {
+                result.last_cell = get<0>(cell);
+                filled = true;
+                break;
             }
-            break;
+            if (result.n_correlations >= result.limit) {
+                if (i < cell_fifo.size() - 1) {
+                    result.last_cell = get<0>(cell_fifo[i + 1]);
+                    result.last_j = 0;
+                }
+                filled = true;
+                break;
+            }
         }
     }
 
+//    while (z <= z_max) {
+//        string key = make_cell_cache_key(cache_key, samples_name, correlation_type, region_chromosome, z);
+//        from_morton_code(z, i, j);
+//        shared_ptr<Cell> cell = factory.create(correlation_type, i, j);
+//        if (cache_enabled) {
+//            cell->load(cache_context, key);
+//        }
+//        cell->segment_i = load_segment(raw_it->second, store, samples_name, cell->is_cached(), region_chromosome, cell->get_i(), segments);
+//        if (!cell->is_diagonal()) {
+//            cell->segment_j = load_segment(raw_it->second, store, samples_name, cell->is_cached(), region_chromosome, cell->get_j(), segments);
+//        }
+//        if (!cell->is_cached()) {
+//            cell->compute();
+//            if (cache_enabled) {
+//                cell->save(cache_context, key);
+//            }
+//        }
+//        cell->extract(index_variant, index_bp, region_start_bp, region_stop_bp, result);
+//        if (result.last_j >= 0) {
+//            result.last_cell = z;
+//            break;
+//        }
+//        z = get_next_z(segment_index, segment_i, segment_j, z_min, z_max, ++z);
+//        if (result.n_correlations >= result.limit) {
+//            if (z <= z_max) {
+//                result.last_cell = z;
+//                result.last_j = 0;
+//            }
+//            break;
+//        }
+//    }
+
     //  Before returning the result, fill out full variant names, chromosomes, and positions
+    if (result.raw_index_variant.second >= 0) {
+        auto segment = segments[result.raw_index_variant.first];
+        result.data.index_variant = segment->get_name(result.raw_index_variant.second);
+        result.data.index_chromosome = segment->get_chromosome();
+        result.data.index_position = segment->get_position(result.raw_index_variant.second);
+    }
+
     if (result.raw_variants.size() > 0) {
         result.data.variants.reserve(result.raw_variants.size());
         result.data.chromosomes.reserve(result.raw_variants.size());
