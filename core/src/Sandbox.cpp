@@ -373,6 +373,22 @@ void mask_segfault() {
   );
 }
 
+void metastaar() {
+  MetastaarSummaryStatisticsLoader loader(
+    {
+      "../../../data/test.qt.segment1.metastaar.sumstat.parquet",
+      "../../../data/test.qt.segment2.metastaar.sumstat.parquet"
+    },
+    {
+      "../../../data/test.qt.segment1.metastaar.cov.parquet",
+      "../../../data/test.qt.segment2.metastaar.cov.parquet"
+    }
+  );
+
+  loader.load_region("1", 1, 25);
+  cout << "MetaSTAAR" << endl;
+}
+
 void sumstats() {
 //  SummaryStatisticsLoader loader(
 //    "../../../data/test.smallchunk.MetaScore.assoc.gz",
@@ -462,7 +478,7 @@ void tabixpp_error() {
 int main() {
   //perf_sav_55k();
   //sumstats();
-  tabixpp_error();
+  metastaar();
   //test3();
   return 0;
 }
