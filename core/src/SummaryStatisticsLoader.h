@@ -9,6 +9,19 @@
 #include <limits>
 #include <tabixpp.hpp>
 #include <boost/format.hpp>
+#include <arrow/api.h>
+#include <parquet/file_reader.h>
+#include <parquet/properties.h>
+#include <parquet/printer.h>
+#include <parquet/stream_reader.h>
+#include <arrow/filesystem/localfs.h>
+#include <arrow/io/file.h>
+#include <arrow/result.h>
+#include <IntervalTree.h>
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <regex>
+#include <functional>
 #include "Types.h"
 
 const uint32_t INIT_QUERY_LIMIT = 10000000;
@@ -88,14 +101,16 @@ const CovColumnSpec COV_COLUMNS_RVTEST = {
   {"COV", 5},
 };
 
-enum class ScoreCovFormat {RVTEST, RAREMETAL};
+enum class ScoreCovFormat {RVTEST, RAREMETAL, METASTAAR};
 
 class NoVariantsInRange : public std::runtime_error { using std::runtime_error::runtime_error; };
 
 /* Single parameter versions of string conversion functions */
+inline unsigned long long spstoull(const string& s) { return stoull(s); }
 inline unsigned long spstoul(const string& s) { return stoul(s); }
 inline double spstod(const string& s) { return stod(s); }
 inline int spstoi(const string& s) { return stoi(s); }
+inline string stos(const string& s) { return s; }
 
 /**
  * Loader for "summary statistic" datasets. These are comprised of:
@@ -110,6 +125,80 @@ inline int spstoi(const string& s) { return stoi(s); }
  * https://genome.sph.umich.edu/wiki/RAREMETALWORKER
  */
 class SummaryStatisticsLoader {
+public:
+  /**
+   * Load a region of score statistics and covariances into memory.
+   * @param chromosome Chromosome.
+   * @param start Integer start position of the region.
+   * @param end Integer end position of the region.
+   */
+  virtual void load_region(const std::string& chromosome, uint64_t start, uint64_t stop) = 0;
+
+  // Return the covariances.
+  virtual shared_ptr<LDQueryResult> getCovResult() = 0;
+
+  // Return the score statistics.
+  virtual shared_ptr<ScoreStatQueryResult> getScoreResult() = 0;
+
+  /**
+   * Getter to return the residual variance under the null model.
+   * @return sigma2
+   */
+  virtual double getSigma2() = 0;
+
+  /**
+   * Getter to return number of samples used when calculating scores/covariances.
+   * @return nsamples
+   */
+  virtual uint64_t getNumSamples() = 0;
+
+  // Destructor
+  virtual ~SummaryStatisticsLoader() = default;
+};
+
+struct MetastaarParquetMetadata {
+  std::string filepath;
+  std::string chrom;
+  uint64_t pos_start = 0;
+  uint64_t pos_end = 0;
+  uint64_t pos_mid = 0;
+  uint64_t region_start = 0;
+  uint64_t region_mid = 0;
+  uint64_t region_end = 0;
+  uint64_t nrows = 0;
+  uint64_t ncols = 0;
+  double cov_maf_cutoff = -1;
+};
+
+using MetastaarFileIntervalTree = IntervalTree<uint64_t, MetastaarParquetMetadata>;
+
+/**
+ * Loader for MetaSTAAR summary statistic files.
+ *
+ * MetaSTAAR separates the final covariance matrix into
+ */
+class MetastaarSummaryStatisticsLoader : public SummaryStatisticsLoader {
+protected:
+  // Maps from chromosome -> interval tree of (start pos, end pos) for MetaSTAAR segmented files.
+  std::map<std::string, MetastaarFileIntervalTree> score_tree;
+  std::map<std::string, MetastaarFileIntervalTree> cov_tree;
+
+  shared_ptr<LDQueryResult> cov_result;
+  shared_ptr<ScoreStatQueryResult> score_result;
+  uint64_t nsamples;
+public:
+  MetastaarSummaryStatisticsLoader(const std::vector<std::string>& score_vec, const std::vector<std::string>& cov_vec);
+  void load_region(const std::string& chromosome, uint64_t start, uint64_t stop);
+  shared_ptr<LDQueryResult> getCovResult();
+  shared_ptr<ScoreStatQueryResult> getScoreResult();
+  double getSigma2();
+  uint64_t getNumSamples();
+};
+
+/**
+ * Loader for RAREMETAL or rvtest summary statistic datasets.
+ */
+class RaremetalSummaryStatisticsLoader : public SummaryStatisticsLoader {
 protected:
   std::map<std::string, std::string> score_map;
   std::map<std::string, std::string> cov_map;
@@ -164,7 +253,7 @@ public:
    *
    *  Once a loader object is created, call load_region() to load statistics from a specific region into memory.
    */
-  SummaryStatisticsLoader(const std::vector<std::string>& score_vec, const std::vector<std::string>& cov_vec);
+  RaremetalSummaryStatisticsLoader(const std::vector<std::string>& score_vec, const std::vector<std::string>& cov_vec);
 
   /**
    * Load a region of score statistics and covariances into memory.
@@ -172,25 +261,25 @@ public:
    * @param start Integer start position of the region.
    * @param end Integer end position of the region.
    */
-  void load_region(const std::string& chromosome, uint64_t start, uint64_t stop);
+  void load_region(const std::string& chromosome, uint64_t start, uint64_t stop) override;
 
   // Return the covariances.
-  shared_ptr<LDQueryResult> getCovResult();
+  shared_ptr<LDQueryResult> getCovResult() override;
 
   // Return the score statistics.
-  shared_ptr<ScoreStatQueryResult> getScoreResult();
+  shared_ptr<ScoreStatQueryResult> getScoreResult() override;
 
   /**
    * Getter to return the residual variance under the null model.
    * @return sigma2
    */
-  double getSigma2() { return sigma2; }
+  double getSigma2() override { return sigma2; }
 
   /**
    * Getter to return number of samples used when calculating scores/covariances.
    * @return nsamples
    */
-  uint64_t getNumSamples() { return nsamples; }
+  uint64_t getNumSamples() override { return nsamples; }
 };
 
 #endif //LDSERVER_SUMMARYSTATISTICSLOADER_H
