@@ -212,6 +212,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def_readwrite("summary_stat_dataset_id", &ScoreCovarianceConfig::summary_stat_dataset_id)
             .def_readwrite("summary_stat_score_files", &ScoreCovarianceConfig::summary_stat_score_files)
             .def_readwrite("summary_stat_cov_files", &ScoreCovarianceConfig::summary_stat_cov_files)
+            .def_readwrite("summary_stat_format", &ScoreCovarianceConfig::summary_stat_format)
             .def_readwrite("segment_size", &ScoreCovarianceConfig::segment_size)
             .def_readwrite("redis_hostname", &ScoreCovarianceConfig::redis_hostname)
             .def_readwrite("redis_port", &ScoreCovarianceConfig::redis_port)
