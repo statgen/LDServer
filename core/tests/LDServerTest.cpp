@@ -399,7 +399,7 @@ TEST_F(LDServerTest, SAV_one_page) {
 
 TEST_F(LDServerTest, summary_stat_load_raremetal_test) {
   // Load from disk using our new summary stat loader
-  SummaryStatisticsLoader loader({"test_sumstat_loader_rm.scores.assoc.gz"}, {"test_sumstat_loader_rm.cov.assoc.gz"});
+  RaremetalSummaryStatisticsLoader loader({"test_sumstat_loader_rm.scores.assoc.gz"}, {"test_sumstat_loader_rm.cov.assoc.gz"});
   loader.load_region("22", 27021502, 27026606);
 
   // Use our testing methods to load the same data for later comparison
@@ -432,7 +432,7 @@ TEST_F(LDServerTest, summary_stat_load_raremetal_test) {
 
 TEST_F(LDServerTest, summary_stat_load_rvtest_test) {
   // Load from disk using our new summary stat loader
-  SummaryStatisticsLoader loader({"test.smallchunk.MetaScore.assoc.gz"}, {"test.smallchunk.MetaCov.assoc.gz"});
+  RaremetalSummaryStatisticsLoader loader({"test.smallchunk.MetaScore.assoc.gz"}, {"test.smallchunk.MetaCov.assoc.gz"});
   loader.load_region("1", 2, 307);
 
   // Use our testing methods to load the same data for later comparison
@@ -467,7 +467,7 @@ TEST_F(LDServerTest, summary_stat_load_rvtest_bad_ustat) {
   using ::testing::HasSubstr;
 
   // Load from disk using our new summary stat loader
-  SummaryStatisticsLoader loader({"rvtest_score_fail_ustat.gz"}, {"rvtest_cov_fail_base.gz"});
+  RaremetalSummaryStatisticsLoader loader({"rvtest_score_fail_ustat.gz"}, {"rvtest_cov_fail_base.gz"});
 
   try {
     loader.load_region("9", 22133, 22133);
@@ -483,7 +483,7 @@ TEST_F(LDServerTest, summary_stat_load_rvtest_bad_ustat) {
 
 TEST_F(LDServerTest, summary_stat_load_rvtest_missing_af) {
   // Load from disk using our new summary stat loader
-  SummaryStatisticsLoader loader({"test.afmissing.MetaScore.assoc.gz"}, {"test.smallchunk.MetaCov.assoc.gz"});
+  RaremetalSummaryStatisticsLoader loader({"test.afmissing.MetaScore.assoc.gz"}, {"test.smallchunk.MetaCov.assoc.gz"});
   loader.load_region("1", 2, 2);
 
   auto score_res = loader.getScoreResult();
@@ -492,7 +492,7 @@ TEST_F(LDServerTest, summary_stat_load_rvtest_missing_af) {
 
 TEST_F(LDServerTest, summary_stat_load_rvtest_noheader_test) {
   // Load from disk using our new summary stat loader
-  SummaryStatisticsLoader loader({"test.smallchunk.noheader.MetaScore.assoc.gz"}, {"test.smallchunk.noheader.MetaCov.assoc.gz"});
+  RaremetalSummaryStatisticsLoader loader({"test.smallchunk.noheader.MetaScore.assoc.gz"}, {"test.smallchunk.noheader.MetaCov.assoc.gz"});
   loader.load_region("1", 2, 307);
 
   // Use our testing methods to load the same data for later comparison
@@ -525,7 +525,7 @@ TEST_F(LDServerTest, summary_stat_load_rvtest_noheader_test) {
 
 TEST_F(LDServerTest, summary_stat_ldserver_compare) {
   // Summary stat loader
-  SummaryStatisticsLoader loader({"chr21.test.RAND_QT.singlevar.score.txt.gz"}, {"chr21.test.RAND_QT.singlevar.cov.txt.gz"});
+  RaremetalSummaryStatisticsLoader loader({"chr21.test.RAND_QT.singlevar.score.txt.gz"}, {"chr21.test.RAND_QT.singlevar.cov.txt.gz"});
   loader.load_region("21", 9411239, 9411793);
 
   auto loader_scores = loader.getScoreResult();
