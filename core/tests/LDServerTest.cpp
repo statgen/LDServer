@@ -208,7 +208,7 @@ protected:
         }
     }
 
-  void load_rvtest_covariance(const string &path, map<string, double> &values) {
+  void load_rvtest_covariance(const string &path, map<string, double> &values, uint64_t start = 0, uint64_t end = numeric_limits<uint64_t>::max()) {
     unique_ptr<istream> file;
     boost::iostreams::filtering_streambuf<boost::iostreams::input> inbuf;
     ifstream fs(path, ios_base::in | ios_base::binary);
@@ -233,6 +233,7 @@ protected:
     auto regex_header = regex("CHROM\tSTART_POS.*");
 
     getline(*file, line); // skip header;
+    auto finish = [&tokens, &positions, &cov]() { tokens.clear(); positions.clear(); cov.clear(); };
     while (getline(*file, line)) {
       smatch match;
       if (std::equal(comment.begin(), comment.end(), line.begin())) {
@@ -247,6 +248,12 @@ protected:
 
       string chrom(tokens.at(0));
       string ref_pos(tokens.at(1));
+      uint64_t ref_pos_int = stoull(ref_pos);
+
+      if ((ref_pos_int < start) || (ref_pos_int > end)) {
+        finish();
+        continue;
+      }
 
       // Load the positions on this row
       transform(
@@ -268,7 +275,13 @@ protected:
       string pair_key;
       double pair_cov;
       for (int index = 0; index < positions.size(); index++) {
-        pair_key = ref_pos + "_" + to_string(positions[index]);
+        uint64_t& ipos = positions[index];
+        if ((ipos < start) || (ipos > end)) {
+          finish();
+          continue;
+        }
+
+        pair_key = ref_pos + "_" + to_string(ipos);
         pair_cov = cov[index];
         values.emplace(pair_key, pair_cov);
       }
