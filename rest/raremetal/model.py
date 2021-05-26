@@ -34,8 +34,9 @@ def pq_get_region(parquet_file):
   meta = schema.metadata
   chrom = str(meta[b"chrom"], "utf8")
   region_start = int(meta[b"region_start"])
+  region_mid = int(meta[b"region_mid"])
   region_end = int(meta[b"region_end"])
-  return chrom, region_start, region_end
+  return chrom, region_start, region_mid, region_end
 
 MISSING_DATA_REPS = ("NaN", ".", "", "NA")
 SUMMARY_STAT_FORMATS = ("RAREMETAL", "RVTEST", "METASTAAR")
@@ -155,6 +156,7 @@ class ScoreStatFile(db.Model):
   summary_stat_dataset_id = db.Column(db.Integer, db.ForeignKey('summary_stat_datasets.id'), nullable = False)
   chrom = db.Column(db.String, unique = False, nullable = True)
   region_start = db.Column(db.Integer, unique = False, nullable = True)
+  region_mid = db.Column(db.Integer, unique = False, nullable = True)
   region_end = db.Column(db.Integer, unique = False, nullable = True)
 
   def __repr__(self):
@@ -167,6 +169,7 @@ class CovarianceFile(db.Model):
   summary_stat_dataset_id = db.Column(db.Integer, db.ForeignKey('summary_stat_datasets.id'), nullable = False)
   chrom = db.Column(db.String, unique = False, nullable = True)
   region_start = db.Column(db.Integer, unique = False, nullable = True)
+  region_mid = db.Column(db.Integer, unique = False, nullable = True)
   region_end = db.Column(db.Integer, unique = False, nullable = True)
 
   def __repr__(self):
@@ -303,7 +306,7 @@ def get_summary_stat_format(summary_stat_dataset_id):
 def get_score_files(summary_stat_dataset_id, chrom=None, start=None, end=None):
   format = get_summary_stat_format(summary_stat_dataset_id)
   if format == "METASTAAR" and chrom and start and end:
-    results = db.session.query(ScoreStatFile).filter(text("id=:data_id and chrom=:chrom and region_start<=:end and region_end>=:start ")).params(data_id=summary_stat_dataset_id, chrom=chrom, start=start, end=end)
+    results = db.session.query(ScoreStatFile).filter(text("summary_stat_dataset_id=:data_id and chrom=:chrom and region_start<=:end and region_mid>=:start ")).params(data_id=summary_stat_dataset_id, chrom=chrom, start=start, end=end)
     return [str(x.path) for x in results]
   else:
     return [str(x) for x, in db.session.query(ScoreStatFile.path).filter_by(summary_stat_dataset_id = summary_stat_dataset_id)]
@@ -311,7 +314,7 @@ def get_score_files(summary_stat_dataset_id, chrom=None, start=None, end=None):
 def get_cov_files(summary_stat_dataset_id, chrom=None, start=None, end=None):
   format = get_summary_stat_format(summary_stat_dataset_id)
   if format == "METASTAAR" and chrom and start and end:
-    results = db.session.query(CovarianceFile).filter(text("id=:data_id and chrom=:chrom and pos_start<=:end and pos_end>=:start ")).params(data_id=summary_stat_dataset_id, chrom=chrom, start=start, end=end)
+    results = db.session.query(CovarianceFile).filter(text("summary_stat_dataset_id=:data_id and chrom=:chrom and region_start<=:end and region_mid>=:start ")).params(data_id=summary_stat_dataset_id, chrom=chrom, start=start, end=end)
     return [str(x.path) for x in results]
   else:
     return [str(x) for x, in db.session.query(CovarianceFile.path).filter_by(summary_stat_dataset_id = summary_stat_dataset_id)]
@@ -775,9 +778,10 @@ def add_summary_stat_dataset(name, description, genome_build, score_files, cov_f
   for path in score_files:
     sc_file = ScoreStatFile(path = path)
     if path.endswith(".parquet"):
-      chrom, region_start, region_end = pq_get_region(find_file(path))
+      chrom, region_start, region_mid, region_end = pq_get_region(find_file(path))
       sc_file.chrom = chrom
       sc_file.region_start = region_start
+      sc_file.region_mid = region_mid
       sc_file.region_end = region_end
 
     sumstat.score_files.append(sc_file)
@@ -785,9 +789,10 @@ def add_summary_stat_dataset(name, description, genome_build, score_files, cov_f
   for path in cov_files:
     cov_file = CovarianceFile(path = path)
     if path.endswith(".parquet"):
-      chrom, region_start, region_end = pq_get_region(find_file(path))
+      chrom, region_start, region_mid, region_end = pq_get_region(find_file(path))
       cov_file.chrom = chrom
       cov_file.region_start = region_start
+      cov_file.region_mid = region_mid
       cov_file.region_end = region_end
 
     sumstat.cov_files.append(cov_file)
