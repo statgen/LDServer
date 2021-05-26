@@ -86,17 +86,51 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
     );
   }
 
-  // Find any metastaar score stat files overlapping the given range.
+  auto sorter = [](auto &i1, auto& i2) { return i1.start < i2.start; };
+
+  // Find metastaar cov files overlapping the given range.
+  auto cov_overlaps = chrom_cov_tree->findOverlapping(start, stop);
+  if (cov_overlaps.empty()) {
+    throw LDServerGenericException(boost::str(boost::format("Region %s:%s-%s did not overlap any MetaSTAAR cov file") % chromosome % start % stop));
+  }
+
+  // Retrieve list of score stat files needed as well.
   auto score_overlaps = chrom_score_tree->findOverlapping(start, stop);
   if (score_overlaps.empty()) {
     throw LDServerGenericException(boost::str(boost::format("Region %s:%s-%s did not overlap any MetaSTAAR summary stat (score) file") % chromosome % start % stop));
   }
+  std::sort(score_overlaps.begin(), score_overlaps.end(), sorter);
+
+  // Because of how the segments are created, the current cov segment needs the current score segment, AND the next score
+  // segment as well.
+  uint64_t off_the_end = score_overlaps.back().value.region_mid + 1;
+  auto one_more = chrom_score_tree->findOverlapping(off_the_end, off_the_end);
+  if (!one_more.empty()) {
+    score_overlaps.push_back(one_more[0]);
+  }
 
   // Sort overlaps just to be safe, this should be a very tiny amount of data to sort anyway.
-  std::sort(score_overlaps.begin(), score_overlaps.end(), [](auto& i1, auto& i2) { return i1.start < i2.start; });
+  // We already sorted score overlaps, and then added 1 onto the end, so those should be in the proper order.
+  std::sort(cov_overlaps.begin(), cov_overlaps.end(), sorter);
 
-  for (uint64_t fileInd = 0; fileInd < score_overlaps.size(); fileInd++) {
-    const auto& score_int = score_overlaps[fileInd];
+  // Figure out total number of variants we are going to have to load from summary stats files.
+  uint64_t total_rows = 0;
+  for (auto& s : score_overlaps) {
+    total_rows += s.value.nrows;
+  }
+  uint64_t min_index = 0;
+  uint64_t max_index = total_rows;
+
+  // Allocate storage.
+  vector<ScoreResult*> score_stats(total_rows);
+  vector<arma::fvec> GtUm(total_rows);
+  vector<uint64_t> block_ends(score_overlaps.size());
+
+  // Global index over all score files
+  uint64_t index = 0;
+  bool enteredRegion = false;
+  for (uint64_t block = 0; block < score_overlaps.size(); block++) {
+    auto score_int = score_overlaps[block];
 
     // For each file found, extract data.
     // Note: we need only load data where MAF > 0 and MAF > cov_maf_cutoff. Only variants matching those two criteria
@@ -114,16 +148,10 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
       throw LDServerGenericException("Multiple MetaSTAAR covariance files overlapped a region covered by one score statistic file, should be one-to-one mapping")
         .set_secret(boost::str(boost::format("Score stat file was '%s' and region %s:%s-%s") % score_int.value.filepath % chromosome % score_int.start % score_int.stop));
     }
-    auto cov_int = cov_overlaps[0];
 
     // MetaSTAAR cov files only store variants with MAF > 0 and MAF < maf_cutoff.
     // The summary stat / score file is a superset of those variants.
-    double& maf_cutoff = cov_int.value.cov_maf_cutoff;
-
-    // Storage for score stats. We need to temporarily store it in order to look up various values while
-    // iterating over the covariance matrix file.
-    map<uint64_t, ScoreResult> score_stats;
-    unordered_map<uint64_t, arma::fvec> GtUm;
+    const double& maf_cutoff = cov_overlaps[0].value.cov_maf_cutoff;
 
     // Temporary storage while reading each row of parquet file. We unfortunately absolutely need to pull each
     // value while reading or it will cause a parquet reader exception.
@@ -142,10 +170,6 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
 
     double tmp;
     arma::fvec GtU(ncovariates);
-    uint64_t min_index = 0;
-    uint64_t max_index = 0;
-    bool enteredRegion = false;
-    uint64_t index = 0;
 
     while (!score_reader.eof()) {
       // Note: you must read all values, not reading all values and sending EndRow will result in an exception
@@ -176,47 +200,97 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
         zstat = U / sqrt(V);
         pvalue = 2 * arma::normcdf(-fabs(zstat));
 
+        // TODO: figure out why emplace back doesn't work with just the arguments, might give slight perf increase (?)
         ScoreResult sresult = {VariantMeta(chrom, ref, alt, pos).as_epacts(), U, pvalue, alt_AC / (2.0 * N), pos, chrom};
-        score_stats.emplace(index, sresult);
         score_result->data.emplace_back(sresult);
-
-        GtUm.emplace(index, GtU);
+        score_stats[index] = &(score_result->data.back());
+        GtUm[index] = GtU;
       }
-
       index++;
     }
 
+    block_ends[block] = index - 1;
     nsamples = N;
+  }
+
+//  unordered_map<pair<string, string>, double> cov_store;
+//  for (uint64_t i = 0; i < score_result->data.size(); i++) {
+//    for (uint64_t j = i; j < score_result->data.size(); j++) {
+//      cov_store.emplace(
+//        make_pair(score_result->data[i].variant, score_result->data[j].variant),
+//        0.0
+//      );
+//    }
+//  }
+
+  map<pair<uint64_t, uint64_t>, VariantsPair> cov_store;
+  for (uint64_t i = min_index; i <= max_index; i++) {
+    for (uint64_t j = i; j <= max_index; j++) {
+      arma::fvec& row_GtU = GtUm[i];
+      arma::fvec& col_GtU = GtUm[j];
+
+      ScoreResult* row_sstat = score_stats[i];
+      ScoreResult* col_sstat = score_stats[j];
+
+      string& row_variant = row_sstat->variant;
+      string& col_variant = col_sstat->variant;
+
+      double v = (0.0 - arma::dot(row_GtU, col_GtU)) / nsamples;
+      cov_store.emplace(make_pair(i, j), VariantsPair(row_sstat->variant, row_sstat->chrom, row_sstat->position, col_sstat->variant, col_sstat->chrom, col_sstat->position, v));
+    }
+  }
+
+  for (int block = 0; block < cov_overlaps.size(); block++) {
+    auto cov_int = cov_overlaps[block];
 
     // Now we can read the GtG file and reconstruct the complete covariance matrix.
     std::shared_ptr<arrow::io::ReadableFile> cov_infile;
     PARQUET_ASSIGN_OR_THROW(cov_infile, arrow::io::ReadableFile::Open(cov_int.value.filepath));
     parquet::StreamReader cov_reader{parquet::ParquetFileReader::Open(cov_infile)};
 
+    // If column goes past this value, we'll need to read into the next block in order to find information on that variant.
+    uint64_t& nrows = cov_int.value.nrows;
+
     uint32_t row;
     uint32_t col;
     double GtG;
     while (!cov_reader.eof()) {
       cov_reader >> row >> col >> GtG >> parquet::EndRow;
-      bool row_in_range = (row >= min_index) && (row <= max_index);
-      bool col_in_range = (col >= min_index) && (col <= max_index);
+      uint64_t row_index = (block > 0) * (block_ends[block - 1] + 1) + row;
+      uint64_t col_index = (block > 0) * (block_ends[block - 1] + 1) + col;
+
+      bool row_in_range = (row_index >= min_index) && (row_index <= max_index);
+      bool col_in_range = (col_index >= min_index) && (col_index <= max_index);
 
       if (row_in_range && col_in_range) {
-        arma::fvec& row_GtU = GtUm[row];
-        arma::fvec& col_GtU = GtUm[col];
+        arma::fvec& row_GtU = GtUm[row_index];
+        arma::fvec& col_GtU = GtUm[col_index];
 
-        ScoreResult& row_sstat = score_stats[row];
-        ScoreResult& col_sstat = score_stats[col];
+        ScoreResult* row_sstat = score_stats[row_index];
+        ScoreResult* col_sstat = score_stats[col_index];
+
+        string& row_variant = row_sstat->variant;
+        string& col_variant = col_sstat->variant;
 
         // TODO: inefficient, would probably be faster calculating entire matrix first - revisit later
         // Can possibly construct entire final GtU * (GtU).T matrix from ptr_aux_mem constructor in arma
         // and map position in cov -> position in GtU matrix (they won't exactly match since we only load range of positions)
-        double v = (GtG - arma::dot(row_GtU, col_GtU)) / N;
-
-        cov_result->data.emplace_back(row_sstat.variant, row_sstat.chrom, row_sstat.position, col_sstat.variant, col_sstat.chrom, col_sstat.position, v);
+        double v = (GtG - arma::dot(row_GtU, col_GtU)) / nsamples;
+        cov_store[make_pair(row_index, col_index)] = VariantsPair(row_sstat->variant, row_sstat->chrom, row_sstat->position, col_sstat->variant, col_sstat->chrom, col_sstat->position, v);
       }
     }
   }
+
+  for (uint64_t i = min_index; i <= max_index; i++) {
+    for (uint64_t j = i; j <= max_index; j++) {
+      ScoreResult* row_sstat = score_stats[i];
+      ScoreResult* col_sstat = score_stats[j];
+
+      cov_result->data.emplace_back(cov_store.at(make_pair(i, j)));
+    }
+  }
+
+  cov_result->sort_by_variant();
 }
 
 // Return the covariances.
