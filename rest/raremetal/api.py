@@ -255,7 +255,9 @@ def get_covariance():
 
   elif summary_stat_dataset_id:
     config.summary_stat_dataset_id = summary_stat_dataset_id
-    config.summary_stat_format = model.get_summary_stat_format(summary_stat_dataset_id)
+    summary_stat_format = model.get_summary_stat_format(summary_stat_dataset_id)
+    if summary_stat_format is not None:
+      config.summary_stat_format = summary_stat_format
 
     score_files = model.get_score_files(summary_stat_dataset_id, chrom, start, stop)
     cov_files = model.get_cov_files(summary_stat_dataset_id, chrom, start, stop)
