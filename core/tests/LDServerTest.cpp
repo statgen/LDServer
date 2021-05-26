@@ -631,7 +631,7 @@ TEST_F(LDServerTest, metastaar_compare_rvtest_test) {
     ncomp++;
   }
 
-  ASSERT_EQ(ncomp, 1765);
+  ASSERT_EQ(ncomp, 17578);
 
   // Check scores
   auto score_result = loader.getScoreResult();
