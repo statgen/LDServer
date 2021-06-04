@@ -639,7 +639,7 @@ TEST_F(LDServerTest, metastaar_compare_rvtest_test) {
   ncomp = 0;
   for (auto&& score_res : score_result->data) {
     auto gold = gold_scores->get_record(score_res.variant);
-    ASSERT_NEAR(gold->u_stat, score_res.score_stat, 0.05);
+    ASSERT_NEAR(gold->u_stat, score_res.score_stat, 0.008);
     ASSERT_NEAR(gold->pvalue, score_res.pvalue, 0.001);
     ncomp++;
   }
