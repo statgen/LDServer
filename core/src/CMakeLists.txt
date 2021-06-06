@@ -8,10 +8,10 @@ find_library(ARMADILLO_LIB armadillo HINT ${CGET_PREFIX}/lib)
 find_library(MKL_RT_LIB mkl_rt)
 find_library(ARROW_LIB arrow HINT ${CGET_PREFIX/lib})
 find_library(PARQUET_LIB parquet HINT ${CGET_PREFIX/lib})
-find_package(Python3 COMPONENTS Development REQUIRED)
+find_package(Python3 3.8 COMPONENTS Development REQUIRED)
 
 set(BOOST_ROOT "" CACHE PATH ${CGET_PREFIX})
-find_package(Boost REQUIRED COMPONENTS python36 iostreams)
+find_package(Boost REQUIRED COMPONENTS python38 iostreams)
 find_package(Threads REQUIRED)
 
 if(CGET_PREFIX)
