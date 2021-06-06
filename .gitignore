@@ -10,4 +10,3 @@ venv
 __pycache__
 *.db
 docker-compose.override.yml
-Dockerfile-*

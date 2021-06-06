@@ -1,0 +1,27 @@
+# Setup development environment for CLion
+FROM ldserver:base as dev-clion
+
+USER root
+RUN apt-get update && apt-get install -y \
+  ssh \
+  rsync \
+  gdb \
+  && apt-get clean
+
+RUN ( \
+    echo 'LogLevel DEBUG2'; \
+    echo 'PermitRootLogin yes'; \
+    echo 'PasswordAuthentication yes'; \
+    echo 'Subsystem sftp /usr/lib/openssh/sftp-server'; \
+  ) > /etc/ssh/sshd_config_clion \
+  && mkdir /run/sshd
+
+ARG LDSERVER_SSH_PASSWORD
+RUN \
+    if [ -z "$LDSERVER_SSH_PASSWORD" ]; then \
+        echo "Must provide '--build-arg LDSERVER_SSH_PASSWORD=' when building" && exit 1; \
+    else \
+        yes "$LDSERVER_SSH_PASSWORD" | passwd ldserver; \
+    fi
+
+CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_clion"]
