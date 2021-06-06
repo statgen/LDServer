@@ -4,10 +4,10 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
-        python-version: [3.6]
+        python-version: [3.8]
 
     steps:
     - uses: actions/checkout@v2
@@ -21,7 +21,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('rest/requirements.txt') }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('rest/requirements.txt', 'rest/build.txt') }}
       
     - name: Cache compiled C++ dependencies
       uses: actions/cache@v2
@@ -31,7 +31,8 @@ jobs:
 
     - name: Install python dependencies
       run: |
-        python3 -m pip install wheel tox pytest cget
+        python3 -m pip install -r rest/build.txt
+        python3 -m pip install -r rest/requirements.txt
 
     - name: Install C++ dependencies
       run: |
