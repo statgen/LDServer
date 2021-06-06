@@ -1,6 +1,7 @@
-cget
-venv
-venv-testing
+cget*
+venv*
+cache
+.idea
 .git
 .tox
 **/*.pyc
@@ -8,7 +9,9 @@ private
 build-release
 build-debug
 cmake-build-debug
+cmake-build-debug-remote
 cmake-build-release
+cmake-build-release-remote
 cmake-install
 tmp
 docker-compose.override.yml
