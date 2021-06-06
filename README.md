@@ -37,6 +37,8 @@ This project contains multiple components that work together to provide these fe
       - [Configuration for raremetal app](#configuration-for-raremetal-app)
       - [Running the services](#running-the-services)
     - [Manual installation](#manual-installation)
+      - [Linux](#linux)
+      - [MacOS](#macos)
   - [Updating](#updating)
   - [Configuring & running the flask apps](#configuring-running-the-flask-apps)
     - [ldserver app](#ldserver-app)
@@ -343,11 +345,13 @@ If you've already started services, replace `run` with `exec` to jump into the a
 
 ### Manual installation
 
+#### Linux
+
 Before installing, the following software/packages are required:
 
 * CMake 3.14+
 * gcc 5.4+
-* Python 3.6+
+* Python 3.8+
 * A BLAS implementation, such as OpenBLAS or Intel MKL
 
 The following software is optional:
@@ -357,17 +361,27 @@ The following software is optional:
 Most Linux distributions provide these packages already. For example, in Ubuntu:
 
 ```bash
-sudo apt install \
+sudo apt-get update && apt install \
   build-essential \
+  curl \
   cmake \
-  python \
-  virtualenv \
+  python3 \
+  python3-dev \
+  python3-distutils \
+  python3-setuptools \
+  python3-pip \
+  python3-wheel \
+  zlib1g-dev \
+  liblzma-dev \
   libopenblas-base \
   libopenblas-dev \
   liblapack-dev \
   libarpack2 \
   libarpack2-dev \
-  redis
+  redis \
+  locales \
+  git \
+  pkg-config
 ```
 
 Now follow these steps to complete installation:
