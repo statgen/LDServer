@@ -427,6 +427,18 @@ Now follow these steps to complete installation:
 
 - Configure REST API by copying the config file `rest/config/default.py` to `rest/instance/config.py` and then modify values as needed. Modifying `default.py` is not recommended as it will be overwritten when pulling updates from github.
 
+#### MacOS
+
+Required packages (gcc, cmake, etc.) can be installed using homebrew.
+
+We recommend however using pyenv to install the required python 3.8 interpreter and development headers/lib. The reason is that homebrew does not allow installing a particular version of python, and its python is also not meant for users (it is meant for homebrew to compile its own packages against.)
+
+On MacOS, however, pyenv only compiles libpython as a static lib. Unfortunately, to avoid problems during linking on Mac, libpython must be compiled and linked in as a shared lib. The following is an example of installing python 3.8 with the necessary shared lib:
+
+```bash
+env PYTHON_CONFIGURE_OPTS="--enable-shared" SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk MACOSX_DEPLOYMENT_TARGET=10.15 pyenv install 3.8.9
+```
+
 ## Updating
 
 Update your files using `git pull`, then recompile the core server by doing `cget install --update core`.
