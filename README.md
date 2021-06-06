@@ -174,7 +174,7 @@ For the `ldserver` service:
   `/home/ldserver/startup.sh` within the ldserver container when it runs.
 
 For the `raremetal` service:
-  * We're also mounting a directory `/opt/raremetal` and config file `/opt/raremetal/config.py` from the host when 
+  * We're also mounting a directory `/opt/raremetal` and config file `/opt/raremetal/config.py` from the host when
     the container runs. Volumes have the format `/path/to/data`:`/path/to/mount/in/container`.
 
 For both services:
