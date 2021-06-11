@@ -46,6 +46,9 @@ MetastaarParquetMetadata read_parquet_metadata(const string& s) {
 MetastaarSummaryStatisticsLoader::MetastaarSummaryStatisticsLoader(const std::vector<std::string>& score_vec, const std::vector<std::string>& cov_vec) {
   typedef Interval<uint64_t, MetastaarParquetMetadata> MetaInterval;
 
+  // Create map from chromosome to list of genomic intervals covered by each score statistic file.
+  // Each MetaInterval contains the start/end position of the interval covered by the file, in addition to a copy of the
+  // parquet metadata for each file.
   map<string, vector<MetaInterval>> score_map;
   for (auto& f : score_vec) {
     auto meta = read_parquet_metadata(f);
@@ -53,10 +56,12 @@ MetastaarSummaryStatisticsLoader::MetastaarSummaryStatisticsLoader(const std::ve
     score_map[meta.chrom].emplace_back(intv);
   }
 
+  // Construct an interval tree for each chromosome representing the score statistic file intervals.
   for (const auto& p : score_map) {
     score_tree.emplace(make_pair(p.first, p.second));
   }
 
+  // Same as above, only now created for each covariance matrix file.
   map<string, vector<MetaInterval>> cov_map;
   for (auto& f : cov_vec) {
     auto meta = read_parquet_metadata(f);
@@ -124,11 +129,16 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
   // Allocate storage.
   vector<ScoreResult*> score_stats(total_rows);
   vector<arma::fvec> GtUm(total_rows);
-  vector<uint64_t> block_ends(score_overlaps.size());
 
-  // Global index over all score files
-  uint64_t index = 0;
+  uint64_t index = 0;   // Global index over all score files
   bool enteredRegion = false;
+
+  // Imagine each "block" as the matrix of data in each score statistic file, corresponding to a range of variants with
+  // some start/end position. The block variable indexes which block we are working on. The reason is that later,
+  // covariance files need to know their corresponding score statistic block, but also additionally the (n+1)th block as well.
+  // We keep track of a global index where 0 is the first variant, and the last index is (nvariants - 1) where nvariants
+  // is the number of variants across all score statistic files that overlap the genomic range we're interested in extracting.
+  vector<uint64_t> block_ends(score_overlaps.size());
   for (uint64_t block = 0; block < score_overlaps.size(); block++) {
     auto score_int = score_overlaps[block];
 
@@ -196,7 +206,9 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
           break;
         }
 
-        // Only store required data structures / statistics if we're within the range requested.
+        /* If we've made it here, we're within the requested chr:start-stop */
+
+        // Calculate p-value from score statistic. This isn't included by default in the MetaSTAAR single variant / score stat files.
         zstat = U / sqrt(V);
         pvalue = 2 * arma::normcdf(-fabs(zstat));
 
@@ -223,6 +235,11 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
 //    }
 //  }
 
+  // The MetaSTAAR cov matrix is sparse; it only contains covariance where the value > 0. However, this software was written
+  // originally to handle raremetal/rvtest covariance, and so per region or gene we expect a covariance for every pair of
+  // variants. Therefore, we need to compute for each possible combination of variants a "baseline covariance", which is
+  // simply 0 - (GtU)_i * (UtG)_j, where i and j iterate over all combinations of variants. Later, as we read in values
+  // from the sparse covariance matrix, we will overwrite the baseline cov computed here.
   map<pair<uint64_t, uint64_t>, VariantsPair> cov_store;
   for (uint64_t i = min_index; i <= max_index; i++) {
     for (uint64_t j = i; j <= max_index; j++) {
@@ -275,12 +292,19 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
         // TODO: inefficient, would probably be faster calculating entire matrix first - revisit later
         // Can possibly construct entire final GtU * (GtU).T matrix from ptr_aux_mem constructor in arma
         // and map position in cov -> position in GtU matrix (they won't exactly match since we only load range of positions)
+
+        // Compute the final covariance value given GtG and GtU.
         double v = (GtG - arma::dot(row_GtU, col_GtU)) / nsamples;
+
+        // Store it to our temporary covariance store. We needed this previously to fill in all the covariance values for
+        // pairs of variants where GtG = 0.
         cov_store[make_pair(row_index, col_index)] = VariantsPair(row_sstat->variant, row_sstat->chrom, row_sstat->position, col_sstat->variant, col_sstat->chrom, col_sstat->position, v);
       }
     }
   }
 
+  // Now we have computed every possible covariance value per pair of variants in the region, we can store them
+  // to the final result object.
   for (uint64_t i = min_index; i <= max_index; i++) {
     for (uint64_t j = i; j <= max_index; j++) {
       ScoreResult* row_sstat = score_stats[i];
