@@ -9,7 +9,7 @@ find_library(MKL_RT_LIB mkl_rt)
 find_package(Python3 COMPONENTS Development REQUIRED)
 
 set(BOOST_ROOT "" CACHE PATH ${CGET_PREFIX})
-find_package(Boost REQUIRED COMPONENTS python36 iostreams)
+find_package(Boost REQUIRED COMPONENTS python36 iostreams chrono)
 find_package(Threads REQUIRED)
 
 find_library(OPENBLAS_LIB openblas HINT ${CGET_PREFIX}/lib)
