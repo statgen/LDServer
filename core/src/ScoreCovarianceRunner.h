@@ -14,6 +14,8 @@
 #include "LDServer.h"
 #include "ScoreServer.h"
 #include "SummaryStatisticsLoader.h"
+#include "RaremetalSummaryStatisticsLoader.h"
+#include "MetastaarSummaryStatisticsLoader.h"
 #include "Phenotypes.h"
 #include "Segment.h"
 #include "Types.h"
