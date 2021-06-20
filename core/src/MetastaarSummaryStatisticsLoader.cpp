@@ -307,9 +307,6 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
   // to the final result object.
   for (uint64_t i = min_index; i <= max_index; i++) {
     for (uint64_t j = i; j <= max_index; j++) {
-      ScoreResult* row_sstat = score_stats[i];
-      ScoreResult* col_sstat = score_stats[j];
-
       cov_result->data.emplace_back(cov_store.at(make_pair(i, j)));
     }
   }
