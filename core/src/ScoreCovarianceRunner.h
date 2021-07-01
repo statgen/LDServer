@@ -14,6 +14,8 @@
 #include "LDServer.h"
 #include "ScoreServer.h"
 #include "SummaryStatisticsLoader.h"
+#include "RaremetalSummaryStatisticsLoader.h"
+#include "MetastaarSummaryStatisticsLoader.h"
 #include "Phenotypes.h"
 #include "Segment.h"
 #include "Types.h"
@@ -51,6 +53,7 @@ public:
   uint32_t summary_stat_dataset_id;
   std::vector<std::string> summary_stat_score_files;
   std::vector<std::string> summary_stat_cov_files;
+  std::string summary_stat_format;
 
   /**
    * Mask related settings

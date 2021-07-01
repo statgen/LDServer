@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04 as base
 
 LABEL org.label-schema.name="LDServer"
 LABEL org.label-schema.description="LDServer for calculating linkage disequilibrium of genetic variants"
@@ -9,11 +9,13 @@ LABEL org.label-schema.vcs-url="https://github.com/statgen/LDServer"
 LABEL org.label-schema.schema-version="1.0"
 
 # Install required packages for LDServer to install.
+ENV DEBIAN_FRONTEND="noninteractive"
 RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
   curl \
-  python3.6 \
-  python3.6-dev \
+  cmake \
+  python3 \
+  python3-dev \
   python3-distutils \
   python3-setuptools \
   python3-pip \
@@ -27,21 +29,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libarpack2-dev \
   redis \
   locales \
+  git \
+  pkg-config \
   && rm -rf /var/lib/apt/lists/* \
   && locale-gen en_US.UTF-8
 
 ENV LC_ALL en_US.UTF-8
 ENV LANG en_US.UTF-8
 
-# Need a newer version of CMake than what Ubuntu 18.04 has
-RUN curl -OJL https://github.com/Kitware/CMake/releases/download/v3.18.1/cmake-3.18.1-Linux-x86_64.sh && \
-  chmod u+x cmake-3.18.1-Linux-x86_64.sh && \
-  ./cmake-3.18.1-Linux-x86_64.sh --skip-license
+# Upgrade pip
+RUN pip3 install --upgrade pip
 
-# Install necessary python packages
-RUN pip3 install wheel cget pytest invoke tox
+# Install required python packages for building later packages
+COPY rest/build.txt /
+RUN pip3 install -r build.txt
 
-# Copy the python requirements for install
+# Install required python packages
 COPY rest/requirements.txt /
 RUN pip3 install -r requirements.txt
 
@@ -70,6 +73,9 @@ ARG CMAKE_BUILD_PARALLEL_LEVEL
 ARG MAKEFLAGS
 RUN cget install -f core/requirements.txt
 
+# Next stage: compiled server/binaries
+FROM base as compile
+
 # Copy source
 COPY --chown=ldserver:ldserver . /home/ldserver/
 
@@ -96,3 +102,6 @@ ARG LDSERVER_VERSION
 LABEL org.label-schema.version=$LDSERVER_VERSION
 LABEL org.label-schema.vcs-ref=$GIT_SHA
 LABEL org.label-schema.build-date=$BUILD_DATE
+
+# Set the default stage to be the base files + compiled binaries + test cases.
+FROM compile

@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Index, inspect
+from sqlalchemy import Index, inspect, text
 from sqlalchemy.types import Enum
 from flask.cli import with_appcontext
 from flask import current_app
@@ -9,13 +9,37 @@ from core.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType, GroupIde
 from tabulate import tabulate
 from glob import glob
 from pathlib import Path
+import pyarrow.parquet as pq
 import os
 import click
 import json
 import yaml
 import gzip
 
+# def get_region(score_pq):
+#   table = pq.read_table(score_pq, columns=["chr", "pos"], memory_map=True)
+#   chrom = table["chr"][0].as_py()
+#   start = table["pos"][0].as_py()
+#   end = table["pos"][-1].as_py()
+#   return chrom, start, end
+
+def pq_get_region(parquet_file):
+  """
+  Retrieves metadata from MetaSTAAR parquet file about chromosome, starting position, and ending position.
+  :param parquet_file:
+  :return:
+  """
+
+  schema = pq.read_schema(parquet_file)
+  meta = schema.metadata
+  chrom = str(meta[b"chrom"], "utf8")
+  region_start = int(meta[b"region_start"])
+  region_mid = int(meta[b"region_mid"])
+  region_end = int(meta[b"region_end"])
+  return chrom, region_start, region_mid, region_end
+
 MISSING_DATA_REPS = ("NaN", ".", "", "NA")
+SUMMARY_STAT_FORMATS = ("RAREMETAL", "RVTEST", "METASTAAR")
 
 db = SQLAlchemy()
 
@@ -130,6 +154,10 @@ class ScoreStatFile(db.Model):
   id = db.Column(db.Integer, primary_key = True)
   path = db.Column(db.String(), unique = False, nullable = False)
   summary_stat_dataset_id = db.Column(db.Integer, db.ForeignKey('summary_stat_datasets.id'), nullable = False)
+  chrom = db.Column(db.String, unique = False, nullable = True)
+  region_start = db.Column(db.Integer, unique = False, nullable = True)
+  region_mid = db.Column(db.Integer, unique = False, nullable = True)
+  region_end = db.Column(db.Integer, unique = False, nullable = True)
 
   def __repr__(self):
     return '<ScoreStatFile %r>' % self.path
@@ -139,6 +167,10 @@ class CovarianceFile(db.Model):
   id = db.Column(db.Integer, primary_key = True)
   path = db.Column(db.String(), unique = False, nullable = False)
   summary_stat_dataset_id = db.Column(db.Integer, db.ForeignKey('summary_stat_datasets.id'), nullable = False)
+  chrom = db.Column(db.String, unique = False, nullable = True)
+  region_start = db.Column(db.Integer, unique = False, nullable = True)
+  region_mid = db.Column(db.Integer, unique = False, nullable = True)
+  region_end = db.Column(db.Integer, unique = False, nullable = True)
 
   def __repr__(self):
     return '<CovarianceFile %r>' % self.path
@@ -151,6 +183,7 @@ class SummaryStatDataset(db.Model):
   score_files = db.relationship('ScoreStatFile', backref = 'summary_stat_datasets', lazy = True)
   cov_files = db.relationship('CovarianceFile', backref = 'summary_stat_datasets', lazy = True)
   genome_build = db.Column(db.String(), unique = False, nullable = False)
+  format = db.Column(db.String, unique=False, nullable = True) # default format is rvtest/raremetal <-> column is null
 
   masks = db.relationship("Mask", secondary="sumstat_mask", back_populates="sumstats")
 
@@ -267,11 +300,24 @@ def get_samples(genotype_dataset_id, subset):
 def get_genotype_files(genotype_dataset_id):
   return [str(x) for x, in db.session.query(GenotypeFile.path).filter_by(genotype_dataset_id = genotype_dataset_id)]
 
-def get_score_files(summary_stat_dataset_id):
-  return [str(x) for x, in db.session.query(ScoreStatFile.path).filter_by(summary_stat_dataset_id = summary_stat_dataset_id)]
+def get_summary_stat_format(summary_stat_dataset_id):
+  return db.session.query(SummaryStatDataset.format).filter_by(id = summary_stat_dataset_id).scalar()
 
-def get_cov_files(summary_stat_dataset_id):
-  return [str(x) for x, in db.session.query(CovarianceFile.path).filter_by(summary_stat_dataset_id = summary_stat_dataset_id)]
+def get_score_files(summary_stat_dataset_id, chrom=None, start=None, end=None):
+  format = get_summary_stat_format(summary_stat_dataset_id)
+  if format == "METASTAAR" and chrom and start and end:
+    results = db.session.query(ScoreStatFile).filter(text("summary_stat_dataset_id=:data_id and chrom=:chrom and region_start<=:end and region_mid>=:start ")).params(data_id=summary_stat_dataset_id, chrom=chrom, start=start, end=end)
+    return [str(x.path) for x in results]
+  else:
+    return [str(x) for x, in db.session.query(ScoreStatFile.path).filter_by(summary_stat_dataset_id = summary_stat_dataset_id)]
+
+def get_cov_files(summary_stat_dataset_id, chrom=None, start=None, end=None):
+  format = get_summary_stat_format(summary_stat_dataset_id)
+  if format == "METASTAAR" and chrom and start and end:
+    results = db.session.query(CovarianceFile).filter(text("summary_stat_dataset_id=:data_id and chrom=:chrom and region_start<=:end and region_mid>=:start ")).params(data_id=summary_stat_dataset_id, chrom=chrom, start=start, end=end)
+    return [str(x.path) for x in results]
+  else:
+    return [str(x) for x, in db.session.query(CovarianceFile.path).filter_by(summary_stat_dataset_id = summary_stat_dataset_id)]
 
 def get_phenotype_file(phenotype_dataset_id):
   p = db.session.query(PhenotypeDataset.filepath).filter_by(id = phenotype_dataset_id).scalar()
@@ -712,7 +758,7 @@ def add_phenotype_dataset(name, description, filepath, genotype_datasets, column
   db.session.add(pheno)
   db.session.commit()
 
-def add_summary_stat_dataset(name, description, genome_build, score_files, cov_files, ssid=None):
+def add_summary_stat_dataset(name, description, genome_build, score_files, cov_files, ssid=None, format=None):
   db.create_all()
 
   args = {
@@ -724,13 +770,32 @@ def add_summary_stat_dataset(name, description, genome_build, score_files, cov_f
   if ssid is not None:
     args["id"] = ssid
 
+  if format is not None:
+    args["format"] = format
+
   sumstat = SummaryStatDataset(**args)
 
   for path in score_files:
-    sumstat.score_files.append(ScoreStatFile(path = path))
+    sc_file = ScoreStatFile(path = path)
+    if path.endswith(".parquet"):
+      chrom, region_start, region_mid, region_end = pq_get_region(find_file(path))
+      sc_file.chrom = chrom
+      sc_file.region_start = region_start
+      sc_file.region_mid = region_mid
+      sc_file.region_end = region_end
+
+    sumstat.score_files.append(sc_file)
 
   for path in cov_files:
-    sumstat.cov_files.append(CovarianceFile(path = path))
+    cov_file = CovarianceFile(path = path)
+    if path.endswith(".parquet"):
+      chrom, region_start, region_mid, region_end = pq_get_region(find_file(path))
+      cov_file.chrom = chrom
+      cov_file.region_start = region_start
+      cov_file.region_mid = region_mid
+      cov_file.region_end = region_end
+
+    sumstat.cov_files.append(cov_file)
 
   db.session.add(sumstat)
   db.session.commit()
@@ -936,7 +1001,11 @@ def add_from_yaml(filepath):
       else:
         cov_files = [cov_path]
 
-      add_summary_stat_dataset(record["name"], record["description"], record["genome_build"], score_files, cov_files, record.get("id"))
+      fmt = record.get("format")
+      if fmt and fmt not in SUMMARY_STAT_FORMATS:
+        raise ValueError(f"Invalid summary statistic format '{fmt}' given, should be one of: {SUMMARY_STAT_FORMATS}")
+
+      add_summary_stat_dataset(record["name"], record["description"], record["genome_build"], score_files, cov_files, record.get("id"), fmt)
 
   if "masks" in data:
     for record in data["masks"]:

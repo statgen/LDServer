@@ -136,3 +136,11 @@ summary_stats:
   genome_build: "GRCh37"
   score_path: "data/test.twochroms.chr*.MetaScore.assoc.gz"
   cov_path: "data/test.twochroms.chr*.MetaCov.assoc.gz"
+
+- id: 4
+  name: "MetaSTAAR test multiple segments"
+  description: "Simulated MetaSTAAR score/cov files"
+  genome_build: "GRCh37"
+  score_path: "data/test.qt.segment*.metastaar.sumstat.parquet"
+  cov_path: "data/test.qt.segment*.metastaar.cov.parquet"
+  format: "METASTAAR"

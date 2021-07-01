@@ -105,4 +105,12 @@ install(FILES
         ../../data/rvtest_score_fail_ustat.gz.tbi
         ../../data/rvtest_cov_fail_base.gz
         ../../data/rvtest_cov_fail_base.gz.tbi
+        ../../data/test.qt.segment1.metastaar.cov.parquet
+        ../../data/test.qt.segment1.metastaar.sumstat.parquet
+        ../../data/test.qt.segment2.metastaar.cov.parquet
+        ../../data/test.qt.segment2.metastaar.sumstat.parquet
+        ../../data/gene.WVAY7.cov.assoc.gz
+        ../../data/gene.WVAY7.cov.assoc.gz.tbi
+        ../../data/gene.WVAY7.scores.assoc.gz
+        ../../data/gene.WVAY7.scores.assoc.gz.tbi
         DESTINATION test)

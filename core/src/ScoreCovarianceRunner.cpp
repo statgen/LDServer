@@ -149,7 +149,13 @@ ScoreCovarianceRunner::ScoreCovarianceRunner(std::shared_ptr<ScoreCovarianceConf
   }
   else {
     // We have pre-computed score/covariance and just need to serve them from files.
-    summary_stat_loader = make_shared<SummaryStatisticsLoader>(config->summary_stat_score_files, config->summary_stat_cov_files);
+    if (config->summary_stat_format == "METASTAAR") {
+      summary_stat_loader = make_shared<MetastaarSummaryStatisticsLoader>(config->summary_stat_score_files, config->summary_stat_cov_files);
+    }
+    else {
+      // Default format assumed to be raremetal/rvtest.
+      summary_stat_loader = make_shared<RaremetalSummaryStatisticsLoader>(config->summary_stat_score_files, config->summary_stat_cov_files);
+    }
   }
 }
 

@@ -208,7 +208,7 @@ protected:
         }
     }
 
-  void load_rvtest_covariance(const string &path, map<string, double> &values) {
+  void load_rvtest_covariance(const string &path, map<string, double> &values, uint64_t start = 0, uint64_t end = numeric_limits<uint64_t>::max()) {
     unique_ptr<istream> file;
     boost::iostreams::filtering_streambuf<boost::iostreams::input> inbuf;
     ifstream fs(path, ios_base::in | ios_base::binary);
@@ -233,6 +233,7 @@ protected:
     auto regex_header = regex("CHROM\tSTART_POS.*");
 
     getline(*file, line); // skip header;
+    auto finish = [&tokens, &positions, &cov]() { tokens.clear(); positions.clear(); cov.clear(); };
     while (getline(*file, line)) {
       smatch match;
       if (std::equal(comment.begin(), comment.end(), line.begin())) {
@@ -247,6 +248,12 @@ protected:
 
       string chrom(tokens.at(0));
       string ref_pos(tokens.at(1));
+      uint64_t ref_pos_int = stoull(ref_pos);
+
+      if ((ref_pos_int < start) || (ref_pos_int > end)) {
+        finish();
+        continue;
+      }
 
       // Load the positions on this row
       transform(
@@ -268,7 +275,13 @@ protected:
       string pair_key;
       double pair_cov;
       for (int index = 0; index < positions.size(); index++) {
-        pair_key = ref_pos + "_" + to_string(positions[index]);
+        uint64_t& ipos = positions[index];
+        if ((ipos < start) || (ipos > end)) {
+          finish();
+          continue;
+        }
+
+        pair_key = ref_pos + "_" + to_string(ipos);
         pair_cov = cov[index];
         values.emplace(pair_key, pair_cov);
       }
@@ -386,7 +399,7 @@ TEST_F(LDServerTest, SAV_one_page) {
 
 TEST_F(LDServerTest, summary_stat_load_raremetal_test) {
   // Load from disk using our new summary stat loader
-  SummaryStatisticsLoader loader({"test_sumstat_loader_rm.scores.assoc.gz"}, {"test_sumstat_loader_rm.cov.assoc.gz"});
+  RaremetalSummaryStatisticsLoader loader({"test_sumstat_loader_rm.scores.assoc.gz"}, {"test_sumstat_loader_rm.cov.assoc.gz"});
   loader.load_region("22", 27021502, 27026606);
 
   // Use our testing methods to load the same data for later comparison
@@ -419,7 +432,7 @@ TEST_F(LDServerTest, summary_stat_load_raremetal_test) {
 
 TEST_F(LDServerTest, summary_stat_load_rvtest_test) {
   // Load from disk using our new summary stat loader
-  SummaryStatisticsLoader loader({"test.smallchunk.MetaScore.assoc.gz"}, {"test.smallchunk.MetaCov.assoc.gz"});
+  RaremetalSummaryStatisticsLoader loader({"test.smallchunk.MetaScore.assoc.gz"}, {"test.smallchunk.MetaCov.assoc.gz"});
   loader.load_region("1", 2, 307);
 
   // Use our testing methods to load the same data for later comparison
@@ -454,7 +467,7 @@ TEST_F(LDServerTest, summary_stat_load_rvtest_bad_ustat) {
   using ::testing::HasSubstr;
 
   // Load from disk using our new summary stat loader
-  SummaryStatisticsLoader loader({"rvtest_score_fail_ustat.gz"}, {"rvtest_cov_fail_base.gz"});
+  RaremetalSummaryStatisticsLoader loader({"rvtest_score_fail_ustat.gz"}, {"rvtest_cov_fail_base.gz"});
 
   try {
     loader.load_region("9", 22133, 22133);
@@ -470,7 +483,7 @@ TEST_F(LDServerTest, summary_stat_load_rvtest_bad_ustat) {
 
 TEST_F(LDServerTest, summary_stat_load_rvtest_missing_af) {
   // Load from disk using our new summary stat loader
-  SummaryStatisticsLoader loader({"test.afmissing.MetaScore.assoc.gz"}, {"test.smallchunk.MetaCov.assoc.gz"});
+  RaremetalSummaryStatisticsLoader loader({"test.afmissing.MetaScore.assoc.gz"}, {"test.smallchunk.MetaCov.assoc.gz"});
   loader.load_region("1", 2, 2);
 
   auto score_res = loader.getScoreResult();
@@ -479,7 +492,7 @@ TEST_F(LDServerTest, summary_stat_load_rvtest_missing_af) {
 
 TEST_F(LDServerTest, summary_stat_load_rvtest_noheader_test) {
   // Load from disk using our new summary stat loader
-  SummaryStatisticsLoader loader({"test.smallchunk.noheader.MetaScore.assoc.gz"}, {"test.smallchunk.noheader.MetaCov.assoc.gz"});
+  RaremetalSummaryStatisticsLoader loader({"test.smallchunk.noheader.MetaScore.assoc.gz"}, {"test.smallchunk.noheader.MetaCov.assoc.gz"});
   loader.load_region("1", 2, 307);
 
   // Use our testing methods to load the same data for later comparison
@@ -512,7 +525,7 @@ TEST_F(LDServerTest, summary_stat_load_rvtest_noheader_test) {
 
 TEST_F(LDServerTest, summary_stat_ldserver_compare) {
   // Summary stat loader
-  SummaryStatisticsLoader loader({"chr21.test.RAND_QT.singlevar.score.txt.gz"}, {"chr21.test.RAND_QT.singlevar.cov.txt.gz"});
+  RaremetalSummaryStatisticsLoader loader({"chr21.test.RAND_QT.singlevar.score.txt.gz"}, {"chr21.test.RAND_QT.singlevar.cov.txt.gz"});
   loader.load_region("21", 9411239, 9411793);
 
   auto loader_scores = loader.getScoreResult();
@@ -572,6 +585,66 @@ TEST_F(LDServerTest, summary_stat_ldserver_compare) {
     ASSERT_NEAR(v_loader, v_server, 0.001);
   }
 
+}
+
+TEST_F(LDServerTest, metastaar_compare_rvtest_test) {
+  // Load from disk using our new summary stat loader
+  MetastaarSummaryStatisticsLoader loader(
+    {
+      "test.qt.segment1.metastaar.sumstat.parquet",
+      "test.qt.segment2.metastaar.sumstat.parquet"
+    },
+    {
+      "test.qt.segment1.metastaar.cov.parquet",
+      "test.qt.segment2.metastaar.cov.parquet"
+    }
+  );
+
+  // This region specifically crosses the boundary at 5000 where we have the files split
+  loader.load_region("1", 4957, 5143);
+
+  // Use our testing methods to load the same data for later comparison
+  map<string, double> gold_cov;
+  this->load_rvtest_covariance("gene.WVAY7.cov.assoc.gz", gold_cov);
+  auto gold_scores = load_rvtest_scores("gene.WVAY7.scores.assoc.gz");
+
+  // Check covariance
+  auto cov_result = loader.getCovResult();
+  ASSERT_FALSE(cov_result->data.empty());
+  uint64_t ncomp = 0;
+  for (auto&& entry : cov_result->data) {
+    double value_test = entry.value;
+
+    string key(to_string(entry.position1) + "_" + to_string(entry.position2));
+    auto gold_iter = gold_cov.find(key);
+    double value_gold = numeric_limits<double>::quiet_NaN();
+    if (gold_iter != gold_cov.end()) {
+      value_gold = gold_iter->second;
+    }
+    else {
+      continue;
+    }
+
+    ASSERT_NE(entry.variant1, "");
+    ASSERT_NE(entry.variant2, "");
+    ASSERT_NEAR(value_gold, value_test, 0.0001);
+    ncomp++;
+  }
+
+  ASSERT_EQ(ncomp, 17578);
+
+  // Check scores
+  auto score_result = loader.getScoreResult();
+  ASSERT_FALSE(score_result->data.empty());
+  ncomp = 0;
+  for (auto&& score_res : score_result->data) {
+    auto gold = gold_scores->get_record(score_res.variant);
+    ASSERT_NEAR(gold->u_stat, score_res.score_stat, 0.008);
+    ASSERT_NEAR(gold->pvalue, score_res.pvalue, 0.001);
+    ncomp++;
+  }
+  ASSERT_TRUE(loader.getNumSamples() > 0);
+  ASSERT_EQ(ncomp, 187);
 }
 
 TEST_F(LDServerTest, simple_cov_test) {
