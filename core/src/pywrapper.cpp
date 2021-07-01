@@ -79,6 +79,19 @@ BOOST_PYTHON_MODULE(pywrapper) {
 
     boost::python::enum_<GroupIdentifierType>("GroupIdentifierType")
             .value("ENSEMBL", ENSEMBL)
+            .value("COORDINATES", COORDINATES)
+            ;
+
+    void (VariantFilter::*variant_filter_set_value_str)(const std::string&) = &VariantFilter::set_value;
+    void (VariantFilter::*variant_filter_set_value_double)(const double&) = &VariantFilter::set_value;
+
+    boost::python::class_<VariantFilter, shared_ptr<VariantFilter>, boost::noncopyable>("VariantFilter")
+            .def_readwrite("op", &VariantFilter::op)
+            .def_readwrite("field", &VariantFilter::field)
+            .def_readonly("value_string", &VariantFilter::value_string)
+            .def_readonly("value_double", &VariantFilter::value_double)
+            .def("set_value", variant_filter_set_value_str)
+            .def("set_value", variant_filter_set_value_double)
             ;
 
     boost::python::class_<VariantGroup, shared_ptr<VariantGroup>, boost::noncopyable>("VariantGroup")
@@ -87,7 +100,8 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def_readwrite("name", &VariantGroup::name)
             .def_readwrite("chrom", &VariantGroup::chrom)
             .def_readwrite("start", &VariantGroup::start)
-            .def_readwrite("stop", &VariantGroup::stop);
+            .def_readwrite("stop", &VariantGroup::stop)
+            .def_readwrite("filters", &VariantGroup::filters);
 
     boost::python::class_<VariantsPair>("VariantsPair", boost::python::init<const char*, const char*, unsigned long int, const char*, const char*, unsigned long int , double>())
             .def_readonly("variant1", &VariantsPair::variant1)
@@ -108,6 +122,9 @@ BOOST_PYTHON_MODULE(pywrapper) {
 
     boost::python::class_<std::vector<VariantGroup>>("VariantGroupVector")
             .def(boost::python::vector_indexing_suite<std::vector<VariantGroup>>());
+
+    boost::python::class_<std::vector<VariantFilter>>("VariantFilterVector")
+            .def(boost::python::vector_indexing_suite<std::vector<VariantFilter>>());
 
     boost::python::class_<std::vector<ScoreResult>>("ScoreResultVector")
             .def(boost::python::vector_indexing_suite<std::vector<ScoreResult>>())

@@ -32,7 +32,8 @@ enum VariantGroupType : uint8_t {
 
 // Enum for type of identifier for each group
 enum GroupIdentifierType : uint8_t {
-  ENSEMBL
+  ENSEMBL,
+  COORDINATES
 };
 
 typedef std::set<VariantMeta, VariantSort<VariantMeta>> SortedVariantSet;
@@ -43,6 +44,7 @@ struct VariantGroup {
   uint64_t start;
   uint64_t stop;
   SortedVariantSet variants;
+  std::vector<VariantFilter> filters;
 
   VariantGroup() : name(""), chrom(""), start(-1), stop(-1) {};
   std::shared_ptr<std::set<std::string>> get_variants() const;

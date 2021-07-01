@@ -9,6 +9,8 @@
 #include <locale>
 #include <cmath>
 #include <stdexcept>
+#include <memory>
+#include <set>
 #include <cereal/external/rapidjson/document.h>
 #include <cereal/external/rapidjson/writer.h>
 #include <cereal/external/rapidjson/stringbuffer.h>
@@ -33,6 +35,62 @@ enum correlation : uint8_t {
     LD_RSQUARE,
     COV,
     LD_RSQUARE_APPROX
+};
+
+enum class FilterValueType {STRING, DOUBLE};
+
+/**
+ * Class to represent a variant filter.
+ *
+ * This would be much easier with templates, but that makes the C++/python bindings much more difficult (at least
+ * with boost python. It's possible pybind11 improves the situation.)
+ *
+ * Instead, here we opt for an ersatz RTTI/union type system that works easily with python, but makes code complexity
+ * worse for the C++ parts that must use it.
+ */
+struct VariantFilter {
+  std::string op;
+  std::string field;
+
+  FilterValueType type;
+  std::string value_string;
+  double value_double = numeric_limits<double>::quiet_NaN();
+
+  void set_value(const std::string& v) {
+    value_string = v;
+    type = FilterValueType::STRING;
+  }
+
+  void set_value(const double& v) {
+    value_double = v;
+    type = FilterValueType::DOUBLE;
+  }
+
+  template<typename T>
+  T get_value() {
+    switch (type) {
+      case FilterValueType::STRING:
+        return value_string;
+      case FilterValueType::DOUBLE:
+        return value_double;
+    }
+  }
+
+  bool operator==(const VariantFilter& other) {
+    bool both_nan = std::isnan(value_double) && std::isnan(other.value_double);
+    bool one_nan = std::isnan(value_double) ^ std::isnan(other.value_double);
+
+    if (one_nan) { return false; }
+    if (!both_nan) {
+      if (value_double != other.value_double) {
+        return false;
+      }
+    }
+
+    return (op == other.op) &&
+           (field == other.field) &&
+           (value_string == other.value_string);
+  }
 };
 
 /**
@@ -358,6 +416,19 @@ struct ScoreStatQueryResult {
       }
   }
 
+  std::shared_ptr<std::set<std::string>> get_variants() const {
+    auto vs = make_shared<std::set<std::string>>();
+    transform(
+      data.begin(),
+      data.end(),
+      inserter(*vs, vs->begin()),
+      [](const auto& v) {
+        return v.variant;
+      }
+    );
+    return vs;
+  }
+
   void sort_by_variant() {
       std::sort(data.begin(), data.end(), [](const ScoreResult& a, const ScoreResult& b) {
           return a.position < b.position;
@@ -374,6 +445,48 @@ struct ScoreStatQueryResult {
     copy_if(data.begin(), data.end(), back_inserter(new_data), [&](const ScoreResult& p) -> bool {
       return variants.find(p.variant) != variants.end();
     });
+    data = new_data;
+  }
+
+  /**
+   * Restrict this object down to only variants passing a specific filter.
+   * @param f VariantFilter object specifying the field (maf, pvalue, etc.), operator (gte is >=, lte is <=), and the value
+   *    to compare against.
+   */
+  void filter(const VariantFilter& f) {
+    vector<ScoreResult> new_data;
+    for (auto& it : data) {
+      if (f.field == "maf") {
+        double maf = min(it.alt_freq, 1-it.alt_freq);
+
+        if (f.op == "gte") {
+          if (maf >= f.value_double) {
+            new_data.emplace_back(it);
+          }
+        }
+
+        if (f.op == "lte") {
+          if (maf <= f.value_double) {
+            new_data.emplace_back(it);
+          }
+        }
+      }
+
+      else if (f.field == "pvalue") {
+        if (f.op == "gte") {
+          if (it.pvalue >= f.value_double) {
+            new_data.emplace_back(it);
+          }
+        }
+
+        if (f.op == "lte") {
+          if (it.pvalue <= f.value_double) {
+            new_data.emplace_back(it);
+          }
+        }
+      }
+    }
+
     data = new_data;
   }
 

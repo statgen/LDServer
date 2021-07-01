@@ -12,6 +12,7 @@ def app():
         'PROXY_PASS': None,
         'API_MAX_PAGE_SIZE': 1000,
         'API_MAX_REGION_SIZE': 4000000,
+        'API_MAX_COV_REGION_SIZE': 1000000,
         'SEGMENT_SIZE_BP': 1000,
         'CACHE_ENABLED': False,
         'CACHE_REDIS_HOSTNAME': '127.0.0.1',

@@ -236,8 +236,19 @@ void ScoreCovarianceRunner::run() {
         }
       }
 
-      ld_res->filter_by_variants(*group.get_variants());
-      score_res->filter_by_variants(*group.get_variants());
+      // A set of variants was explicitly asked for, so we filter down to them first.
+      auto gvars = group.get_variants();
+      if (!gvars->empty()) {
+        ld_res->filter_by_variants(*group.get_variants());
+        score_res->filter_by_variants(*group.get_variants());
+      }
+
+      // Run each user-defined filter passed in through the API. These can filter on MAF, p-value, or other properties
+      // known to the score result object(s).
+      for (auto& f : group.filters) {
+        score_res->filter(f);
+      }
+      ld_res->filter_by_variants(*score_res->get_variants());
 
       if (score_res->data.size() == 0) {
         // No variants in this group survived after processing samples for missing data (they became monomorphic and

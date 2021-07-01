@@ -1,11 +1,3 @@
----
-header-includes:
-  - |
-    ```{=latex}
-    \usepackage[margins=raggedright]{floatrow}
-    ```
-...
-
 # raremetal API
 
 <!-- @import "[TOC]" {cmd="toc" depthFrom=2 depthTo=6 orderedList=false} -->
@@ -197,6 +189,88 @@ You can instead supply a list of your own generated masks in the browser or clie
 In this case, the ID can be any integer, so long as it is unique across all of the masks sent in the request.
 
 Note that both `masks` and `maskDefinitions` should not be given together.
+
+Additionally, groups can be specified as regions, rather than specific lists of variants:
+
+```json
+{
+  "chrom": "1",
+  "start": 1,
+  "stop": 8000,
+  ...,
+  "maskDefinitions": [
+    {
+      "id": 11,
+      "name": "My locus of interest",
+      "description": "Example of specifying groups as regions",
+      "genome_build": "GRCh37",
+      "group_type": "REGION",
+      "identifier_type": "COORDINATES",
+      "groups": {
+        "enhancer-1": {
+          "start": 1,
+          "stop": 5000
+        },
+        "enhancer-2": {
+          "start": 7000,
+          "stop": 8000
+        }
+      }
+    }
+  ]
+}
+```
+
+Each region uses the `chrom` specified at the top level of the request. The `start` and `stop` fields at the top level
+should also encompass all regions requested. 
+
+The `group_type` must be set to `REGION` and `identifier_type` to `COORDINATES` (meaning genomic coordinates). 
+
+Variant filters can also be applied as well per region. 
+
+Fields that can be filtered on: minor allele frequency - `maf`, and single variant association p-value - `pvalue`. Only two comparison operators are available: 
+`gte` for >=, and `lte` for <=. See below for an example. 
+
+```json
+{
+  "chrom": "1",
+  "start": 1,
+  "stop": 8000,
+  ...,
+  "maskDefinitions": [
+    {
+      "id": 11,
+      "name": "My locus of interest",
+      "description": "Example of specifying groups as regions",
+      "genome_build": "GRCh37",
+      "group_type": "REGION",
+      "identifier_type": "COORDINATES",
+      "groups": {
+        "enhancer-1": {
+          "start": 1,
+          "stop": 5000,
+          "filters": [
+            {
+              "field": "maf",
+              "op": "gte",
+              "value": 0.05
+            },
+            {
+              "field": "pvalue",
+              "op": "lte",
+              "value": 0.1
+            }
+          ]
+        },
+        "enhancer-2": {
+          "start": 7000,
+          "stop": 8000
+        }
+      }
+    }
+  ]
+}
+```
 
 ##### Retrieving pre-calculated summary statistics
 
