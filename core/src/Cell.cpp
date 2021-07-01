@@ -255,7 +255,7 @@ void CellR::compute() {
         return;
     }
     if (this->i == this->j) { // diagonal cell
-        arma::fmat S_i(segment_i->get_genotypes());
+        arma::sp_fmat S_i = segment_i->get_genotypes();
         arma::frowvec J(segment_i->get_n_haplotypes(), arma::fill::ones); // vector of 1's
         arma::fmat C1(J * S_i); // allele1 counts per variant
         arma::fmat C2(segment_i->get_n_haplotypes() - C1); // allele2 counts per variant
@@ -272,9 +272,9 @@ void CellR::compute() {
         if (n_variants_j <= 0) {
             return;
         }
-        arma::fmat S_i(segment_i->get_genotypes());
+        arma::sp_fmat S_i = segment_i->get_genotypes();
         arma::frowvec J(segment_i->get_n_haplotypes(), arma::fill::ones); // vector of 1's
-        arma::fmat S_j(segment_j->get_genotypes());
+        arma::sp_fmat S_j = segment_j->get_genotypes();
         arma::fmat S_i_C1(J * S_i); // allele 1 counts for segment_i variant
         arma::fmat S_i_C2(segment_i->get_n_haplotypes() - S_i_C1); // allele 2 counts for lead variant
         arma::fmat S_j_C1(J * S_j); // allele 1 counts for segment_j variants
@@ -304,7 +304,7 @@ void CellRsquare::compute() {
         return;
     }
     if (this->i == this->j) { // diagonal cell
-        arma::fmat S_i(segment_i->get_genotypes());
+        arma::sp_fmat S_i = segment_i->get_genotypes();
         arma::frowvec J(segment_i->get_n_haplotypes(), arma::fill::ones); // vector of 1's
         arma::fmat C1(J * S_i); // allele1 counts per variant
         arma::fmat C2(segment_i->get_n_haplotypes() - C1); // allele2 counts per variant
@@ -321,9 +321,9 @@ void CellRsquare::compute() {
         if (n_variants_j <= 0) {
             return;
         }
-        arma::fmat S_i(segment_i->get_genotypes());
+        arma::sp_fmat S_i = segment_i->get_genotypes();
         arma::frowvec J(segment_i->get_n_haplotypes(), arma::fill::ones); // vector of 1's
-        arma::fmat S_j(segment_j->get_genotypes());
+        arma::sp_fmat S_j = segment_j->get_genotypes();
         arma::fmat S_i_C1(J * S_i); // allele 1 counts for segment_i variant
         arma::fmat S_i_C2(segment_i->get_n_haplotypes() - S_i_C1); // allele 2 counts for lead variant
         arma::fmat S_j_C1(J * S_j); // allele 1 counts for segment_j variants
