@@ -1,6 +1,8 @@
 #ifndef LDSERVER_PHENOTYPES_H
 #define LDSERVER_PHENOTYPES_H
 
+#define  ARMA_DONT_USE_WRAPPER
+
 #include <utility>
 #include <string>
 #include <vector>

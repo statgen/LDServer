@@ -24,7 +24,7 @@ def create_app(test_config = None):
     app.register_blueprint(api.bp)
 
     if app.config['GZIP_COMPRESSION']:
-        app.config['COMPRESS_MIMETYPES'] = ['application/json']
+        app.config['COMPRESS_MIMETYPES'] = ['application/json', 'application/msgpack']
         app.config['COMPRESS_LEVEL'] = 3
         app.config['COMPRESS_MIN_SIZE'] = 500
         api.compress.init_app(app)

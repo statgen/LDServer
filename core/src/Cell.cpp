@@ -89,33 +89,32 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
         }
         int i = result.last_i >= 0 ? result.last_i : 0;
         int j = result.last_j >= 0 ? result.last_j : i + !diagonal;
-        arma::fmat R(raw_fmat.get(), segment_i->get_n_variants(), segment_i->get_n_variants(), false, true);
         auto segment_i_n_variants = segment_i_to - segment_i_from + 1;
-        auto result_i = result.data.size();
+        const float* raw_data = raw_fmat.get();
         while (i < segment_i_n_variants - !diagonal) {
-            while (j < segment_i_n_variants) {
-                // Grab the correlation value from the R matrix for these two variants at i and j in the segment, and
-                // store it to a VariantPair object in result.
-                Segment::create_pair(*segment_i, *segment_i, segment_i_from + i, segment_i_from + j, R(segment_i_from + i, segment_i_from + j), result.data);
-                ++result_i;
-                ++j;
-                if (result_i >= result.limit) {
-                    // We're at the limit of what can be stored in this page.
-                    if (j < segment_i_n_variants) {
-                        // Both i and j are still within bounds of the segment
-                        result.last_i = i;
-                        result.last_j = j;
-                    } else if (++i < segment_i_n_variants - !diagonal) {
-                        // j ran off the end of the matrix, and incrementing i results in a valid new row
-                        // i + 1 is because we only need the upper triangle of the matrix
-                        result.last_i = i;
-                        result.last_j = i + !diagonal;
-                    } else {
-                        // The entire matrix of variant pairs has been iterated over at this point.
-                        result.last_i = result.last_j = -1;
-                    }
-                    return;
+            auto raw_data_i = raw_data + segment_i->get_n_variants() * (segment_i_from + i);
+            auto n_append = segment_i_n_variants - j;
+            if (result.n_correlations + n_append > result.limit) {
+                n_append = result.limit - result.n_correlations;
+            }
+            Segment::create_pairs(this->i, this->j, segment_i_from + i, segment_i_from + j, segment_i_from + j + n_append, raw_data_i + segment_i_from + j, result);
+            j += n_append;
+            if (result.n_correlations >= result.limit) {
+                // We're at the limit of what can be stored in this page.
+                if (j < segment_i_n_variants) {
+                    // Both i and j are still within bounds of the segment
+                    result.last_i = i;
+                    result.last_j = j;
+                } else if (++i < segment_i_n_variants - !diagonal) {
+                    // j ran off the end of the matrix, and incrementing i results in a valid new row
+                    // i + 1 is because we only need the upper triangle of the matrix
+                    result.last_i = i;
+                    result.last_j = i + !diagonal;
+                } else {
+                    // The entire matrix of variant pairs has been iterated over at this point.
+                    result.last_i = result.last_j = -1;
                 }
+                return;
             }
             ++i;
             j = i + !diagonal;
@@ -131,28 +130,28 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
         }
         int i = result.last_i >= 0 ? result.last_i : 0;
         int j = result.last_j >= 0 ? result.last_j : 0;
-        arma::fmat R(raw_fmat.get(), segment_i->get_n_variants(), segment_j->get_n_variants(), false, true);
         auto segment_i_n_variants = segment_i_to - segment_i_from + 1;
         auto segment_j_n_variants = segment_j_to - segment_j_from + 1;
-        auto result_i = result.data.size();
+        const float* raw_data = raw_fmat.get();
         while (i < segment_i_n_variants) {
-            while (j < segment_j_n_variants) {
-                Segment::create_pair(*segment_i, *segment_j, segment_i_from + i, segment_j_from + j, R(segment_i_from + i, segment_j_from + j), result.data);
-                ++result_i;
-                ++j;
-                if (result_i >= result.limit) {
-                    if (j < segment_j_n_variants) {
-                        result.last_i = i;
-                        result.last_j = j;
-                    } else if (++i < segment_i_n_variants) {
-                        result.last_i = i;
-                        result.last_j = 0;
-                    } else {
-                        result.last_i = result.last_j = -1;
-                    }
-                    return;
+            auto raw_data_i = raw_data + segment_j->get_n_variants() * (segment_i_from + i);
+            auto n_append = segment_j_n_variants - j;
+            if (result.n_correlations + n_append > result.limit) {
+                n_append = result.limit - result.n_correlations;
+            }
+            Segment::create_pairs(this->i, this->j, segment_i_from + i, segment_j_from + j, segment_j_from + j + n_append, raw_data_i + segment_j_from + j, result);
+            j += n_append;
+            if (result.n_correlations >= result.limit) {
+                if (j < segment_j_n_variants) {
+                    result.last_i = i;
+                    result.last_j = j;
+                } else if (++i < segment_i_n_variants) {
+                    result.last_i = i;
+                    result.last_j = 0;
+                } else {
+                    result.last_i = result.last_j = -1;
                 }
-
+                return;
             }
             ++i;
             j = 0;
@@ -164,7 +163,7 @@ void Cell::extract(std::uint64_t region_start_bp, std::uint64_t region_stop_bp, 
 //    std::cout << "Cell region extract elapsed time: " << elapsed.count() << " s\n";
 }
 
-void Cell::extract(const std::string& index_variant, std::uint64_t index_bp, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct LDQueryResult& result) {
+void Cell::extract(const std::string& index_variant, std::uint64_t index_bp, std::uint64_t region_start_bp, std::uint64_t region_stop_bp, struct SingleVariantLDQueryResult& result) {
 //    auto start = std::chrono::system_clock::now();
     if (this->i == this->j) { // diagonal cell
         int segment_i_from = 0, segment_i_to = 0;
@@ -175,16 +174,22 @@ void Cell::extract(const std::string& index_variant, std::uint64_t index_bp, std
             result.last_j = -1;
             return;
         }
-        arma::fmat R(raw_fmat.get(), segment_i->get_n_variants(), segment_i->get_n_variants(), false, true);
         int i = segment_i_index;
+
+        result.get_index_variant(this->i, segment_i_index);
+
         int j = result.last_j >= 0 ? result.last_j : 0;
         auto segment_i_n_variants = segment_i_to - segment_i_from + 1;
-        auto result_i = result.data.size();
+        const float* raw_data = raw_fmat.get();
         while (j < segment_i_n_variants) {
-            Segment::create_pair(*segment_i, *segment_i, i, segment_i_from + j, R(i, segment_i_from + j), result.data);
-            ++result_i;
-            ++j;
-            if (result_i >= result.limit) {
+            auto raw_data_i = raw_data + segment_i->get_n_variants() * i;
+            auto n_append = segment_i_n_variants - j;
+            if (result.n_correlations + n_append > result.limit) {
+                n_append = result.limit - result.n_correlations;
+            }
+            Segment::create_pairs(this->i, this->j, i, segment_i_from + j, segment_i_from + j + n_append, raw_data_i + segment_i_from + j, result);
+            j += n_append;
+            if (result.n_correlations >= result.limit) {
                 if (j < segment_i_n_variants) {
                     result.last_j = j;
                 } else {
@@ -212,23 +217,38 @@ void Cell::extract(const std::string& index_variant, std::uint64_t index_bp, std
             result.last_j = -1;
             return;
         }
-        int segment_j_from = 0, segment_j_to = 0;
         int segment_i_index = 0;
+        int segment_j_from = 0, segment_j_to = 0;
         if (!segment_j->overlaps_region(region_start_bp, region_stop_bp, segment_j_from, segment_j_to) ||
             !segment_i->overlaps_variant(index_variant, index_bp, segment_i_index)) {
             result.last_j = -1;
             return;
         }
-        arma::fmat R(raw_fmat.get(), this->segment_i->get_n_variants(), this->segment_j->get_n_variants(), false, true);
+
+        result.get_index_variant(reversed ? this->j : this->i, segment_i_index);
+
         int i = segment_i_index;
         int j = result.last_j >= 0 ? result.last_j : 0;
         auto segment_j_n_variants = segment_j_to - segment_j_from + 1;
-        auto result_i = result.data.size();
+        const float* raw_data = raw_fmat.get();
         while (j < segment_j_n_variants) {
-            Segment::create_pair(*segment_i, *segment_j, i, segment_j_from + j, reversed ? R(segment_j_from + j, i) : R(i, segment_j_from + j), result.data);
-            ++result_i;
-            ++j;
-            if (result_i >= result.limit) {
+            auto n_append = segment_j_n_variants - j;
+            if (result.n_correlations + n_append > result.limit) {
+                n_append = result.limit - result.n_correlations;
+            }
+            if (reversed) {
+                while (n_append > 0) {
+                    auto raw_data_i = raw_data + segment_i->get_n_variants() * (segment_j_from + j);
+                    Segment::create_pairs(this->j, this->i, i, segment_j_from + j, segment_j_from + j + 1, raw_data_i + i, result);
+                    --n_append;
+                    ++j;
+                }
+            } else {
+                auto raw_data_i = raw_data + segment_j->get_n_variants() * i;
+                Segment::create_pairs(this->i, this->j, i, segment_j_from + j, segment_j_from + j + n_append, raw_data_i + segment_j_from + j, result);
+                j += n_append;
+            }
+            if (result.n_correlations >= result.limit) {
                 if (j < segment_j_n_variants) {
                     result.last_j = j;
                 } else {
@@ -265,8 +285,9 @@ void CellR::compute() {
         if (old_raw_mat != nullptr) {
             delete[] old_raw_mat;
         }
-        raw_fmat = unique_ptr<float[]>(new float[R.n_elem]);
-        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R.memptr(), R.n_elem * sizeof(float));
+        arma::frowvec R_vec = arma::vectorise(R, 1);
+        raw_fmat = unique_ptr<float[]>(new float[R_vec.n_elem]);
+        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R_vec.memptr(), R_vec.n_elem * sizeof(float));
     } else {
         auto n_variants_j = segment_j->get_n_variants();
         if (n_variants_j <= 0) {
@@ -285,8 +306,9 @@ void CellR::compute() {
         if (old_raw_mat != nullptr) {
             delete[] old_raw_mat;
         }
-        raw_fmat = unique_ptr<float[]>(new float[R.n_elem]);
-        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R.memptr(), R.n_elem * sizeof(float));
+        arma::frowvec R_vec = arma::vectorise(R, 1);
+        raw_fmat = unique_ptr<float[]>(new float[R_vec.n_elem]);
+        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R_vec.memptr(), R_vec.n_elem * sizeof(float));
     }
 //    auto end = std::chrono::system_clock::now();
 //    std::chrono::duration<double> elapsed = end - start;
@@ -305,6 +327,7 @@ void CellRsquare::compute() {
     }
     if (this->i == this->j) { // diagonal cell
         arma::sp_fmat S_i = segment_i->get_genotypes();
+//        arma::fmat S_i(segment_i->get_genotypes());
         arma::frowvec J(segment_i->get_n_haplotypes(), arma::fill::ones); // vector of 1's
         arma::fmat C1(J * S_i); // allele1 counts per variant
         arma::fmat C2(segment_i->get_n_haplotypes() - C1); // allele2 counts per variant
@@ -314,28 +337,67 @@ void CellRsquare::compute() {
         if (old_raw_mat != nullptr) {
             delete[] old_raw_mat;
         }
-        raw_fmat = unique_ptr<float[]>(new float[R.n_elem]);
-        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R.memptr(), R.n_elem * sizeof(float));
+        arma::frowvec R_vec = arma::vectorise(R, 1);
+        raw_fmat = unique_ptr<float[]>(new float[R_vec.n_elem]);
+        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R_vec.memptr(), R_vec.n_elem * sizeof(float));
     } else {
         auto n_variants_j = segment_j->get_n_variants();
         if (n_variants_j <= 0) {
             return;
         }
-        arma::sp_fmat S_i = segment_i->get_genotypes();
-        arma::frowvec J(segment_i->get_n_haplotypes(), arma::fill::ones); // vector of 1's
-        arma::sp_fmat S_j = segment_j->get_genotypes();
-        arma::fmat S_i_C1(J * S_i); // allele 1 counts for segment_i variant
-        arma::fmat S_i_C2(segment_i->get_n_haplotypes() - S_i_C1); // allele 2 counts for lead variant
-        arma::fmat S_j_C1(J * S_j); // allele 1 counts for segment_j variants
-        arma::fmat S_j_C2(segment_j->get_n_haplotypes() - S_j_C1); // allele 2 counts for region variants
-        arma::fmat M1(S_i_C1.t() * S_j_C1);
-        arma::fmat R(arma::pow((segment_i->get_n_haplotypes() * S_i.t() * S_j - M1) / sqrt(M1 % (S_i_C2.t() * S_j_C2)), 2.0));
-        float* old_raw_mat = raw_fmat.release();
-        if (old_raw_mat != nullptr) {
-            delete[] old_raw_mat;
+        auto ac_i = segment_i->get_ac();
+        auto ac_j = segment_j->get_ac();
+        if ((ac_i > 0) && (ac_j > 0) && ((ac_i/ (double)ac_j) < 0.0004)) {
+            arma::fmat S_i(segment_i->get_genotypes());
+            arma::sp_fmat S_j = segment_j->get_genotypes();
+            arma::frowvec J(segment_i->get_n_haplotypes(), arma::fill::ones); // vector of 1's
+            arma::fmat S_i_C1(J * S_i); // allele 1 counts for segment_i variant
+            arma::fmat S_i_C2(segment_i->get_n_haplotypes() - S_i_C1); // allele 2 counts for lead variant
+            arma::fmat S_j_C1(J * S_j); // allele 1 counts for segment_j variants
+            arma::fmat S_j_C2(segment_j->get_n_haplotypes() - S_j_C1); // allele 2 counts for region variants
+            arma::fmat M1(S_i_C1.t() * S_j_C1);
+            arma::fmat R(arma::pow((segment_i->get_n_haplotypes() * S_i.t() * S_j - M1) / sqrt(M1 % (S_i_C2.t() * S_j_C2)), 2.0));
+            float* old_raw_mat = raw_fmat.release();
+            if (old_raw_mat != nullptr) {
+                delete[] old_raw_mat;
+            }
+            arma::frowvec R_vec = arma::vectorise(R, 1);
+            raw_fmat = unique_ptr<float[]>(new float[R_vec.n_elem]);
+            memcpy(reinterpret_cast<void*>(raw_fmat.get()), R_vec.memptr(), R_vec.n_elem * sizeof(float));
+        } else {
+            arma::sp_fmat S_i = segment_i->get_genotypes();
+            arma::sp_fmat S_j = segment_j->get_genotypes();
+            arma::frowvec J(segment_i->get_n_haplotypes(), arma::fill::ones); // vector of 1's
+            arma::fmat S_i_C1(J * S_i); // allele 1 counts for segment_i variant
+            arma::fmat S_i_C2(segment_i->get_n_haplotypes() - S_i_C1); // allele 2 counts for lead variant
+            arma::fmat S_j_C1(J * S_j); // allele 1 counts for segment_j variants
+            arma::fmat S_j_C2(segment_j->get_n_haplotypes() - S_j_C1); // allele 2 counts for region variants
+            arma::fmat M1(S_i_C1.t() * S_j_C1);
+            arma::fmat R(arma::pow((segment_i->get_n_haplotypes() * S_i.t() * S_j - M1) / sqrt(M1 % (S_i_C2.t() * S_j_C2)), 2.0));
+            float* old_raw_mat = raw_fmat.release();
+            if (old_raw_mat != nullptr) {
+                delete[] old_raw_mat;
+            }
+            arma::frowvec R_vec = arma::vectorise(R, 1);
+            raw_fmat = unique_ptr<float[]>(new float[R_vec.n_elem]);
+            memcpy(reinterpret_cast<void*>(raw_fmat.get()), R_vec.memptr(), R_vec.n_elem * sizeof(float));
         }
-        raw_fmat = unique_ptr<float[]>(new float[R.n_elem]);
-        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R.memptr(), R.n_elem * sizeof(float));
+//        arma::sp_fmat S_i = segment_i->get_genotypes();
+//        arma::sp_fmat S_j = segment_j->get_genotypes();
+//        arma::frowvec J(segment_i->get_n_haplotypes(), arma::fill::ones); // vector of 1's
+//        arma::fmat S_i_C1(J * S_i); // allele 1 counts for segment_i variant
+//        arma::fmat S_i_C2(segment_i->get_n_haplotypes() - S_i_C1); // allele 2 counts for lead variant
+//        arma::fmat S_j_C1(J * S_j); // allele 1 counts for segment_j variants
+//        arma::fmat S_j_C2(segment_j->get_n_haplotypes() - S_j_C1); // allele 2 counts for region variants
+//        arma::fmat M1(S_i_C1.t() * S_j_C1);
+//        arma::fmat R(arma::pow((segment_i->get_n_haplotypes() * S_i.t() * S_j - M1) / sqrt(M1 % (S_i_C2.t() * S_j_C2)), 2.0));
+//        float* old_raw_mat = raw_fmat.release();
+//        if (old_raw_mat != nullptr) {
+//            delete[] old_raw_mat;
+//        }
+//        arma::frowvec R_vec = arma::vectorise(R, 1);
+//        raw_fmat = unique_ptr<float[]>(new float[R_vec.n_elem]);
+//        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R_vec.memptr(), R_vec.n_elem * sizeof(float));
     }
 //    auto end = std::chrono::system_clock::now();
 //    std::chrono::duration<double> elapsed = end - start;
@@ -372,8 +434,9 @@ void CellCov::compute() {
         if (old_raw_mat != nullptr) {
             delete[] old_raw_mat;
         }
-        raw_fmat = unique_ptr<float[]>(new float[R.n_elem]);
-        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R.memptr(), R.n_elem * sizeof(float));
+        arma::frowvec R_vec = arma::vectorise(R, 1);
+        raw_fmat = unique_ptr<float[]>(new float[R_vec.n_elem]);
+        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R_vec.memptr(), R_vec.n_elem * sizeof(float));
     } else {
         auto n_variants_j = segment_j->get_n_variants();
         if (n_variants_j <= 0) {
@@ -395,8 +458,9 @@ void CellCov::compute() {
         if (old_raw_mat != nullptr) {
             delete[] old_raw_mat;
         }
-        raw_fmat = unique_ptr<float[]>(new float[R.n_elem]);
-        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R.memptr(), R.n_elem * sizeof(float));
+        arma::frowvec R_vec = arma::vectorise(R, 1);
+        raw_fmat = unique_ptr<float[]>(new float[R_vec.n_elem]);
+        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R_vec.memptr(), R_vec.n_elem * sizeof(float));
     }
 }
 
@@ -440,8 +504,9 @@ void CellRsquareApprox::compute() {
         if (old_raw_mat != nullptr) {
             delete[] old_raw_mat;
         }
-        raw_fmat = unique_ptr<float[]>(new float[R.n_elem]);
-        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R.memptr(), R.n_elem * sizeof(float));
+        arma::frowvec R_vec = arma::vectorise(R, 1);
+        raw_fmat = unique_ptr<float[]>(new float[R_vec.n_elem]);
+        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R_vec.memptr(), R_vec.n_elem * sizeof(float));
     } else {
         auto n_variants_j = segment_j->get_n_variants();
         if (n_variants_j <= 0) {
@@ -482,8 +547,9 @@ void CellRsquareApprox::compute() {
         if (old_raw_mat != nullptr) {
             delete[] old_raw_mat;
         }
-        raw_fmat = unique_ptr<float[]>(new float[R.n_elem]);
-        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R.memptr(), R.n_elem * sizeof(float));
+        arma::frowvec R_vec = arma::vectorise(R, 1);
+        raw_fmat = unique_ptr<float[]>(new float[R_vec.n_elem]);
+        memcpy(reinterpret_cast<void*>(raw_fmat.get()), R_vec.memptr(), R_vec.n_elem * sizeof(float));
     }
 }
 

@@ -59,6 +59,14 @@ uint32_t Segment::get_n_variants() const {
     return names.size();
 }
 
+uint32_t Segment::get_ac() const {
+    if ((store == CSC_ALL_ONES) || (store == CSC)) {
+        return sp_mat_rowind.size();
+    } else {
+        return 0u; // this function is called for CSC_ALL_ONES or CSC stores. No case of calling it for BITSET, so we don't implement this case at the moment.
+    }
+}
+
 const string& Segment::get_name(int i) const {
     return names[i];
 }
@@ -280,8 +288,24 @@ const vector<vector<unsigned int>>& Segment::get_alt_carriers() const {
     return alt_carriers;
 }
 
-void Segment::create_pair(Segment& segment1, Segment& segment2, int i, int j, double value, vector<VariantsPair>& pairs) {
-    pairs.emplace_back(segment1.names[i], segment1.chromosome, segment1.positions[i], segment2.names[j], segment2.chromosome, segment2.positions[j], value);
+void Segment::create_pairs(uint64_t segment_i, uint64_t segment_j, int i, int start_j, int stop_j, const float* values, LDQueryResult& result) {
+    if ((segment_i == segment_j) && (i > start_j) && (i < stop_j)) { // if index variant is completely inside the region
+        create_pairs(segment_i, segment_j, i, start_j, i, values, result);
+        create_pairs(segment_i, segment_j, i, i, stop_j, values + (i - start_j), result);
+        return;
+    }
+    auto res1 = result.get_variant(segment_i, i);
+    auto res2 = result.get_variants_range(segment_j, start_j, stop_j);
+    if ((get<2>(res2) > 0) && (get<1>(res2) <= get<0>(res1))) {
+        result.add_correlations(get<0>(res1) + get<2>(res2), get<0>(res2), values, stop_j - start_j);
+    } else {
+        result.add_correlations(get<0>(res1), get<0>(res2), values, stop_j - start_j);
+    }
+}
+
+void Segment::create_pairs(uint64_t segment_i, uint64_t segment_j, int i, int start_j, int stop_j, const float* values, SingleVariantLDQueryResult& result) {
+    auto res = result.get_variants_range(segment_j, start_j, stop_j);
+    result.add_correlations(get<0>(res), values, stop_j - start_j);
 }
 
 bool Segment::overlaps_region(uint64_t region_start_bp, uint64_t region_stop_bp, int &segment_start_index, int &segment_stop_index) const {

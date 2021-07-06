@@ -5,7 +5,7 @@ from webargs.flaskparser import parser
 from webargs import fields, ValidationError
 from functools import partial
 from . import model
-from core.pywrapper import LDServer, LDQueryResult, StringVec, correlation
+from core.pywrapper import LDServer, LDQueryResult, StringVec, correlation, SingleVariantLDQueryResult
 import time
 
 API_VERSION = "1.0"
@@ -120,7 +120,7 @@ def get_chromosomes(genome_build, reference_name):
     return make_response(jsonify(response), 200 if response['data'] is not None else 404)
 
 def correlation_type(correlation_name):
-    return { 'r': correlation.ld_r, 'rsquare': correlation.ld_rsquare, 'cov': correlation.cov }[correlation_name]
+    return { 'r': correlation.ld_r, 'rsquare': correlation.ld_rsquare, 'rsquare_approx': correlation.ld_rsquare_approx, 'cov': correlation.cov }[correlation_name]
 
 @bp.route('/genome_builds/<genome_build>/references/<reference_name>/populations/<population_name>/regions', methods = ['GET'])
 def get_region_ld(genome_build, reference_name, population_name):
@@ -130,9 +130,11 @@ def get_region_ld(genome_build, reference_name, population_name):
         'stop': fields.Int(required = True, validate = lambda x: x > 0, error_messages = {'validator_failed': 'Value must be greater than 0.'}),
         'correlation': fields.Str(required = True, validate = lambda x: x in current_app.config['CORRELATIONS'], error_messages = {'validator_failed': 'Value must be one of the following: {}.'.format(', '.join(current_app.config['CORRELATIONS']))}),
         'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE'], error_messages = {'validator_failed': 'Value must be greater than 0.'}),
-        'last': fields.Str(required = False, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'})
+        'last': fields.Str(required = False, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
+        'precision': fields.Int(required = False, validate = lambda x: x >= 0, missing = 0, error_messages = {'validator_failed': 'Value must be greater than 0 or equal to 0.'}),
+        'msgpack': fields.Bool(required = False, missing = False)
     }
-    args = parser.parse(arguments, request, validate = partial(validate_query, all_fields = ['chrom', 'start', 'stop', 'correlation', 'limit', 'last']), location="query")
+    args = parser.parse(arguments, request, validate = partial(validate_query, all_fields = ['chrom', 'start', 'stop', 'correlation', 'limit', 'last', 'precision', 'msgpack']), location="query")
     if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
         args['limit'] = current_app.config['API_MAX_PAGE_SIZE']
     if not model.has_genome_build(genome_build):
@@ -161,17 +163,22 @@ def get_region_ld(genome_build, reference_name, population_name):
     #start = time.time()
     ldserver.compute_region_ld(str(args['chrom']), args['start'], args['stop'], correlation_type(args['correlation']), result, str(population_name))
     #print "Computed results in {} seconds.".format("%0.4f" % (time.time() - start))
-    #start = time.time()
     if current_app.config['PROXY_PASS']:
         base_url = '/'.join(x.strip('/') for x in [current_app.config['PROXY_PASS'], request.path])
     else:
         base_url = request.base_url
     base_url += '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.items(True) if arg != 'last'))
-    #print "Jsonified result in {} seconds.".format("%0.4f" % (time.time() - start))
-    #start = time.time()
-    r = make_response(result.get_json(str(base_url)), 200)
-    r.mimetype = 'application/json'
-    #print "Response created in {} seconds.".format("%0.4f" % (time.time() - start))
+    if not args['msgpack']:
+        #print "Jsonified result in {} seconds.".format("%0.4f" % (time.time() - start))
+        #start = time.time()
+        r = make_response(result.get_json(str(base_url), args['precision']), 200)
+        r.mimetype = 'application/json'
+        # print("Jsonified results and created response in {} seconds.".format("%0.4f" % (time.time() - start)))
+    else:
+        # start = time.time()
+        r = make_response(result.get_messagepack_py(str(base_url)))
+        r.mimetype = 'application/msgpack'
+        # print("Packed in MessagePack and created response in {} seconds.".format("%0.4f" % (time.time() - start)))
     return r
 
 
@@ -184,9 +191,11 @@ def get_variant_ld(genome_build, reference_name, population_name):
         'stop': fields.Int(required = True, validate = lambda x: x > 0, error_messages = {'validator_failed': 'Value must be greater than 0.'}),
         'correlation': fields.Str(required = True, validate = lambda x: x in current_app.config['CORRELATIONS'], error_messages = {'validator_failed': 'Value must be one of the following: {}.'.format(', '.join(current_app.config['CORRELATIONS']))}),
         'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = current_app.config['API_MAX_PAGE_SIZE'], error_messages = {'validator_failed': 'Value must be greater than 0.'}),
-        'last': fields.Str(required = False, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'})
+        'last': fields.Str(required = False, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
+        'precision': fields.Int(required = False, validate = lambda x: x >= 0, missing = 0, error_messages = {'validator_failed': 'Value must be greater than 0 or equal to 0.'}),
+        'msgpack': fields.Bool(required = False, missing = False)
     }
-    args = parser.parse(arguments, validate = partial(validate_query, all_fields = ['variant', 'chrom', 'start', 'stop', 'correlation', 'limit', 'last']), location="query")
+    args = parser.parse(arguments, validate = partial(validate_query, all_fields = ['variant', 'chrom', 'start', 'stop', 'correlation', 'limit', 'last', 'precision', 'msgpack']), location="query")
     if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
         args['limit'] = current_app.config['API_MAX_PAGE_SIZE']
     if not model.has_genome_build(genome_build):
@@ -203,25 +212,33 @@ def get_variant_ld(genome_build, reference_name, population_name):
     for f in model.get_files(reference_id):
         ldserver.set_file(f)
     if 'last' in args:
-        result = LDQueryResult(args['limit'], str(args['last']))
+        result = SingleVariantLDQueryResult(args['limit'], str(args['last']))
     else:
-        result = LDQueryResult(args['limit'])
+        result = SingleVariantLDQueryResult(args['limit'])
     if population_name != 'ALL':
         s = StringVec()
         s.extend(model.get_samples(reference_id, population_name))
         ldserver.set_samples(str(population_name), s)
     if current_app.config['CACHE_ENABLED']:
         ldserver.enable_cache(reference_id, current_app.config['CACHE_REDIS_HOSTNAME'], current_app.config['CACHE_REDIS_PORT'])
-    start = time.time()
+    # start = time.time()
     ldserver.compute_variant_ld(str(args['variant']), str(args['chrom']), args['start'], args['stop'], correlation_type(args['correlation']), result, str(population_name))
-    print("Computed results in {} seconds.".format("%0.4f" % (time.time() - start)))
+    # print("Computed results in {} seconds.".format("%0.4f" % (time.time() - start)))
     if current_app.config['PROXY_PASS']:
         base_url = '/'.join(x.strip('/') for x in [current_app.config['PROXY_PASS'], request.path])
     else:
         base_url = request.base_url
     base_url += '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.items(True) if arg != 'last'))
-    r = make_response(result.get_json(str(base_url)), 200)
-    r.mimetype = 'application/json'
+    if not args['msgpack']:
+        # start = time.time()
+        r = make_response(result.get_json(str(base_url), args['precision']), 200)
+        r.mimetype = 'application/json'
+        # print("Jsonified results and created response in {} seconds.".format("%0.4f" % (time.time() - start)))
+    else:
+        # start = time.time()
+        r = make_response(result.get_messagepack_py(str(base_url)), 200)
+        r.mimetype = 'application/msgpack'
+        # print("Packed in MessagePack and created response in {} seconds.".format("%0.4f" % (time.time() - start)))
     return r
 
 # TODO: LD between arbitrary variants

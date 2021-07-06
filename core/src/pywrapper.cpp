@@ -4,6 +4,7 @@
 //#include <boost/python/exception_translator.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <boost/python/suite/indexing/map_indexing_suite.hpp>
+#include <Python.h>
 #include "LDServer.h"
 #include "ScoreServer.h"
 #include "Phenotypes.h"
@@ -63,6 +64,7 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .value("ld_r", LD_R)
             .value("ld_rsquare", LD_RSQUARE)
             .value("cov", COV)
+            .value("ld_rsquare_approx", LD_RSQUARE_APPROX)
             ;
 
     boost::python::enum_<ColumnType>("ColumnType")
@@ -103,15 +105,23 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def_readwrite("stop", &VariantGroup::stop)
             .def_readwrite("filters", &VariantGroup::filters);
 
-    boost::python::class_<VariantsPair>("VariantsPair", boost::python::init<const char*, const char*, unsigned long int, const char*, const char*, unsigned long int , double>())
-            .def_readonly("variant1", &VariantsPair::variant1)
-            .def_readonly("chromosome1", &VariantsPair::chromosome1)
-            .def_readonly("position1", &VariantsPair::position1)
-            .def_readonly("variant2", &VariantsPair::variant2)
-            .def_readonly("chromosome2", &VariantsPair::chromosome2)
-            .def_readonly("position2", &VariantsPair::position2)
-            .def_readonly("value", &VariantsPair::value)
-            ;
+    boost::python::class_<LDQueryResultMatrix, boost::noncopyable>("LDQueryResultMatrix")
+        .def_readonly("variants", &LDQueryResultMatrix::variants)
+        .def_readonly("chromosomes", &LDQueryResultMatrix::chromosomes)
+        .def_readonly("positions", &LDQueryResultMatrix::positions)
+        .def_readonly("offsets", &LDQueryResultMatrix::offsets)
+        .def_readonly("correlations", &LDQueryResultMatrix::correlations)
+        ;
+
+    boost::python::class_<LDQueryResultVector, boost::noncopyable>("LDQueryResultVector")
+        .def_readonly("index_variant", &LDQueryResultVector::index_variant)
+        .def_readonly("index_chromosome", &LDQueryResultVector::index_chromosome)
+        .def_readonly("index_position", &LDQueryResultVector::index_position)
+        .def_readonly("variants", &LDQueryResultVector::variants)
+        .def_readonly("chromosomes", &LDQueryResultVector::chromosomes)
+        .def_readonly("positions", &LDQueryResultVector::positions)
+        .def_readonly("correlations", &LDQueryResultVector::correlations)
+        ;
 
     boost::python::class_<ScoreResult>("ScoreResult")
             .def_readonly("variant", &ScoreResult::variant)
@@ -130,10 +140,6 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def(boost::python::vector_indexing_suite<std::vector<ScoreResult>>())
             ;
 
-    boost::python::class_<std::vector<VariantsPair> >("VariantsPairLDVec")
-            .def(boost::python::vector_indexing_suite<std::vector<VariantsPair>>())
-            ;
-
     boost::python::class_<std::vector<std::string> >("StringVec")
             .def(boost::python::vector_indexing_suite<std::vector<std::string>>())
             ;
@@ -146,11 +152,27 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def(boost::python::init<boost::uint32_t, const string&>())
             .def_readonly("limit", &LDQueryResult::limit)
             .def_readonly("data", &LDQueryResult::data)
-            .def("has_next", &LDQueryResult::has_next)
+            .def_readonly("next", &LDQueryResult::next)
+            .def_readonly("error", &LDQueryResult::error)
             .def("is_last", &LDQueryResult::is_last)
-            .def("get_last", &LDQueryResult::get_last)
+            .def("has_next", &LDQueryResult::has_next)
+            .def("set_next", &LDQueryResult::set_next)
             .def("get_json", &LDQueryResult::get_json)
+            .def("get_messagepack_py", &LDQueryResult::get_messagepack_py)
             ;
+
+    boost::python::class_<SingleVariantLDQueryResult, boost::noncopyable>("SingleVariantLDQueryResult", boost::python::init<boost::uint32_t>())
+        .def(boost::python::init<boost::uint32_t, const string&>())
+        .def_readonly("limit", &SingleVariantLDQueryResult::limit)
+        .def_readonly("data", &SingleVariantLDQueryResult::data)
+        .def_readonly("next", &SingleVariantLDQueryResult::next)
+        .def_readonly("error", &SingleVariantLDQueryResult::error)
+        .def("is_last", &SingleVariantLDQueryResult::is_last)
+        .def("has_next", &SingleVariantLDQueryResult::has_next)
+        .def("set_next", &SingleVariantLDQueryResult::set_next)
+        .def("get_json", &SingleVariantLDQueryResult::get_json)
+        .def("get_messagepack_py", &SingleVariantLDQueryResult::get_messagepack_py)
+        ;
 
     boost::python::class_<ScoreStatQueryResult, boost::noncopyable>("ScoreStatQueryResult", boost::python::init<boost::uint32_t>())
             .def(boost::python::init<boost::uint32_t, const string&>())

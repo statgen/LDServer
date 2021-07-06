@@ -3,6 +3,7 @@ import requests
 import time
 import sys
 import random
+import msgpack
 
 argparser = argparse.ArgumentParser(description = 'Tool for runtime experiments.')
 argparser_subparsers = argparser.add_subparsers(help = '', dest = 'command')
@@ -11,6 +12,8 @@ argparser.add_argument('-n', '--hostname', metavar = 'name', required = True, ty
 argparser.add_argument('-p', '--port', metavar = 'number', required = False, type = int, dest = 'port', help = 'LD Server port number.')
 argparser.add_argument('-b', '--genome-build', metavar = 'name', required = True, type = str, dest ='genome_build', help = 'Genome build name.')
 argparser.add_argument('-f', '--reference', metavar = 'name', required = True, type = str, dest = 'reference', help = 'LD reference panel name.')
+argparser.add_argument('-m', '--messagepack', dest = 'msgpack', action='store_true', help = 'Use MessagePack instead of JSON.')
+argparser.add_argument('-d', '--decimals', dest = 'decimals', required = False, type = int, help = 'Floating point precision for JSON (0 - full precision, >0 - number of decimals when rounding.')
 
 argparser_region = argparser_subparsers.add_parser('region', help = 'Region queries.')
 argparser_region.add_argument('-g', '--genes', metavar = 'file', required = True, type = str, dest = 'genes_file', help = 'File with gene coordinates. Must have two columns (without header): start position (bp), stop position (bp).')
@@ -44,6 +47,10 @@ if __name__ == '__main__':
             start_bp = random.randrange( start_bp - window_bp if start_bp > window_bp else start_bp, stop_bp + window_bp, 1)
             stop_bp = start_bp + args.region_length
             query = 'genome_builds/{}/references/{}/populations/ALL/regions?correlation=rsquare&chrom={}&start={}&stop={}&limit={}'.format(args.genome_build, args.reference, chrom, start_bp, stop_bp, args.page_size)
+            if args.msgpack:
+                query += '&msgpack=1'
+            if 'decimals' in args:
+                query += f'&precision={args.precision}'
             queries.append((query, args.region_length, args.page_size))
     elif args.command == 'variant':
         variants = []
@@ -65,22 +72,41 @@ if __name__ == '__main__':
                 queries.append((fields['QUERY'], fields['REGION_LENGTH'], fields['PAGE_SIZE']))
     print('QUERY\tREGION_LENGTH\tPAGE_SIZE\tN_VARIANTS\tN_RESULTS\tN_PAGES\tTOTAL_SECONDS\tRESPONSE_SECONDS\tUNCOMPRESSED_MB\tCOMPRESSED_MB')
     for query, region_length, page_size in queries:
+        if args.msgpack:
+            if '&msgpack=1' not in query:
+                query += '&msgpack=1'
+        else:
+            if '&msgpack=1' in query:
+                query = query.replace('&msgpack=1', '')
+        if args.decimals:
+            if '&precision' not in query:
+                query += f'&precision={args.decimals}'
         url = 'http://{}{}/{}'.format(args.hostname, ':' + str(args.port) if args.port else '', query)
         total_time = 0
-        all_variants = set()
         total_results = 0
         total_pages = 0
-        while url is not None:
+        while url != '':
             start = time.time()
             response = requests.get(url)
             end = time.time()
             if response.status_code != 200:
                 sys.exit('Request failed with code {}.\nQuery: {}'.format(response.status_code, query))
-            data = response.json()['data']
+            if response.headers['Content-Type'] == 'application/msgpack':
+                result = msgpack.unpackb(response.content, strict_map_key = False)
+            else:
+                result = response.json()
+            data = result['data']
             total_time += (end - start)
-            all_variants.update(data['variant1'])
-            all_variants.update(data['variant2'])
-            total_results += len(data['correlation'])
+            if not 'index_variant' in data:
+                assert len(data['variants']) == len(data['chromosomes'])
+                assert len(data['variants']) == len(data['positions'])
+                assert len(data['variants']) == len(data['offsets'])
+                total_results += sum([len(x) for x in data['correlations']])
+            else:
+                assert len(data['variants']) == len(data['chromosomes'])
+                assert len(data['variants']) == len(data['positions'])
+                assert len(data['variants']) == len(data['correlations'])
+                total_results += len(data['correlations'])
             total_pages += 1
-            url = response.json()['next']
-        print('{}\t{}\t{}\t{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}'.format(query, region_length, page_size, len(all_variants), total_results, total_pages, total_time, response.elapsed.total_seconds(), len(response.content) / (1024.0 * 1024.0), int(response.headers['Content-Length']) / (1024.0 * 1024.0)))
+            url = result['next']
+        print('{}\t{}\t{}\t{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}'.format(query, region_length, page_size, len(data['variants']), total_results, total_pages, total_time, response.elapsed.total_seconds(), len(response.content) / (1024.0 * 1024.0), int(response.headers['Content-Length']) / (1024.0 * 1024.0)))
