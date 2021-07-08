@@ -612,6 +612,9 @@ TEST_F(LDServerTest, metastaar_compare_rvtest_test) {
   auto cov_result = loader.getCovResult();
   ASSERT_FALSE(cov_result->data.empty());
   uint64_t ncomp = 0;
+  uint64_t track_pos1 = 0;
+  uint64_t track_pos2 = 0;
+  string& prev_variant1 = cov_result->data[0].variant1;
   for (auto&& entry : cov_result->data) {
     double value_test = entry.value;
 
@@ -628,6 +631,23 @@ TEST_F(LDServerTest, metastaar_compare_rvtest_test) {
     ASSERT_NE(entry.variant1, "");
     ASSERT_NE(entry.variant2, "");
     ASSERT_NEAR(value_gold, value_test, 0.0001);
+
+    // Check positions came back in order (protect against recent changes to ldserver core data structures)
+    // The first variant should never be out of order
+    ASSERT_GE(entry.position1, track_pos1);
+    track_pos1 = entry.position1;
+
+    // The second variant in the pair can go backwards in position, but only if the first variant has changed
+    if (prev_variant1 == entry.variant1) {
+      ASSERT_GE(entry.position2, track_pos2);
+      track_pos2 = entry.position2;
+    }
+    else {
+      // The first variant changed, so we need to reset
+      track_pos2 = entry.position2;
+      prev_variant1 = entry.variant1;
+    }
+
     ncomp++;
   }
 
