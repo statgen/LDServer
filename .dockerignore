@@ -15,3 +15,5 @@ cmake-build-release-remote
 cmake-install
 tmp
 docker-compose.override.yml
+config.py
+config.yaml
