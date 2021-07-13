@@ -17,3 +17,4 @@ tmp
 docker-compose.override.yml
 config.py
 config.yaml
+**/*.db
