@@ -69,6 +69,8 @@ struct MetastaarParquetMetadata {
   double cov_maf_cutoff = -1;
 };
 
+MetastaarParquetMetadata read_parquet_metadata(const std::string& s);
+
 using MetastaarFileIntervalTree = IntervalTree<uint64_t, MetastaarParquetMetadata>;
 
 /**

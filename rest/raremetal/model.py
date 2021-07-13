@@ -5,11 +5,10 @@ from flask.cli import with_appcontext
 from flask import current_app
 from .errors import FlaskException
 from collections import Counter, OrderedDict
-from core.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType, GroupIdentifierType, extract_samples, StringVec
+from core.pywrapper import ColumnType, ColumnTypeMap, VariantGroupType, GroupIdentifierType, extract_samples, StringVec, read_parquet_metadata
 from tabulate import tabulate
 from glob import glob
 from pathlib import Path
-import pyarrow.parquet as pq
 import os
 import click
 import json
@@ -30,13 +29,8 @@ def pq_get_region(parquet_file):
   :return:
   """
 
-  schema = pq.read_schema(parquet_file)
-  meta = schema.metadata
-  chrom = str(meta[b"chrom"], "utf8")
-  region_start = int(meta[b"region_start"])
-  region_mid = int(meta[b"region_mid"])
-  region_end = int(meta[b"region_end"])
-  return chrom, region_start, region_mid, region_end
+  meta = read_parquet_metadata(parquet_file)
+  return meta.chrom, meta.region_start, meta.region_mid, meta.region_end
 
 MISSING_DATA_REPS = ("NaN", ".", "", "NA")
 SUMMARY_STAT_FORMATS = ("RAREMETAL", "RVTEST", "METASTAAR")
