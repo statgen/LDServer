@@ -1,7 +1,9 @@
 from flask import Flask
+import logging
 
 def create_app(test_config = None):
   app = Flask(__name__, instance_relative_config = True)
+  app.logger.setLevel(logging.INFO)
 
   if test_config is None:
     app.config.from_object('config.default')

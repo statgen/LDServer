@@ -533,6 +533,8 @@ def add_genotype_dataset(name, description, genome_build, samples_filename, geno
   r = GenotypeDataset(**args)
   for path in genotype_files:
     r.files.append(GenotypeFile(path = path))
+    current_app.logger.info(f"Added genotype file: {path}")
+
   for sample in samples:
     r.samples.append(Sample(subset = 'ALL', sample = sample))
   db.session.add(r)
@@ -751,6 +753,7 @@ def add_phenotype_dataset(name, description, filepath, genotype_datasets, column
 
   db.session.add(pheno)
   db.session.commit()
+  current_app.logger.info(f"Added phenotype file: {filepath}")
 
 def add_summary_stat_dataset(name, description, genome_build, score_files, cov_files, ssid=None, format=None):
   db.create_all()
@@ -779,6 +782,7 @@ def add_summary_stat_dataset(name, description, genome_build, score_files, cov_f
       sc_file.region_end = region_end
 
     sumstat.score_files.append(sc_file)
+    current_app.logger.info(f"Added score statistic file: {path}")
 
   for path in cov_files:
     cov_file = CovarianceFile(path = path)
@@ -790,6 +794,7 @@ def add_summary_stat_dataset(name, description, genome_build, score_files, cov_f
       cov_file.region_end = region_end
 
     sumstat.cov_files.append(cov_file)
+    current_app.logger.info(f"Added covariance matrix file: {path}")
 
   db.session.add(sumstat)
   db.session.commit()
@@ -841,6 +846,7 @@ def add_masks(name, description, filepath, genome_build, genotype_datasets, summ
 
   db.session.add(mask)
   db.session.commit()
+  current_app.logger.info(f"Added mask file: {filepath}")
 
 
 def create_subset(genome_build, genotype_dataset_name, subset_name, samples_filename):
