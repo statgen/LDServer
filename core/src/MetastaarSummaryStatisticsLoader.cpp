@@ -229,6 +229,8 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
     nsamples = N;
   }
 
+  score_result->nsamples = nsamples;
+
 //  unordered_map<pair<string, string>, double> cov_store;
 //  for (uint64_t i = 0; i < score_result->data.size(); i++) {
 //    for (uint64_t j = i; j < score_result->data.size(); j++) {
