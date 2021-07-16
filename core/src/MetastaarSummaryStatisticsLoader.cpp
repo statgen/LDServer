@@ -231,6 +231,12 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
 
   score_result->nsamples = nsamples;
 
+  // At this point, after scanning the score files, if no variants were within the start/stop boundary
+  // then we can simply return. The score_result and cov_result objects will just be empty.
+  if (score_result->data.empty()) {
+    return;
+  }
+
 //  unordered_map<pair<string, string>, double> cov_store;
 //  for (uint64_t i = 0; i < score_result->data.size(); i++) {
 //    for (uint64_t j = i; j < score_result->data.size(); j++) {
