@@ -152,6 +152,10 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
     int64_t nrows = score_reader.num_rows();
     int ncovariates = ncols - 10;
 
+    #ifndef NDEBUG
+        cout << boost::str(boost::format("Loading score statistics from file %s") % score_int.value.filepath) << endl;
+    #endif
+
     // Get the covariance file corresponding to this same range.
     const auto cov_overlaps = chrom_cov_tree->findOverlapping(score_int.start, score_int.stop);
     if (cov_overlaps.size() > 1) {
@@ -264,6 +268,10 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
     std::shared_ptr<arrow::io::ReadableFile> cov_infile;
     PARQUET_ASSIGN_OR_THROW(cov_infile, arrow::io::ReadableFile::Open(cov_int.value.filepath));
     parquet::StreamReader cov_reader{parquet::ParquetFileReader::Open(cov_infile)};
+
+    #ifndef NDEBUG
+        cout << boost::str(boost::format("Loading covariance matrix from file %s") % cov_int.value.filepath) << endl;
+    #endif
 
     // If column goes past this value, we'll need to read into the next block in order to find information on that variant.
     uint64_t& nrows = cov_int.value.nrows;
