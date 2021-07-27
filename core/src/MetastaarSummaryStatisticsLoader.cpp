@@ -47,7 +47,13 @@ void extract_parquet_value(const string& file, const arrow::KeyValueMetadata& me
 
 MetastaarParquetMetadata read_parquet_metadata(const string& s) {
   MetastaarParquetMetadata pq_meta;
-  auto reader = parquet::ParquetFileReader::OpenFile(s);
+  unique_ptr<parquet::ParquetFileReader> reader;
+  try {
+    reader = parquet::ParquetFileReader::OpenFile(s);
+  }
+  catch (...) {
+    throw_ldserver_exception("Parquet file was either inaccessible, corrupt, or empty", {}, "Parquet file was: %s", {s});
+  }
   const arrow::KeyValueMetadata& meta = *reader->metadata()->key_value_metadata();
 
   pq_meta.filepath = s;
