@@ -5,6 +5,28 @@ using namespace std;
  * MetaSTAAR summary statistics loading implementation
  */
 
+//template <class... M, class... S>
+//void throw_ldserver_exception(const std::string& msg, const M&&... msg_args, const std::string& secret, const S&&... secret_args) {
+//  boost::format fmt_msg(msg);
+//  boost::format fmt_secret(secret);
+//
+//  throw LDServerGenericException(
+//    boost::str((fmt_msg % ... % msg_args))
+//  ).set_secret(
+//    boost::str((fmt_secret % ... % secret_args))
+//  );
+//}
+
+void throw_ldserver_exception(const std::string& fmt_msg, const std::vector<string>& args_msg, const std::string& fmt_sec, const std::vector<string>& args_sec) {
+  boost::format bf_msg(fmt_msg);
+  boost::format bf_sec(fmt_sec);
+
+  for (auto&& a : args_msg) bf_msg % a;
+  for (auto&& s : args_sec) bf_sec % s;
+
+  throw LDServerGenericException(bf_msg.str()).set_secret(bf_sec.str());
+}
+
 template <typename T>
 void extract_parquet_value(const string& file, const arrow::KeyValueMetadata& meta, const string& key, T f(const string&), T& out, bool ignore_fail=false) {
   arrow::Result<string> res = meta.Get(key);
