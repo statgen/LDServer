@@ -1,0 +1,8 @@
+summary_stats:
+- id: 5
+  name: "MetaSTAAR corrupt test"
+  description: "Files with corrupt metadata"
+  genome_build: "GRCh37"
+  score_path: "data/metastaar_invalid_metadata.parquet"
+  cov_path: "data/test.qt.segment1.metastaar.cov.parquet"
+  format: "METASTAAR"

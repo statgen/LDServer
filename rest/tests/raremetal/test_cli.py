@@ -1,6 +1,7 @@
 from raremetal.model import add_yaml_command, get_genotype_dataset, get_phenotype_dataset, \
-                            get_phenotype_column_objects, get_mask_by_id, get_analysis_columns, get_summary_stat_dataset
-from core.pywrapper import VariantGroupType, GroupIdentifierType
+                            get_phenotype_column_objects, get_mask_by_id, get_analysis_columns, get_summary_stat_dataset, \
+                            get_score_files, get_cov_files
+from core.pywrapper import VariantGroupType, GroupIdentifierType, LDServerGenericException
 import traceback
 
 def test_add_yaml(app, db):
@@ -82,3 +83,23 @@ def test_sav_missing_index(app, db):
 
     assert isinstance(result.exception, ValueError)
     assert str(result.exception).startswith("Cannot find savvy index")
+
+def test_metastaar_corrupt_meta(app, db):
+  with app.app_context():
+    db.create_all()
+    runner = app.test_cli_runner()
+    result = runner.invoke(add_yaml_command, ["../data/test_metastaar_corrupt.yaml"])
+
+    score_files = get_score_files(5)
+    assert len(score_files) == 0
+
+def test_metastaar_empty_files(app, db):
+  with app.app_context():
+    db.create_all()
+    runner = app.test_cli_runner()
+    result = runner.invoke(add_yaml_command, ["../data/test_metastaar_empty.yaml"])
+
+    score_files = get_score_files(6)
+    cov_files = get_cov_files(6)
+    assert len(score_files) == 0
+    assert len(cov_files) == 0
