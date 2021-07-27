@@ -31,15 +31,16 @@ template <typename T>
 void extract_parquet_value(const string& file, const arrow::KeyValueMetadata& meta, const string& key, T f(const string&), T& out, bool ignore_fail=false) {
   arrow::Result<string> res = meta.Get(key);
   if (res.ok()) {
-    out = f(res.ValueOrDie());
+    try {
+      out = f(res.ValueOrDie());
+    }
+    catch (...) {
+      throw_ldserver_exception("While parsing parquet metadata for key '%s': invalid value found, see server log for detailed exception", {key}, "Failed parsing value for metadata key '%s' from file '%s'", {key, file});
+    }
   }
   else {
     if (!ignore_fail) {
-      throw LDServerGenericException(
-        boost::str(boost::format("Could not extract parquet metadata for key '%s' from file, see server log for detailed exception") % key)
-      ).set_secret(
-        boost::str(boost::format("Failed extracting metadata key '%s' from file '%s'") % key % file)
-      );
+      throw_ldserver_exception("Could not extract parquet metadata for key '%s' from file, see server log for detailed exception", {key}, "Failed extracting metadata key '%s' from file '%s'", {key, file});
     }
   }
 }
