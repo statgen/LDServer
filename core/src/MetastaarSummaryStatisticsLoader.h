@@ -66,7 +66,7 @@ struct MetastaarParquetMetadata {
   uint64_t region_end = 0;
   uint64_t nrows = 0;
   uint64_t ncols = 0;
-  double cov_maf_cutoff = -1;
+  double cov_maf_cutoff = 0;
 };
 
 MetastaarParquetMetadata read_parquet_metadata(const std::string& s);
