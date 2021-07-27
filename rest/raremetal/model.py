@@ -775,7 +775,17 @@ def add_summary_stat_dataset(name, description, genome_build, score_files, cov_f
   for path in score_files:
     sc_file = ScoreStatFile(path = path)
     if path.endswith(".parquet"):
-      chrom, region_start, region_mid, region_end = pq_get_region(find_file(path))
+      try:
+        chrom, region_start, region_mid, region_end = pq_get_region(find_file(path))
+      except Exception as e:
+        msg = str(e)
+        if hasattr(e.args[0], "get_secret"):
+          # This code is only ever executed server side, and only appears in server logs
+          msg += "\n" + e.args[0].get_secret()
+
+        current_app.logger.warning(msg)
+        continue
+
       sc_file.chrom = chrom
       sc_file.region_start = region_start
       sc_file.region_mid = region_mid
@@ -787,7 +797,17 @@ def add_summary_stat_dataset(name, description, genome_build, score_files, cov_f
   for path in cov_files:
     cov_file = CovarianceFile(path = path)
     if path.endswith(".parquet"):
-      chrom, region_start, region_mid, region_end = pq_get_region(find_file(path))
+      try:
+        chrom, region_start, region_mid, region_end = pq_get_region(find_file(path))
+      except Exception as e:
+        msg = str(e)
+        if hasattr(e.args[0], "get_secret"):
+          # This code is only ever executed server side, and only appears in server logs
+          msg += "\n" + e.args[0].get_secret()
+
+        current_app.logger.warning(msg)
+        continue
+
       cov_file.chrom = chrom
       cov_file.region_start = region_start
       cov_file.region_mid = region_mid
