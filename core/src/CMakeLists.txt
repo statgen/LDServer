@@ -13,7 +13,7 @@ if(APPLE)
     set(Python3_USE_STATIC_LIBS FALSE)
 endif()
 
-find_package(Python3 3.8 COMPONENTS Development REQUIRED)
+find_package(Python3 3.8 EXACT COMPONENTS Development REQUIRED)
 
 set(BOOST_ROOT "" CACHE PATH ${CGET_PREFIX})
 find_package(Boost REQUIRED COMPONENTS python38 iostreams chrono)

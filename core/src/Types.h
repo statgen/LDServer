@@ -967,8 +967,8 @@ struct ScoreStatQueryResult {
   int64_t last_seg;
   uint64_t page;
   vector<ScoreResult> data;
-  double sigma2; // assume all score stats calculated against the same phenotype
-  double nsamples;
+  double sigma2 = numeric_limits<double>::quiet_NaN(); // assume all score stats calculated against the same phenotype
+  double nsamples = numeric_limits<double>::quiet_NaN();
 
   ScoreStatQueryResult(uint32_t page_limit): limit(page_limit), last_i(-1), last_seg(0), page(0) {
       data.reserve(page_limit);

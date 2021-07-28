@@ -11,6 +11,7 @@
 #include "Mask.h"
 #include "ScoreCovarianceRunner.h"
 #include "Raw.h"
+#include "MetastaarSummaryStatisticsLoader.h"
 using namespace boost::python;
 
 //template <class E, class... Policies, class... Args>
@@ -267,4 +268,20 @@ BOOST_PYTHON_MODULE(pywrapper) {
     boost::python::def("make_score_covariance_config", &make_score_covariance_config);
 
     boost::python::def("extract_samples", &extract_samples);
+
+    boost::python::class_<MetastaarParquetMetadata, shared_ptr<MetastaarParquetMetadata>>("MetastaarParquetMetadata")
+      .def_readwrite("filepath", &MetastaarParquetMetadata::filepath)
+      .def_readwrite("chrom", &MetastaarParquetMetadata::chrom)
+      .def_readwrite("pos_start", &MetastaarParquetMetadata::pos_start)
+      .def_readwrite("pos_end", &MetastaarParquetMetadata::pos_end)
+      .def_readwrite("pos_mid", &MetastaarParquetMetadata::pos_mid)
+      .def_readwrite("region_start", &MetastaarParquetMetadata::region_start)
+      .def_readwrite("region_mid", &MetastaarParquetMetadata::region_mid)
+      .def_readwrite("region_end", &MetastaarParquetMetadata::region_end)
+      .def_readwrite("nrows", &MetastaarParquetMetadata::nrows)
+      .def_readwrite("ncols", &MetastaarParquetMetadata::ncols)
+      .def_readwrite("cov_maf_cutoff", &MetastaarParquetMetadata::cov_maf_cutoff)
+      ;
+
+    boost::python::def("read_parquet_metadata", &read_parquet_metadata);
 }

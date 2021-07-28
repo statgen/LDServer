@@ -1,0 +1,8 @@
+summary_stats:
+- id: 6
+  name: "MetaSTAAR empty files test"
+  description: "Files that are empty"
+  genome_build: "GRCh37"
+  score_path: "data/metastaar_empty.score.parquet"
+  cov_path: "data/metastaar_empty.cov.parquet"
+  format: "METASTAAR"

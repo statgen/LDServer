@@ -32,7 +32,11 @@ class NoVariantsInRange : public std::runtime_error { using std::runtime_error::
 
 /* Single parameter versions of string conversion functions */
 inline unsigned long long spstoull(const string& s) { return stoull(s); }
-inline uint64_t spstoull_uint64(const string& s) { return stoull(s); }
+inline uint64_t spstoull_uint64(const string& s) {
+  double d = stod(s);
+  auto l = static_cast<uint64_t>(d);
+  return l;
+}
 inline unsigned long spstoul(const string& s) { return stoul(s); }
 inline double spstod(const string& s) { return stod(s); }
 inline int spstoi(const string& s) { return stoi(s); }

@@ -76,8 +76,15 @@ RUN cget install -f core/requirements.txt
 # Next stage: compiled server/binaries
 FROM base as compile
 
+# Copy required test data
+# This must happen before compile unfortunately, as cmake install will try to symlink test files
+# into its own test directory
+COPY --chown=ldserver:ldserver ./data /home/ldserver/data
+
 # Copy source
-COPY --chown=ldserver:ldserver . /home/ldserver/
+COPY --chown=ldserver:ldserver CMakeLists.txt /home/ldserver/CMakeLists.txt
+COPY --chown=ldserver:ldserver ./core /home/ldserver/core
+RUN mkdir -p rest
 
 # Compile ldserver cpp
 ENV CGET_PREFIX="/home/ldserver/cget"
@@ -91,7 +98,13 @@ RUN \
     -DCMAKE_BUILD_TYPE=Release \
   && cmake --build . --target install
 
+# Copy python/flask, other scripts
+COPY --chown=ldserver:ldserver ./rest /home/ldserver/rest
+COPY --chown=ldserver:ldserver ./bin /home/ldserver/bin
+
 # Run test cases
+FROM compile as test
+COPY --chown=ldserver:ldserver tox.ini /home/ldserver/tox.ini
 RUN tox
 
 # Frequently changing metadata here to avoid cache misses
@@ -104,4 +117,4 @@ LABEL org.label-schema.vcs-ref=$GIT_SHA
 LABEL org.label-schema.build-date=$BUILD_DATE
 
 # Set the default stage to be the base files + compiled binaries + test cases.
-FROM compile
+FROM test

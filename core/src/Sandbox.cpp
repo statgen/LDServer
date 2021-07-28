@@ -10,10 +10,10 @@
 #include "ScoreCovarianceRunner.h"
 #include "Raw.h"
 #include <chrono>
+#include "MetastaarSummaryStatisticsLoader.h"
 
 #define  ARMA_DONT_USE_WRAPPER
 #include <armadillo>
-
 using namespace std;
 
 void test1() {
@@ -485,6 +485,103 @@ void metastaar() {
   cout << "DONE!" << endl;
 }
 
+void metastaar_region() {
+  auto time_start = std::chrono::system_clock::now();
+
+  string chrom = "22";
+
+  // Start/stop overlap the gap between two files
+//  auto start = 49999918ul;
+//  auto stop = 50000322ul;
+
+  // No data in region
+  auto start = 19599590ul;
+  auto stop = 19600395ul;
+
+  uint64_t mask_id = 0;
+  vector<VariantGroup> vg_vec;
+  VariantGroup vg;
+  vg.chrom = chrom;
+  vg.name = "test1";
+  vg.start = start;
+  vg.stop = stop;
+
+  vg_vec.push_back(vg);
+  Mask mask(mask_id, VariantGroupType::REGION, GroupIdentifierType::COORDINATES, vg_vec);
+  vector<Mask> masks;
+  masks.emplace_back(mask);
+
+  auto config = make_score_covariance_config();
+  config->chrom = chrom;
+  config->start = start;
+  config->stop = stop;
+  config->segment_size = 100;
+  config->masks = masks;
+  config->summary_stat_dataset_id = 1;
+
+  /* @@@ METASTAAR @@@ */
+  config->summary_stat_format = "METASTAAR";
+
+  config->summary_stat_score_files = {
+    "../../../private/MetaSTAAR/TOPMed/T2D/100kb/summary_statistics.chr22.196.parquet",
+    "../../../private/MetaSTAAR/TOPMed/T2D/100kb/summary_statistics.chr22.197.parquet"
+  };
+  config->summary_stat_cov_files = {
+    "../../../private/MetaSTAAR/TOPMed/T2D/100kb/covariances.chr22.196.parquet",
+    "../../../private/MetaSTAAR/TOPMed/T2D/100kb/covariances.chr22.197.parquet"
+  };
+
+  // Run score/covariance calculations
+  ScoreCovarianceRunner runner(config);
+  runner.run();
+//  auto json = runner.getJSON();
+//  rapidjson::Document doc;
+//  doc.Parse(json.c_str());
+//  auto& data = doc["data"];
+//  auto& groups = doc["data"]["groups"];
+//  auto& variants = doc["data"]["variants"];
+//  auto& group1 = doc["data"]["groups"][0];
+//  auto& group2 = doc["data"]["groups"][1];
+//  auto& group1_variant1 = doc["data"]["groups"][0]["variants"][0];
+//  auto& group2_variant1 = doc["data"]["groups"][1]["variants"][0];
+
+//  auto loader = MetastaarSummaryStatisticsLoader(config->summary_stat_score_files, config->summary_stat_cov_files);
+//  loader.load_region(config->chrom, config->start, config->stop);
+
+  std::chrono::duration<double> elapsed = std::chrono::system_clock::now() - time_start;
+  cout << "Time required: " << elapsed.count() << endl;
+
+  try {
+    auto test = read_parquet_metadata("../../../data/metastaar_invalid_metadata.parquet");
+  }
+  catch (LDServerGenericException& e) {
+    cout << e.what() << endl;
+    cout << e.get_secret() << endl;
+  }
+  cout << "DONE!" << endl;
+}
+
+void parquet_meta_empty_file() {
+  try {
+    auto test = read_parquet_metadata(
+      "../../../private/MetaSTAAR/TOPMed/T2D/100kb/summary_statistics.chr22.100.parquet");
+  }
+  catch (const parquet::ParquetStatusException& e) {
+    cout << "caught exception" << endl;
+  }
+  catch (const parquet::ParquetInvalidOrCorruptedFileException& e) {
+    cout << "caught exception" << endl;
+  }
+  catch (const parquet::ParquetException& e) {
+    cout << "caught exception" << endl;
+  }
+  catch (const exception& e) {
+    cout << "caught exception" << endl;
+  }
+
+  cout << "DONE" << endl;
+}
+
 void sumstats() {
 //  SummaryStatisticsLoader loader(
 //    "../../../data/test.smallchunk.MetaScore.assoc.gz",
@@ -571,10 +668,16 @@ void tabixpp_error() {
   cout << "DONE!" << endl;
 }
 
+void parquet_debug() {
+  auto test = read_parquet_metadata("/Users/welchr/projects/LDServer/private/MetaSTAAR/TOPMed/T2D/summary_statistics.chr10.100.parquet");
+  cout << "DONE" << endl;
+}
+
 int main() {
   //perf_sav_55k();
   //sumstats();
-  metastaar();
+  //metastaar_region();
+  parquet_meta_empty_file();
   //test3();
   return 0;
 }

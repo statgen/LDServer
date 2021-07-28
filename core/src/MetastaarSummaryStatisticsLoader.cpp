@@ -5,26 +5,55 @@ using namespace std;
  * MetaSTAAR summary statistics loading implementation
  */
 
+//template <class... M, class... S>
+//void throw_ldserver_exception(const std::string& msg, const M&&... msg_args, const std::string& secret, const S&&... secret_args) {
+//  boost::format fmt_msg(msg);
+//  boost::format fmt_secret(secret);
+//
+//  throw LDServerGenericException(
+//    boost::str((fmt_msg % ... % msg_args))
+//  ).set_secret(
+//    boost::str((fmt_secret % ... % secret_args))
+//  );
+//}
+
+void throw_ldserver_exception(const std::string& fmt_msg, const std::vector<string>& args_msg, const std::string& fmt_sec, const std::vector<string>& args_sec) {
+  boost::format bf_msg(fmt_msg);
+  boost::format bf_sec(fmt_sec);
+
+  for (auto&& a : args_msg) bf_msg % a;
+  for (auto&& s : args_sec) bf_sec % s;
+
+  throw LDServerGenericException(bf_msg.str()).set_secret(bf_sec.str());
+}
+
 template <typename T>
 void extract_parquet_value(const string& file, const arrow::KeyValueMetadata& meta, const string& key, T f(const string&), T& out, bool ignore_fail=false) {
   arrow::Result<string> res = meta.Get(key);
   if (res.ok()) {
-    out = f(res.ValueOrDie());
+    try {
+      out = f(res.ValueOrDie());
+    }
+    catch (...) {
+      throw_ldserver_exception("While parsing parquet metadata for key '%s': invalid value found, see server log for detailed exception", {key}, "Failed parsing value for metadata key '%s' from file '%s'", {key, file});
+    }
   }
   else {
     if (!ignore_fail) {
-      throw LDServerGenericException(
-        boost::str(boost::format("Could not extract parquet metadata for key '%s' from file, see server log for detailed exception") % key)
-      ).set_secret(
-        boost::str(boost::format("Failed extracting metadata key '%s' from file '%s'") % key % file)
-      );
+      throw_ldserver_exception("Could not extract parquet metadata for key '%s' from file, see server log for detailed exception", {key}, "Failed extracting metadata key '%s' from file '%s'", {key, file});
     }
   }
 }
 
 MetastaarParquetMetadata read_parquet_metadata(const string& s) {
   MetastaarParquetMetadata pq_meta;
-  auto reader = parquet::ParquetFileReader::OpenFile(s);
+  unique_ptr<parquet::ParquetFileReader> reader;
+  try {
+    reader = parquet::ParquetFileReader::OpenFile(s);
+  }
+  catch (...) {
+    throw_ldserver_exception("Parquet file was either inaccessible, corrupt, or empty", {}, "Parquet file was: %s", {s});
+  }
   const arrow::KeyValueMetadata& meta = *reader->metadata()->key_value_metadata();
 
   pq_meta.filepath = s;
@@ -37,8 +66,15 @@ MetastaarParquetMetadata read_parquet_metadata(const string& s) {
   extract_parquet_value(s, meta, "region_start", spstoull_uint64, pq_meta.region_start);
   extract_parquet_value(s, meta, "region_mid", spstoull_uint64, pq_meta.region_mid);
   extract_parquet_value(s, meta, "region_end", spstoull_uint64, pq_meta.region_end);
-
   extract_parquet_value(s, meta, "chrom", stos, pq_meta.chrom);
+
+  if (pq_meta.nrows < 0 || pq_meta.ncols < 0) throw_ldserver_exception("nrows or ncols in parquet metadata were invalid", {}, "parquet file was: %s", {s});
+  if (pq_meta.cov_maf_cutoff < 0 || pq_meta.cov_maf_cutoff > 1) throw_ldserver_exception("cov_maf_cutoff should be >= 0 and <= 1", {}, "parquet file was: %s", {s});
+  if (pq_meta.pos_start <= 0) throw_ldserver_exception("pos_start should be > 0", {}, "parquet file was: %s", {s});
+  if (pq_meta.pos_end <= 0) throw_ldserver_exception("pos_end should be > 0", {}, "parquet file was: %s", {s});
+  if (pq_meta.region_start <= 0) throw_ldserver_exception("region_start should be > 0", {}, "parquet file was: %s", {s});
+  if (pq_meta.region_mid <= 0) throw_ldserver_exception("region_mid should be > 0", {}, "parquet file was: %s", {s});
+  if (pq_meta.region_end <= 0) throw_ldserver_exception("region_end should be > 0", {}, "parquet file was: %s", {s});
 
   return pq_meta;
 }
@@ -152,6 +188,10 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
     int64_t nrows = score_reader.num_rows();
     int ncovariates = ncols - 10;
 
+    #ifndef NDEBUG
+        cout << boost::str(boost::format("Loading score statistics from file %s") % score_int.value.filepath) << endl;
+    #endif
+
     // Get the covariance file corresponding to this same range.
     const auto cov_overlaps = chrom_cov_tree->findOverlapping(score_int.start, score_int.stop);
     if (cov_overlaps.size() > 1) {
@@ -225,6 +265,14 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
     nsamples = N;
   }
 
+  score_result->nsamples = nsamples;
+
+  // At this point, after scanning the score files, if no variants were within the start/stop boundary
+  // then we can simply return. The score_result and cov_result objects will just be empty.
+  if (score_result->data.empty()) {
+    return;
+  }
+
 //  unordered_map<pair<string, string>, double> cov_store;
 //  for (uint64_t i = 0; i < score_result->data.size(); i++) {
 //    for (uint64_t j = i; j < score_result->data.size(); j++) {
@@ -264,6 +312,10 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
     std::shared_ptr<arrow::io::ReadableFile> cov_infile;
     PARQUET_ASSIGN_OR_THROW(cov_infile, arrow::io::ReadableFile::Open(cov_int.value.filepath));
     parquet::StreamReader cov_reader{parquet::ParquetFileReader::Open(cov_infile)};
+
+    #ifndef NDEBUG
+        cout << boost::str(boost::format("Loading covariance matrix from file %s") % cov_int.value.filepath) << endl;
+    #endif
 
     // If column goes past this value, we'll need to read into the next block in order to find information on that variant.
     uint64_t& nrows = cov_int.value.nrows;
