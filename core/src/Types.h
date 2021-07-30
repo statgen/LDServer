@@ -249,6 +249,9 @@ struct LDQueryResultMatrix {
         offsets.clear();
         correlations.clear();
     }
+    bool empty() {
+      return variants.empty();
+    }
     MSGPACK_DEFINE_MAP(variants, chromosomes, positions, offsets, correlations) // tell msgpack what fields do we want to put into the JSON-like map
 };
 
@@ -563,6 +566,9 @@ struct LDQueryResult {
         clear_data();
         clear_last();
         page = 0;
+    }
+    bool empty() {
+      return data.empty();
     }
     string get_json(const string& url, int precision = 0) {
         set_next(url);
