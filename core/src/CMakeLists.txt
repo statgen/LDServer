@@ -46,6 +46,6 @@ target_link_libraries(pywrapper OpenMP::OpenMP_CXX ${PARQUET_LIB} ${ARROW_LIB} $
 
 add_executable(sandbox Sandbox.cpp ${SOURCE_FILES})
 target_include_directories(sandbox PUBLIC ${Python3_INCLUDE_DIRS})
-target_link_libraries(sandbox Threads::Threads ${PARQUET_LIB} ${ARROW_LIB} ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${OPENBLAS_LIB} ${MKL_RT_LIB} ${TABIXPP_LIB} ${Boost_LIBRARIES} ${Python3_LIBRARIES})
+target_link_libraries(sandbox OpenMP::OpenMP_CXX ${PARQUET_LIB} ${ARROW_LIB} ${SAVVY_LIB} ${HTS_LIB} ${HIREDIS_LIB} ${Z_LIB} ${ZSTD_LIB} ${ARMADILLO_LIB} ${OPENBLAS_LIB} ${MKL_RT_LIB} ${TABIXPP_LIB} ${Boost_LIBRARIES} ${Python3_LIBRARIES})
 
 install(TARGETS pywrapper DESTINATION ${PROJECT_SOURCE_DIR}/../rest/core)

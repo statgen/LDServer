@@ -4,6 +4,8 @@ find_library(BOOST_IOSTREAMS_LIB boost_iostreams HINT ${CGET_PREFIX}/lib)
 find_library(MKL_RT_LIB mkl_rt)
 find_package(Threads REQUIRED)
 
+find_package(Python3 3.8 EXACT COMPONENTS Development REQUIRED)
+
 find_library(OPENBLAS_LIB openblas HINT ${CGET_PREFIX}/lib)
 message(STATUS "OpenBLAS = ${OPENBLAS_LIB}")
 
@@ -17,7 +19,7 @@ endif()
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 add_executable(testAll LDServerTest.cpp Main_TestAll.cpp RareMetal.cpp RvTest.cpp)
-target_link_libraries(testAll LDServer ${BOOST_SYSTEM_LIB} ${BOOST_IOSTREAMS_LIB} ${GTEST_LIB} ${OPENBLAS_LIB} ${MKL_RT_LIB} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(testAll LDServer ${Python3_LIBRARIES} ${BOOST_SYSTEM_LIB} ${BOOST_IOSTREAMS_LIB} ${GTEST_LIB} ${OPENBLAS_LIB} ${MKL_RT_LIB} ${CMAKE_THREAD_LIBS_INIT})
 
 install(TARGETS testAll COMPONENT cli RUNTIME DESTINATION test OPTIONAL)
 install(FILES
