@@ -359,11 +359,12 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
   // to the final result object.
   for (uint64_t i = min_index; i <= max_index; i++) {
     for (uint64_t j = i; j <= max_index; j++) {
-      cov_result->data.emplace_back(cov_store.at(make_pair(i, j)));
+      auto vpair = cov_store.at(make_pair(i, j));
+      auto index1 = cov_result->get_variant_index(vpair.variant1, vpair.chromosome1, vpair.position1).first;
+      auto index2 = cov_result->get_variant_index(vpair.variant2, vpair.chromosome2, vpair.position2).first;
+      cov_result->add_correlation(index1, index2, vpair.value);
     }
   }
-
-  cov_result->sort_by_variant();
 }
 
 // Return the covariances.

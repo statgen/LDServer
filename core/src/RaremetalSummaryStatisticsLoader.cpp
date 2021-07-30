@@ -308,6 +308,9 @@ void RaremetalSummaryStatisticsLoader::load_cov(const string& chromosome, uint64
       }
     );
 
+    // Find index of the row variant in the LD results
+    auto index1 = cov_result->get_variant_index(row_variant, row_chrom, row_pos).first;
+
     // Load covariance data
     double row_alt_freq = getAltFreqForPosition(row_pos);
     for (uint64_t j = 0; j < cov.size(); j++) {
@@ -337,7 +340,8 @@ void RaremetalSummaryStatisticsLoader::load_cov(const string& chromosome, uint64
         }
       }
 
-      cov_result->data.emplace_back(row_variant, row_chrom, row_pos, variant, row_chrom, pos, v);
+      auto index2 = cov_result->get_variant_index(variant, row_chrom, pos).first;
+      cov_result->add_correlation(index1, index2, v);
     }
   }
 }
