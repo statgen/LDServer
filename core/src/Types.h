@@ -216,6 +216,22 @@ struct VariantFrequency {
     }
 };
 
+struct VariantsPair {
+  string variant1;
+  string variant2;
+  string chromosome1;
+  string chromosome2;
+  uint64_t position1;
+  uint64_t position2;
+  double value;
+  VariantsPair() : variant1(""), variant2(""), chromosome1(""), chromosome2(""), position1(0ul), position2(0ul), value(0.0) {}
+  VariantsPair(const string& variant1, const string& chromosome1, uint64_t position1, const string& variant2, const string& chromosome2, uint64_t position2, double value):
+    variant1(variant1), variant2(variant2), chromosome1(chromosome1), chromosome2(chromosome2), position1(position1), position2(position2), value(value) {}
+  bool operator==(VariantsPair const& pair) const { // needed by boost.python
+    return (variant1.compare(pair.variant1) == 0 && variant2.compare(pair.variant2) == 0);
+  }
+};
+
 /*
  * Struct to store the LD results as upper triangular matrix (for region LD query). This struct is serialized to MessagePack and JSON as a dictionary.
  * All variants are sorted by their position. The order is guaranteed by LDQueryResult.get_variant_index() and LDQueryResult.add_correlation() methods.
