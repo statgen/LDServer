@@ -735,45 +735,55 @@ TEST_F(LDServerTest, metastaar_compare_rvtest_test) {
 
   // Check covariance
   auto cov_result = loader.getCovResult();
-  ASSERT_FALSE(cov_result->data.empty());
+  ASSERT_FALSE(cov_result->empty());
   uint64_t ncomp = 0;
   uint64_t track_pos1 = 0;
   uint64_t track_pos2 = 0;
-  string& prev_variant1 = cov_result->data[0].variant1;
-  for (auto&& entry : cov_result->data) {
-    double value_test = entry.value;
 
-    string key(to_string(entry.position1) + "_" + to_string(entry.position2));
-    auto gold_iter = gold_cov.find(key);
-    double value_gold = numeric_limits<double>::quiet_NaN();
-    if (gold_iter != gold_cov.end()) {
-      value_gold = gold_iter->second;
+  string& prev_variant1 = cov_result->data.variants[0];
+  for (unsigned int index1 = 0u; index1 < cov_result->data.variants.size(); ++index1) {
+    auto& variant1 = cov_result->data.variants[index1];
+    auto& position1 = cov_result->data.positions[index1];
+    auto& offset1 = cov_result->data.offsets[index1];
+    auto& correlations1 = cov_result->data.correlations[index1];
+
+    for (unsigned int i = 0u; i < correlations1.size(); ++i) {
+      auto& variant2 = cov_result->data.variants[i + offset1];
+      auto& position2 = cov_result->data.positions[i + offset1];
+      double value_test = correlations1[i];
+
+      string key(to_string(position1) + "_" + to_string(position2));
+      auto gold_iter = gold_cov.find(key);
+      double value_gold = numeric_limits<double>::quiet_NaN();
+      if (gold_iter != gold_cov.end()) {
+        value_gold = gold_iter->second;
+      }
+      else {
+        continue;
+      }
+
+      ASSERT_NE(variant1, "");
+      ASSERT_NE(variant2, "");
+      ASSERT_NEAR(value_gold, value_test, 0.0001);
+
+      // Check positions came back in order (protect against recent changes to ldserver core data structures)
+      // The first variant should never be out of order
+      ASSERT_GE(position1, track_pos1);
+      track_pos1 = position1;
+
+      // The second variant in the pair can go backwards in position, but only if the first variant has changed
+      if (prev_variant1 == variant1) {
+        ASSERT_GE(position2, track_pos2);
+        track_pos2 = position2;
+      }
+      else {
+        // The first variant changed, so we need to reset
+        track_pos2 = position2;
+        prev_variant1 = variant1;
+      }
+
+      ncomp++;
     }
-    else {
-      continue;
-    }
-
-    ASSERT_NE(entry.variant1, "");
-    ASSERT_NE(entry.variant2, "");
-    ASSERT_NEAR(value_gold, value_test, 0.0001);
-
-    // Check positions came back in order (protect against recent changes to ldserver core data structures)
-    // The first variant should never be out of order
-    ASSERT_GE(entry.position1, track_pos1);
-    track_pos1 = entry.position1;
-
-    // The second variant in the pair can go backwards in position, but only if the first variant has changed
-    if (prev_variant1 == entry.variant1) {
-      ASSERT_GE(entry.position2, track_pos2);
-      track_pos2 = entry.position2;
-    }
-    else {
-      // The first variant changed, so we need to reset
-      track_pos2 = entry.position2;
-      prev_variant1 = entry.variant1;
-    }
-
-    ncomp++;
   }
 
   ASSERT_EQ(ncomp, 17578);
