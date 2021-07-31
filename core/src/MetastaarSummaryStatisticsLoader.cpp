@@ -185,7 +185,7 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
     PARQUET_ASSIGN_OR_THROW(score_infile, arrow::io::ReadableFile::Open(score_int.value.filepath));
     parquet::StreamReader score_reader{parquet::ParquetFileReader::Open(score_infile)};
     int ncols = score_reader.num_columns();
-    int64_t nrows = score_reader.num_rows();
+    //int64_t nrows = score_reader.num_rows();
     int ncovariates = ncols - 10;
 
     #ifndef NDEBUG
@@ -297,8 +297,8 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
       ScoreResult* row_sstat = score_stats[i];
       ScoreResult* col_sstat = score_stats[j];
 
-      string& row_variant = row_sstat->variant;
-      string& col_variant = col_sstat->variant;
+      //string& row_variant = row_sstat->variant;
+      //string& col_variant = col_sstat->variant;
 
       double v = (0.0 - arma::dot(row_GtU, col_GtU)) / nsamples;
       cov_store.emplace(make_pair(i, j), VariantsPair(row_sstat->variant, row_sstat->chrom, row_sstat->position, col_sstat->variant, col_sstat->chrom, col_sstat->position, v));
@@ -318,7 +318,7 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
     #endif
 
     // If column goes past this value, we'll need to read into the next block in order to find information on that variant.
-    uint64_t& nrows = cov_int.value.nrows;
+    //uint64_t& nrows = cov_int.value.nrows;
 
     uint32_t row;
     uint32_t col;
@@ -338,8 +338,8 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
         ScoreResult* row_sstat = score_stats[row_index];
         ScoreResult* col_sstat = score_stats[col_index];
 
-        string& row_variant = row_sstat->variant;
-        string& col_variant = col_sstat->variant;
+        //string& row_variant = row_sstat->variant;
+        //string& col_variant = col_sstat->variant;
 
         // TODO: inefficient, would probably be faster calculating entire matrix first - revisit later
         // Can possibly construct entire final GtU * (GtU).T matrix from ptr_aux_mem constructor in arma
