@@ -451,7 +451,7 @@ TEST_F(LDServerTest, SAV_one_page) {
         auto& correlations1 = result.data.correlations[index1];
         for (unsigned int i = 0u; i < correlations1.size(); ++i) {
             auto index2 = offset1 + i;
-            auto corr_value = correlations1[i];
+//            auto corr_value = correlations1[i];
             string key(to_string(result.data.positions.at(index1)) + "_" + to_string(result.data.positions.at(index2)));
             ASSERT_EQ(goldstandard.count(key), 1);
 //            ASSERT_NEAR(goldstandard.find(key)->second , entry.value, 0.00000000001);
