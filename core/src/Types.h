@@ -869,7 +869,115 @@ struct SingleVariantLDQueryResult {
         page = 0;
     }
 
-    string get_json(const string& url, int precision = 0) {
+    string get_json_v1(const string& url, int precision = 0) {
+        set_next(url);
+
+        rapidjson::StringBuffer strbuf;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
+
+        if (precision > 0) {
+          writer.SetMaxDecimalPlaces(precision);
+        }
+
+        writer.StartObject();
+        writer.Key("data");
+        writer.StartObject();
+
+        writer.Key("chromosome1");
+        writer.StartArray();
+        if (!data.index_variant.empty()) {
+          for (size_t i = 0; i < data.variants.size(); i++) {
+            writer.String(data.index_chromosome.c_str());
+          }
+        }
+        writer.EndArray();
+
+        writer.Key("chromosome2");
+        writer.StartArray();
+        for (auto&& v : data.chromosomes) {
+          writer.String(v.c_str());
+        }
+        writer.EndArray();
+
+        writer.Key("correlation");
+        writer.StartArray();
+        if (precision > 0) {
+          double d = pow(10.0, precision);
+          for (auto& v : data.correlations) {
+            if (std::isnan(v)) {
+              writer.Null();
+            } else {
+              writer.Double(round(v * d) / d);
+            }
+          }
+        } else {
+          for (auto& v : data.correlations) {
+            if (std::isnan(v)) {
+              writer.Null();
+            } else {
+              writer.Double(v);
+            }
+          }
+        }
+        writer.EndArray();
+
+        writer.Key("position1");
+        writer.StartArray();
+        if (!data.index_variant.empty()) {
+          for (size_t i = 0; i < data.variants.size(); i++) {
+            writer.Uint64(data.index_position);
+          }
+        }
+        writer.EndArray();
+
+        writer.Key("position2");
+        writer.StartArray();
+        for (auto&& v : data.positions) {
+          writer.Uint64(v);
+        }
+        writer.EndArray();
+
+        writer.Key("variant1");
+        writer.StartArray();
+        if (!data.index_variant.empty()) {
+          for (size_t i = 0; i < data.variants.size(); i++) {
+            writer.String(data.index_variant.c_str());
+          }
+        }
+        writer.EndArray();
+
+        writer.Key("variant2");
+        writer.StartArray();
+        if (!data.variants.empty()) {
+          for (auto&& v : data.variants) {
+            writer.String(v.c_str());
+          }
+        }
+        writer.EndArray();
+
+        writer.EndObject();
+
+        writer.Key("error");
+        if (!error.empty()) {
+          writer.String(error.c_str());
+        }
+        else {
+          writer.Null();
+        }
+
+        writer.Key("next");
+        if (!next.empty()) {
+          writer.String(next.c_str());
+
+        }
+        else {
+          writer.Null();
+        }
+        writer.EndObject();
+        return strbuf.GetString();
+    }
+
+    string get_json_v2(const string& url, int precision = 0) {
         set_next(url);
 
         rapidjson::StringBuffer strbuf;

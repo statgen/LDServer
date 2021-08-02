@@ -171,7 +171,8 @@ BOOST_PYTHON_MODULE(pywrapper) {
         .def("is_last", &SingleVariantLDQueryResult::is_last)
         .def("has_next", &SingleVariantLDQueryResult::has_next)
         .def("set_next", &SingleVariantLDQueryResult::set_next)
-        .def("get_json", &SingleVariantLDQueryResult::get_json)
+        .def("get_json_v1", &SingleVariantLDQueryResult::get_json_v1)
+        .def("get_json_v2", &SingleVariantLDQueryResult::get_json_v2)
         .def("get_messagepack_py", &SingleVariantLDQueryResult::get_messagepack_py)
         ;
 
