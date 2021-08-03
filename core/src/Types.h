@@ -570,7 +570,136 @@ struct LDQueryResult {
     bool empty() {
       return data.empty();
     }
-    string get_json(const string& url, int precision = 0) {
+
+    string get_json_classic(const string &url, int precision = 0) {
+      set_next(url);
+
+      rapidjson::StringBuffer strbuf;
+      rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
+
+      if (precision > 0) {
+        writer.SetMaxDecimalPlaces(precision);
+      }
+
+      writer.StartObject();
+      writer.Key("data");
+      writer.StartObject();
+
+      writer.Key("variant1");
+      writer.StartArray();
+      for (uint64_t index1 = 0u; index1 < data.variants.size(); ++index1) {
+        auto& variant1 = data.variants[index1];
+        auto& correlations1 = data.correlations[index1];
+        for (uint64_t i = 0u; i < correlations1.size(); ++i) {
+          writer.String(variant1.c_str());
+        }
+      }
+      writer.EndArray();
+
+      writer.Key("chromosome1");
+      writer.StartArray();
+      for (uint64_t index1 = 0u; index1 < data.variants.size(); ++index1) {
+        auto& chromosome1 = data.chromosomes[index1];
+        auto& correlations1 = data.correlations[index1];
+        for (uint64_t i = 0u; i < correlations1.size(); ++i) {
+          writer.String(chromosome1.c_str());
+        }
+      }
+      writer.EndArray();
+
+      writer.Key("position1");
+      writer.StartArray();
+      for (uint64_t index1 = 0u; index1 < data.variants.size(); ++index1) {
+        auto& position1 = data.positions[index1];
+        auto& correlations1 = data.correlations[index1];
+        for (uint64_t i = 0u; i < correlations1.size(); ++i) {
+          writer.Uint64(position1);
+        }
+      }
+      writer.EndArray();
+
+      writer.Key("variant2");
+      writer.StartArray();
+      for (uint64_t index1 = 0u; index1 < data.variants.size(); ++index1) {
+        auto& offset1 = data.offsets[index1];
+        auto& correlations1 = data.correlations[index1];
+        for (uint64_t i = 0u; i < correlations1.size(); ++i) {
+          auto& variant2 = data.variants[i + offset1];
+          writer.String(variant2.c_str());
+        }
+      }
+      writer.EndArray();
+
+      writer.Key("chromosome2");
+      writer.StartArray();
+      for (uint64_t index1 = 0u; index1 < data.variants.size(); ++index1) {
+        auto& offset1 = data.offsets[index1];
+        auto& correlations1 = data.correlations[index1];
+        for (uint64_t i = 0u; i < correlations1.size(); ++i) {
+          auto& chromosome2 = data.chromosomes[i + offset1];
+          writer.String(chromosome2.c_str());
+        }
+      }
+      writer.EndArray();
+
+      writer.Key("position2");
+      writer.StartArray();
+      for (uint64_t index1 = 0u; index1 < data.variants.size(); ++index1) {
+        auto& offset1 = data.offsets[index1];
+        auto& correlations1 = data.correlations[index1];
+        for (uint64_t i = 0u; i < correlations1.size(); ++i) {
+          auto& position2 = data.positions[i + offset1];
+          writer.Uint64(position2);
+        }
+      }
+      writer.EndArray();
+
+      double d = pow(10.0, precision);
+      writer.Key("correlation");
+      writer.StartArray();
+      for (uint64_t index1 = 0u; index1 < data.variants.size(); ++index1) {
+        auto& correlations1 = data.correlations[index1];
+        for (uint64_t i = 0u; i < correlations1.size(); ++i) {
+          auto& value = correlations1[i];
+          if (std::isnan(value)) {
+            writer.Null();
+          }
+          else {
+            if (precision > 0) {
+              writer.Double(round(value * d) / d);
+            }
+            else {
+              writer.Double(value);
+            }
+          }
+        }
+      }
+      writer.EndArray();
+
+      writer.EndObject();
+
+      writer.Key("error");
+      if (!error.empty()) {
+        writer.String(error.c_str());
+      }
+      else {
+        writer.Null();
+      }
+
+      writer.Key("next");
+      if (!next.empty()) {
+        writer.String(next.c_str());
+
+      }
+      else {
+        writer.Null();
+      }
+
+      writer.EndObject();
+      return strbuf.GetString();
+    }
+
+    string get_json_compact(const string& url, int precision = 0) {
         set_next(url);
 
         rapidjson::StringBuffer strbuf;

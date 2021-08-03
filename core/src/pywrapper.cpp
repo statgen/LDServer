@@ -158,7 +158,8 @@ BOOST_PYTHON_MODULE(pywrapper) {
             .def("is_last", &LDQueryResult::is_last)
             .def("has_next", &LDQueryResult::has_next)
             .def("set_next", &LDQueryResult::set_next)
-            .def("get_json", &LDQueryResult::get_json)
+            .def("get_json_classic", &LDQueryResult::get_json_classic)
+            .def("get_json_compact", &LDQueryResult::get_json_compact)
             .def("get_messagepack_py", &LDQueryResult::get_messagepack_py)
             ;
 
