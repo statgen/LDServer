@@ -194,7 +194,7 @@ def get_variant_ld(genome_build, reference_name, population_name):
         'last': fields.Str(required = False, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
         'precision': fields.Int(required = False, validate = lambda x: x >= 0, missing = 0, error_messages = {'validator_failed': 'Value must be greater than 0 or equal to 0.'}),
         'msgpack': fields.Bool(required = False, missing = False),
-        'format': fields.Str(required = False, missing = "classic", validate = lambda x: x in ("classic", "compact"), error_messages = {'validator_failed': "Value should be v1 or v2."})
+        'format': fields.Str(required = False, missing = "classic", validate = lambda x: x in ("classic", "compact"), error_messages = {'validator_failed': "Value should be classic or compact."})
     }
     args = parser.parse(arguments, validate = partial(validate_query, all_fields = ['variant', 'chrom', 'start', 'stop', 'correlation', 'limit', 'last', 'precision', 'msgpack', 'format']), location="query")
     if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
