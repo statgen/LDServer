@@ -359,7 +359,7 @@ def test_region_ld_with_paging(client):
         assert x in multi_page_result
         assert y == multi_page_result[x]
 
-def test_variant_ld_v1(client, goldstandard_ld):
+def test_variant_ld_classic(client, goldstandard_ld):
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare')
     assert response.status_code == 200
     result = response.get_json()
@@ -392,8 +392,8 @@ def test_variant_ld_v1(client, goldstandard_ld):
         assert key in goldstandard
         assert pytest.approx(data['correlation'][i]**2, 0.00001) == goldstandard[key]
 
-def test_variant_ld_v2(client, goldstandard_ld):
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare&format=v2')
+def test_variant_ld_compact(client, goldstandard_ld):
+    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare&format=compact')
     assert response.status_code == 200
     assert response.content_type == 'application/json'
     result = response.get_json()
@@ -411,7 +411,7 @@ def test_variant_ld_v2(client, goldstandard_ld):
         assert key in goldstandard
         assert pytest.approx(correlation, 0.00001) == goldstandard[key]
 
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=r&format=v2')
+    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=r&format=compact')
     assert response.status_code == 200
     assert response.content_type == 'application/json'
     result = response.get_json()
@@ -431,7 +431,7 @@ def test_variant_ld_v2(client, goldstandard_ld):
 
 
 def test_variant_ld_with_msgpack(client, goldstandard_ld):
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare&msgpack=1&format=v2')
+    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare&msgpack=1&format=compact')
     assert response.status_code == 200
     assert response.content_type == 'application/msgpack'
     result = msgpack.unpackb(response.get_data(), strict_map_key = False)
@@ -449,7 +449,7 @@ def test_variant_ld_with_msgpack(client, goldstandard_ld):
         assert key in goldstandard
         assert pytest.approx(correlation, 0.00001) == goldstandard[key]
 
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=r&msgpack=1&format=v2')
+    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=r&msgpack=1&format=compact')
     assert response.status_code == 200
     assert response.content_type == 'application/msgpack'
     result = msgpack.unpackb(response.get_data(), strict_map_key = False)
@@ -468,8 +468,8 @@ def test_variant_ld_with_msgpack(client, goldstandard_ld):
         assert pytest.approx(correlation**2, 0.00001) == goldstandard[key]
 
 
-def test_variant_ld_precision_v2(client, goldstandard_ld):
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare&precision=7&format=v2')
+def test_variant_ld_precision_compact(client, goldstandard_ld):
+    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare&precision=7&format=compact')
     assert response.status_code == 200
     assert response.content_type == 'application/json'
     result = response.get_json()
@@ -488,8 +488,8 @@ def test_variant_ld_precision_v2(client, goldstandard_ld):
         assert pytest.approx(correlation, 0.00001) == round(goldstandard[key], 7)
 
 
-def test_variant_ld_different_chromosomes_v2(client):
-    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=21&start=51241101&stop=51241385&correlation=rsquare&format=v2')
+def test_variant_ld_different_chromosomes_compact(client):
+    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=21&start=51241101&stop=51241385&correlation=rsquare&format=compact')
     assert response.status_code == 200
     assert response.content_type == 'application/json'
     result = response.get_json()
@@ -503,8 +503,8 @@ def test_variant_ld_different_chromosomes_v2(client):
     assert data['index_position'] is None
 
 
-def test_variant_ld_with_paging_v2(client):
-    url = '/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare&format=v2'
+def test_variant_ld_with_paging_compact(client):
+    url = '/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare&format=compact'
     response = client.get(url)
     assert response.status_code == 200
     assert response.content_type == 'application/json'
@@ -534,7 +534,7 @@ def test_variant_ld_with_paging_v2(client):
         assert x in multi_page_result
         assert y == multi_page_result[x]
 
-def test_variant_ld_different_chromosomes_v1(client):
+def test_variant_ld_different_chromosomes_classic(client):
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=21&start=51241101&stop=51241385&correlation=rsquare')
     assert response.status_code == 200
     result = response.get_json()
@@ -544,7 +544,7 @@ def test_variant_ld_different_chromosomes_v1(client):
     assert all(len(data[x]) == 0 for x in ['chromosome1', 'position1', 'variant1', 'chromosome2', 'position2', 'variant2', 'correlation'])
 
 
-def test_variant_ld_with_paging_v1(client):
+def test_variant_ld_with_paging_classic(client):
     url = '/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare'
     response = client.get(url)
     assert response.status_code == 200

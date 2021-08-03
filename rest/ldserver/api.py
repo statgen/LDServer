@@ -194,7 +194,7 @@ def get_variant_ld(genome_build, reference_name, population_name):
         'last': fields.Str(required = False, validate = lambda x: len(x) > 0, error_messages = {'validator_failed': 'Value must be a non-empty string.'}),
         'precision': fields.Int(required = False, validate = lambda x: x >= 0, missing = 0, error_messages = {'validator_failed': 'Value must be greater than 0 or equal to 0.'}),
         'msgpack': fields.Bool(required = False, missing = False),
-        'format': fields.Str(required = False, missing = "v1", validate = lambda x: x in ("v1", "v2"), error_messages = {'validator_failed': "Value should be v1 or v2."})
+        'format': fields.Str(required = False, missing = "classic", validate = lambda x: x in ("classic", "compact"), error_messages = {'validator_failed': "Value should be v1 or v2."})
     }
     args = parser.parse(arguments, validate = partial(validate_query, all_fields = ['variant', 'chrom', 'start', 'stop', 'correlation', 'limit', 'last', 'precision', 'msgpack', 'format']), location="query")
     if args['limit'] > current_app.config['API_MAX_PAGE_SIZE']:
@@ -232,19 +232,19 @@ def get_variant_ld(genome_build, reference_name, population_name):
     base_url += '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.items(True) if arg != 'last'))
     if not args['msgpack']:
         # start = time.time()
-        if args['format'] == 'v1':
-            r = make_response(result.get_json_v1(str(base_url), args['precision']), 200)
+        if args['format'] == 'classic':
+            r = make_response(result.get_json_classic(str(base_url), args['precision']), 200)
         else:
-            r = make_response(result.get_json_v2(str(base_url), args['precision']), 200)
+            r = make_response(result.get_json_compact(str(base_url), args['precision']), 200)
         r.mimetype = 'application/json'
         # print("Jsonified results and created response in {} seconds.".format("%0.4f" % (time.time() - start)))
     else:
-        if args['format'] == 'v2':
+        if args['format'] == 'compact':
             # start = time.time()
             r = make_response(result.get_messagepack_py(str(base_url)), 200)
             r.mimetype = 'application/msgpack'
         else:
-            raise ValidationError("msgpack is only supported in v2 format")
+            raise ValidationError("msgpack is only supported with format=compact")
         # print("Packed in MessagePack and created response in {} seconds.".format("%0.4f" % (time.time() - start)))
     return r
 

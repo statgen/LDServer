@@ -869,7 +869,7 @@ struct SingleVariantLDQueryResult {
         page = 0;
     }
 
-    string get_json_v1(const string& url, int precision = 0) {
+    string get_json_classic(const string& url, int precision = 0) {
         set_next(url);
 
         rapidjson::StringBuffer strbuf;
@@ -977,7 +977,7 @@ struct SingleVariantLDQueryResult {
         return strbuf.GetString();
     }
 
-    string get_json_v2(const string& url, int precision = 0) {
+    string get_json_compact(const string& url, int precision = 0) {
         set_next(url);
 
         rapidjson::StringBuffer strbuf;
