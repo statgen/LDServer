@@ -392,7 +392,7 @@ void perf_ld_server() {
     server.compute_region_ld("22", 50244251, 51244237, correlation::LD_RSQUARE, result);
 
     // Get JSON
-    json = result.get_json("blah");
+    json = result.get_json_classic("blah");
   }
 
   // Parse back out JSON
