@@ -121,6 +121,17 @@ LD Server Playground
                                 <input type="text" class="form-control" id="input-precision" placeholder="0" oninput="setHttpRequest()" disabled>
                             </div>
                         </div>
+                        <div class="form-group">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <label class="input-group-text" for="input-ld-format">LD Format</label>
+                                </div>
+                                <select class="custom-select" id="input-ld-format" onchange="setHttpRequest()" disabled>
+                                    <option value="classic" selected>Classic</option>
+                                    <option value="compact">Compact</option>
+                                </select>
+                            </div>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -211,6 +222,9 @@ LD Server Playground
                 if ($("#input-precision")[0].value != 0) {
                     httpRequest += '&precision=' + $("#input-precision")[0].value;
                 }
+                if ($("#input-ld-format")[0].value != 0) {
+                    httpRequest += '&format=' + $("#input-ld-format")[0].value;
+                }
             } else if (queryType == 6) {
                 httpRequest += "/" + reference.text() + "/populations/" + population.text() + "/variants";
                 var correlation = $("#select-correlation option:selected");
@@ -222,6 +236,9 @@ LD Server Playground
                 }
                 if ($("#input-precision")[0].value != 0) {
                     httpRequest += '&precision=' + $("#input-precision")[0].value;
+                }
+                if ($("#input-ld-format")[0].value != 0) {
+                    httpRequest += '&format=' + $("#input-ld-format")[0].value;
                 }
             }
             $("#input-http-request")[0].value = httpRequest;
@@ -397,6 +414,7 @@ LD Server Playground
                 $("#input-stop").prop("disabled", false);
                 $("#input-limit").prop("disabled", false);
                 $("#input-precision").prop("disabled", false);
+                $("#input-ld-format").prop("disabled", false);
                 break;
             case 6:
                 getGenomeBuilds(true);
@@ -414,6 +432,7 @@ LD Server Playground
                 $("#input-stop").prop("disabled", false);
                 $("#input-limit").prop("disabled", false);
                 $("#input-precision").prop("disabled", false);
+                $("#input-ld-format").prop("disabled", false);
                 break;
         }
         setHttpRequest();
