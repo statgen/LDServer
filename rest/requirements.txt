@@ -14,7 +14,7 @@ Flask-Compress==1.7.0
 Flask-Cors==3.0.9
 Flask-SQLAlchemy==2.4.4
 funcsigs==1.0.2
-gevent==21.1.2
+gevent==21.8.0
 greenlet==1.1.0
 gunicorn==20.1.0
 idna==2.10
