@@ -44,10 +44,6 @@ RUN pip3 install --upgrade pip
 COPY rest/build.txt /
 RUN pip3 install -r build.txt
 
-# Install required python packages
-COPY rest/requirements.txt /
-RUN pip3 install -r requirements.txt
-
 # Create a group and user to execute as, then drop root
 ARG UID
 ARG GID
@@ -72,6 +68,11 @@ COPY --chown=ldserver:ldserver core/*.cmake /home/ldserver/core/
 ARG CMAKE_BUILD_PARALLEL_LEVEL
 ARG MAKEFLAGS
 RUN cget install -f core/requirements.txt
+
+# Install required python packages
+ENV PATH="/home/ldserver/.local/bin:${PATH}"
+COPY --chown=ldserver:ldserver rest/requirements.txt rest/requirements.txt
+RUN pip3 install -r rest/requirements.txt
 
 # Next stage: compiled server/binaries
 FROM base as compile
