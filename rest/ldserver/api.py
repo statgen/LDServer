@@ -169,13 +169,17 @@ def get_region_ld(genome_build, reference_name, population_name):
     else:
         base_url = request.base_url
     base_url += '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.items(True) if arg != 'last'))
+    if current_app.config["LDSERVER_PRECISION"] is not None:
+        precision = current_app.config["LDSERVER_PRECISION"]
+    else:
+        precision = args['precision']
     if not args['msgpack']:
         #print "Jsonified result in {} seconds.".format("%0.4f" % (time.time() - start))
         #start = time.time()
         if args['format'] == 'classic':
-            r = make_response(result.get_json_classic(str(base_url), args['precision']), 200)
+            r = make_response(result.get_json_classic(str(base_url), precision), 200)
         else:
-            r = make_response(result.get_json_compact(str(base_url), args['precision']), 200)
+            r = make_response(result.get_json_compact(str(base_url), precision), 200)
         r.mimetype = 'application/json'
         # print("Jsonified results and created response in {} seconds.".format("%0.4f" % (time.time() - start)))
     else:
@@ -237,12 +241,16 @@ def get_variant_ld(genome_build, reference_name, population_name):
     else:
         base_url = request.base_url
     base_url += '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.items(True) if arg != 'last'))
+    if current_app.config["LDSERVER_PRECISION"] is not None:
+        precision = current_app.config["LDSERVER_PRECISION"]
+    else:
+        precision = args['precision']
     if not args['msgpack']:
         # start = time.time()
         if args['format'] == 'classic':
-            r = make_response(result.get_json_classic(str(base_url), args['precision']), 200)
+            r = make_response(result.get_json_classic(str(base_url), precision), 200)
         else:
-            r = make_response(result.get_json_compact(str(base_url), args['precision']), 200)
+            r = make_response(result.get_json_compact(str(base_url), precision), 200)
         r.mimetype = 'application/json'
         # print("Jsonified results and created response in {} seconds.".format("%0.4f" % (time.time() - start)))
     else:

@@ -14,7 +14,8 @@ def app():
         'CACHE_ENABLED': False,
         'CACHE_REDIS_HOSTNAME': '127.0.0.1',
         'CACHE_REDIS_PORT': 6379,
-        'GZIP_COMPRESSION': True
+        'GZIP_COMPRESSION': True,
+        'LDSERVER_PRECISION': None
     })
     app.config['REFERENCES_JSON'] = os.path.join(os.path.dirname(__file__), 'datasets.json')
     from ldserver.model import load_references

@@ -570,6 +570,24 @@ def test_variant_ld_precision_compact(client, goldstandard_ld):
         assert pytest.approx(correlation, 0.00001) == round(goldstandard[key], 7)
 
 
+def test_variant_ld_precision_server_side(client):
+    client.application.config["LDSERVER_PRECISION"] = 1
+    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare&precision=7&format=compact')
+    assert response.status_code == 200
+    assert response.content_type == 'application/json'
+    result = response.get_json()
+    data = result['data']
+    assert data["correlations"] == [1.0, 1.0, 0.0, 0.0, 0.0, 0.0]
+
+    client.application.config["LDSERVER_PRECISION"] = 8
+    response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=22&start=51241101&stop=51241385&correlation=rsquare&precision=7&format=compact')
+    assert response.status_code == 200
+    assert response.content_type == 'application/json'
+    result = response.get_json()
+    data = result['data']
+    assert data["correlations"] == [1.0, 1.0, 7.59e-06, 2.8e-07, 2.8e-07, 2.8e-07]
+
+
 def test_variant_ld_different_chromosomes_compact(client):
     response = client.get('/genome_builds/GRCh37/references/1000G/populations/ALL/variants?variant=22:51241101_A/T&chrom=21&start=51241101&stop=51241385&correlation=rsquare&format=compact')
     assert response.status_code == 200
