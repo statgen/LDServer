@@ -22,11 +22,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python3-wheel \
   zlib1g-dev \
   liblzma-dev \
-  libopenblas-base \
-  libopenblas-dev \
-  liblapack-dev \
-  libarpack2 \
-  libarpack2-dev \
   redis \
   locales \
   git \
