@@ -8,3 +8,4 @@ set(CMAKE_CXX_STANDARD 14)
 
 add_subdirectory(src)
 add_subdirectory(tests)
+add_subdirectory(benchmark)
