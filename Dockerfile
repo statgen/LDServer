@@ -32,6 +32,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV LC_ALL en_US.UTF-8
 ENV LANG en_US.UTF-8
 
+# Set a default # of threads, otherwise OMP decides to use every core it possibly can,
+# which can cause some strange runtime issues. These variables can be overridden by using
+# a .env file with docker compose, for example.
+ENV OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+
 # Upgrade pip
 RUN pip3 install --upgrade pip
 
