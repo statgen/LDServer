@@ -113,9 +113,9 @@ ARG BUILD_DATE
 ARG GIT_SHA
 ARG LDSERVER_VERSION
 
-LABEL org.label-schema.version=$LDSERVER_VERSION
-LABEL org.label-schema.vcs-ref=$GIT_SHA
-LABEL org.label-schema.build-date=$BUILD_DATE
+LABEL org.label-schema.version=$LDSERVER_VERSION \
+      org.label-schema.vcs-ref=$GIT_SHA \
+      org.label-schema.build-date=$BUILD_DATE
 
 # Set the default stage to be the base files + compiled binaries + test cases.
 FROM test
