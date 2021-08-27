@@ -106,7 +106,7 @@ COPY --chown=ldserver:ldserver ./bin /home/ldserver/bin
 # Run test cases
 FROM compile as test
 COPY --chown=ldserver:ldserver tox.ini /home/ldserver/tox.ini
-RUN tox && bin/test_gunicorn.py && rm -f ./rest/ldserver/sql.db
+RUN tox && python3 bin/test_gunicorn.py && rm -f ./rest/ldserver/sql.db
 
 # Frequently changing metadata here to avoid cache misses
 ARG BUILD_DATE
