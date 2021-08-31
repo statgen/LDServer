@@ -284,9 +284,12 @@ Retrieves correlations between a reference variant and all others in a defined r
 | variant | string | "10:1414141_A/T" | Reference variant
 | correlation | string | "rsquare" | Corresponds to /correlations types
 | limit | int | 1000 | Limit the number of records
+| format | string | "classic" or "compact" | Classic is legacy format, newer clients should prefer "compact"
 | precision | int | 4 | Limits precision of LD values
 
 #### Response
+
+If using default/classic format:
 
 ```json
 {
