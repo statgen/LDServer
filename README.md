@@ -447,7 +447,7 @@ Update your files using `git pull`, then recompile the core server by doing `cge
 
 ### ldserver app
 
-This app serves r2, D', and covariance of genetic variants over a REST API.
+This app serves r2, D', and covariance of genetic variants over a [REST API](docs/ldserver-api.md).
 
 #### Configuring the ldserver app
 
