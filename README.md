@@ -104,6 +104,8 @@ LDSERVER_WORKERS=4
 RAREMETAL_CONFIG_DATA=var/config.yaml
 RAREMETAL_WORKERS=4
 RAREMETAL_PORT=4545
+OMP_NUM_THREADS=1
+OPENBLAS_NUM_THREADS=1
 ```
 
 * `LDSERVER_PORT` is the exposed port that the ldserver app will run on. You will likely want to put apache or nginx
@@ -112,6 +114,7 @@ RAREMETAL_PORT=4545
   script on your local filesystem and mount it into the container with a volume directive (see the example
   `docker-compose.override.yml` file below.)
 * `LDSERVER_WORKERS` is the number of asynchronous workers to be started to serve ldserver requests.
+* `OMP_NUM_THREADS` and `OPENBLAS_NUM_THREADS` control the number of threads that will be used to compute LD. Only affects the ldserver flask app, not raremetal.
 * `RAREMETAL_CONFIG_DATA` is the path *inside the container* to the raremetal app's data config yaml, which
   specifies all of the datasets to load. Similarly to the `LDSERVER_CONFIG_SCRIPT`, this should be mounted into the
   container in the `docker-compose.override.yml` file.
