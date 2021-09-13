@@ -32,6 +32,8 @@ if(NOT MKL_RT_LIB)
    set(MKL_RT_LIB "")
 endif()
 
+set(DEBUG_OPTIONS -g -O0 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer)
+
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(SOURCE_FILES
     LDServer.cpp
@@ -64,6 +66,7 @@ set(SOURCE_FILES
 
 add_library(LDServer ${SOURCE_FILES})
 target_include_directories(LDServer PUBLIC ${Python3_INCLUDE_DIRS})
+target_compile_options(LDServer PUBLIC $<$<CONFIG:DEBUG>:${DEBUG_OPTIONS}>)
 target_link_libraries(LDServer
     OpenMP::OpenMP_CXX
     ${PARQUET_LIB}
@@ -126,6 +129,7 @@ target_link_libraries(pywrapper
 
 add_executable(sandbox Sandbox.cpp ${SOURCE_FILES})
 target_include_directories(sandbox PUBLIC ${Python3_INCLUDE_DIRS})
+target_compile_options(sandbox PUBLIC $<$<CONFIG:DEBUG>:${DEBUG_OPTIONS}>)
 target_link_libraries(sandbox
     OpenMP::OpenMP_CXX
     ${PARQUET_LIB}
