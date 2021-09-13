@@ -18,6 +18,19 @@ static void BM_LDSERVER_REGIONLD_RSQUARE(benchmark::State& state) {
 
 BENCHMARK(BM_LDSERVER_REGIONLD_RSQUARE)->Unit(benchmark::kMillisecond)->Iterations(3);
 
+static void BM_LDSERVER_VARIANTLD_RSQUARE(benchmark::State& state) {
+  LDServer server(100);
+  SingleVariantLDQueryResult result(100000);
+  server.set_file("chr22.test.sav");
+
+  for (auto _ : state) {
+    // Compute
+    server.compute_variant_ld("22:50244298_C/T", "22", 50244251, 51244237, correlation::LD_RSQUARE, result);
+  }
+}
+
+BENCHMARK(BM_LDSERVER_VARIANTLD_RSQUARE)->UseRealTime()->Unit(benchmark::kMillisecond)->Iterations(3);
+
 static void BM_LDSERVER_JSON_CLASSIC(benchmark::State& state) {
   LDServer server(100);
   LDQueryResult result(100000);
