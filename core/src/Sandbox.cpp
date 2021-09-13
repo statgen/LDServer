@@ -383,16 +383,19 @@ void perf_ld_server() {
   auto time_start = std::chrono::system_clock::now();
 
   LDServer server(100);
-  LDQueryResult result(100000);
+  SingleVariantLDQueryResult result(100000);
   server.set_file("../../../data/chr22.test.sav");
 
   string json;
-  for (int i = 0; i < 30; i++) {
+  for (int i = 0; i < 1; i++) {
     result.erase();
-    server.compute_region_ld("22", 50244251, 51244237, correlation::LD_RSQUARE, result);
+    //server.compute_region_ld("22", 50244251, 51244237, correlation::LD_RSQUARE, result);
+    server.compute_variant_ld("22:50244298_C/T", "22", 50244251, 51244237, correlation::LD_RSQUARE, result);
 
     // Get JSON
-    json = result.get_json_classic("blah");
+    //json = result.get_json_classic("blah");
+
+    cout << "Finished iteration: " << i << endl;
   }
 
   // Parse back out JSON
@@ -677,7 +680,7 @@ int main() {
   //perf_sav_55k();
   //sumstats();
   //metastaar_region();
-  parquet_meta_empty_file();
+  perf_ld_server();
   //test3();
   return 0;
 }
