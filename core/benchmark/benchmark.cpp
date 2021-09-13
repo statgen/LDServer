@@ -4,6 +4,8 @@
 #include "../src/SummaryStatisticsLoader.h"
 #include "../src/RaremetalSummaryStatisticsLoader.h"
 #include "../src/MetastaarSummaryStatisticsLoader.h"
+#include <iostream>
+#include <omp.h>
 
 static void BM_LDSERVER_REGIONLD_RSQUARE(benchmark::State& state) {
   LDServer server(100);
@@ -99,4 +101,12 @@ static void BM_RAREMETAL_LOADER(benchmark::State& state) {
 
 BENCHMARK(BM_RAREMETAL_LOADER)->Unit(benchmark::kMillisecond)->Iterations(3);
 
-BENCHMARK_MAIN();
+int main(int argc, char** argv) {
+  cout << "OpenMP max # threads: " << omp_get_max_threads() << endl;
+
+  ::benchmark::Initialize(&argc, argv);
+  if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
+  ::benchmark::RunSpecifiedBenchmarks();
+  ::benchmark::Shutdown();
+  return 0;
+}
