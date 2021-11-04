@@ -1011,6 +1011,17 @@ def add_from_yaml(filepath):
       else:
         score_files = [score_path]
 
+      # This block attempts to ensure that find_file() will always be able to resolve the file at "API" time.
+      # We don't store full paths in the database as find_file() would return so as to ensure the files are always
+      # moveable relative to the server root and they will still be found correctly.
+      for i, f in enumerate(score_files):
+        f = find_file(f)
+        if not os.path.isfile(f):
+          raise ValueError(f"Score file {f} did not exist (or did not have proper permissions) during initial loading")
+
+      if len(score_files) == 0:
+        raise ValueError(f"No score files could be found given path {score_path}")
+
       cov_path = record["cov_path"]
       if "*" in cov_path:
         cov_files = glob(cov_path)
@@ -1020,6 +1031,14 @@ def add_from_yaml(filepath):
             cov_files = [str(f.relative_to(server_root)) for f in cov_files]
       else:
         cov_files = [cov_path]
+
+      for i, f in enumerate(cov_files):
+        f = find_file(f)
+        if not os.path.isfile(f):
+          raise ValueError(f"Covariance file {f} did not exist (or did not have proper permissions) during initial loading")
+
+      if len(cov_files) == 0:
+        raise ValueError(f"No covariance files could be found given path {cov_path}")
 
       fmt = record.get("format")
       if fmt and fmt not in SUMMARY_STAT_FORMATS:
