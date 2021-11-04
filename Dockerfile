@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   locales \
   git \
   pkg-config \
+  sqlite3 \
   && rm -rf /var/lib/apt/lists/* \
   && locale-gen en_US.UTF-8
 
