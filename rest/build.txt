@@ -1,8 +1,8 @@
 #cget~=0.1.9
 git+git://github.com/welchr/cget.git@246b03e30607b9b7b4303cd2e5954765a007a13c # temporary until PR accepted
-Cython~=0.29.23
-invoke~=1.5.0
-numpy~=1.20.3
-pytest~=6.2.4
-tox~=3.23.1
-sarge~=0.1.6
+Cython==0.29.24
+invoke==1.5.1
+numpy==1.20.3
+pytest==6.2.4
+tox==3.24.4
+sarge==0.1.6
