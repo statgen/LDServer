@@ -1,5 +1,4 @@
-#cget~=0.1.9
-git+git://github.com/welchr/cget.git@246b03e30607b9b7b4303cd2e5954765a007a13c # temporary until PR accepted
+cget==0.2.0
 Cython==0.29.24
 invoke==1.5.1
 numpy==1.20.3
