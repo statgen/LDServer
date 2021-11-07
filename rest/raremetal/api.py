@@ -171,6 +171,22 @@ class MaskSchema(Schema):
   identifier_type = fields.Str(required=True)
   groups = fields.Dict(keys=fields.Str(), values=GroupDefinitionField)
 
+def empty_response(data):
+  jsdata = {
+    "data": {
+      "variants": [],
+      "groups": [],
+      "nSamples": None,
+      "sigmaSquared": None
+    }
+  }
+
+  jsdata["data"].update(data)
+
+  resp = make_response(jsdata, 200)
+  resp.mimetype = 'application/json'
+  return resp
+
 @bp.route('/aggregation/covariance', methods = ['POST'])
 def get_covariance():
   """
@@ -294,6 +310,10 @@ def get_covariance():
 
     score_files = model.get_score_files(summary_stat_dataset_id, chrom, start, stop)
     cov_files = model.get_cov_files(summary_stat_dataset_id, chrom, start, stop)
+
+    if len(score_files) == 0 or len(cov_files) == 0:
+      current_app.logger.debug(f"Requested region {chrom}:{start}:{stop} did not overlap any files for summary stat ID {summary_stat_dataset_id}")
+      return empty_response({'summaryStatisticDataset': summary_stat_dataset_id})
 
     score_files = [model.find_file(f) for f in score_files]
     cov_files = [model.find_file(f) for f in cov_files]
