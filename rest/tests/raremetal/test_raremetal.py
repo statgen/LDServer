@@ -1,5 +1,6 @@
 import re
 import pytest
+from copy import deepcopy
 
 def is_sha(s):
     return re.search("[A-Fa-f0-9]+",s) is not None
@@ -698,6 +699,55 @@ def test_user_masks(client):
         assert variant["pvalue"] > 0
         assert variant["pvalue"] <= 1
         assert "score" in variant
+
+def test_bad_group_or_identifier_types(client):
+    json_data = {
+        "chrom": "22",
+        "start": 50276998,
+        "stop": 50357719,
+        "genotypeDataset": 1,
+        "phenotypeDataset": 1,
+        "phenotype": "rand_qt",
+        "samples": "ALL",
+        "genomeBuild": "GRCh37",
+        "maskDefinitions": [
+            {
+                "id": 1,
+                "name": "Testing regions",
+                "description": "Random region picked for testing",
+                "genome_build": "GRCh37",
+                "group_type": "REGION",
+                "identifier_type": "COORDINATES",
+                "groups": {
+                    "22:50276998-50300000": {
+                        "start": 50276998,
+                        "stop":  50300000,
+                        "filters": [
+                            {
+                                "field": "maf",
+                                "op": "gte",
+                                "value": 0.05
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    }
+
+    test_data1 = deepcopy(json_data)
+    test_data1["maskDefinitions"][0]["group_type"] = "region"
+    resp1 = client.post("/aggregation/covariance", json=test_data1)
+
+    assert resp1.status_code == 400
+    assert resp1.is_json
+
+    test_data2 = deepcopy(json_data)
+    test_data2["maskDefinitions"][0]["identifier_type"] = "ensembl"
+    resp2 = client.post("/aggregation/covariance", json=test_data2)
+
+    assert resp2.status_code == 400
+    assert resp2.is_json
 
 def test_region_covar(client):
     resp = client.post("/aggregation/covariance", json = {

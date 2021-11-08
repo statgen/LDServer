@@ -392,10 +392,19 @@ def get_covariance():
 
         vg_vec.append(vg)
 
+      group_type = VariantGroupType.names.get(mask["group_type"])
+      identifier_type = GroupIdentifierType.names.get(mask["identifier_type"])
+
+      if group_type is None:
+        raise FlaskException(f"Invalid group type {mask['group_type']}, valid types are: {', '.join(list(VariantGroupType.names))}")
+
+      if identifier_type is None:
+        raise FlaskException(f"Invalid identifier type {mask['identifier_type']}, valid types are: {', '.join(list(GroupIdentifierType.names))}")
+
       tb = Mask(
         mask["id"],
-        VariantGroupType.names.get(mask["group_type"]),
-        GroupIdentifierType.names.get(mask["identifier_type"]),
+        group_type,
+        identifier_type,
         vg_vec
       )
 
