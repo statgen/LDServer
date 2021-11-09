@@ -52,6 +52,7 @@ def handle_all(error):
   # Also log the exception to the console.
   print("Exception thrown while handling request: " + request.url, file=sys.stderr)
   traceback.print_exc() # defaults to stderr
+  print(str(error), file=sys.stderr)
   if isinstance(error, FlaskException) and error.secret is not None:
     print(error.secret, file=sys.stderr)
 
@@ -61,7 +62,7 @@ def handle_all(error):
   elif isinstance(error, werkzeug.exceptions.NotFound):
     message = error.description
     code = error.code
-  elif hasattr(error, 'args') and isinstance(error.args[0], LDServerGenericException):
+  elif hasattr(error, 'args') and (error.args is not None) and (len(error.args) > 0) and isinstance(error.args[0], LDServerGenericException):
     # This is a safe exception type with sensitive information kept in a separate string object.
 
     # Print extra C++ exception information to stderr
