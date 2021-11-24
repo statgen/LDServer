@@ -712,6 +712,26 @@ TEST_F(LDServerTest, summary_stat_ldserver_compare) {
   }
 }
 
+TEST_F(LDServerTest, metastaar_pos_beyond_final_segment) {
+  // Load from disk using our new summary stat loader
+  MetastaarSummaryStatisticsLoader loader(
+    {
+      "test.qt.segment1.metastaar.sumstat.parquet",
+      "test.qt.segment2.metastaar.sumstat.parquet"
+    },
+    {
+      "test.qt.segment1.metastaar.cov.parquet",
+      "test.qt.segment2.metastaar.cov.parquet"
+    }
+  );
+
+  loader.load_region("1", 9203, 9500);
+  auto cov_result = loader.getCovResult();
+  ASSERT_FALSE(cov_result->empty());
+  ASSERT_EQ(cov_result->n_correlations, 3);
+  ASSERT_EQ(cov_result->data.variants.size(), 2);
+}
+
 TEST_F(LDServerTest, metastaar_compare_rvtest_test) {
   // Load from disk using our new summary stat loader
   MetastaarSummaryStatisticsLoader loader(

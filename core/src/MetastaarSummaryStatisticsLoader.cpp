@@ -168,6 +168,7 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
 
   uint64_t index = 0;   // Global index over all score files
   bool enteredRegion = false;
+  bool exitedRegion = false;
 
   // Imagine each "block" as the matrix of data in each score statistic file, corresponding to a range of variants with
   // some start/end position. The block variable indexes which block we are working on. The reason is that later,
@@ -243,6 +244,7 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
 
         if (pos > stop) {
           max_index = index - 1;
+          exitedRegion = true;
           break;
         }
 
@@ -263,6 +265,10 @@ void MetastaarSummaryStatisticsLoader::load_region(const std::string& chromosome
 
     block_ends[block] = index - 1;
     nsamples = N;
+  }
+
+  if (!exitedRegion) {
+    max_index = index - 1;
   }
 
   score_result->nsamples = nsamples;
