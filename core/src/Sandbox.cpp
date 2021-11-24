@@ -498,8 +498,8 @@ void metastaar_region() {
 //  auto stop = 50000322ul;
 
   // No data in region
-  auto start = 19599590ul;
-  auto stop = 19600395ul;
+  auto start = 45099995ul;
+  auto stop = 45099996ul;
 
   uint64_t mask_id = 0;
   vector<VariantGroup> vg_vec;
@@ -526,12 +526,14 @@ void metastaar_region() {
   config->summary_stat_format = "METASTAAR";
 
   config->summary_stat_score_files = {
-    "../../../private/MetaSTAAR/TOPMed/T2D/100kb/summary_statistics.chr22.196.parquet",
-    "../../../private/MetaSTAAR/TOPMed/T2D/100kb/summary_statistics.chr22.197.parquet"
+    "../../../private/MetaSTAAR/debug/summary_statistics.chr22.450.parquet",
+    "../../../private/MetaSTAAR/debug/summary_statistics.chr22.451.parquet",
+    //"../../../private/MetaSTAAR/debug/summary_statistics.chr22.452.parquet"
   };
   config->summary_stat_cov_files = {
-    "../../../private/MetaSTAAR/TOPMed/T2D/100kb/covariances.chr22.196.parquet",
-    "../../../private/MetaSTAAR/TOPMed/T2D/100kb/covariances.chr22.197.parquet"
+    "../../../private/MetaSTAAR/debug/covariances.chr22.450.parquet",
+    "../../../private/MetaSTAAR/debug/covariances.chr22.451.parquet",
+    "../../../private/MetaSTAAR/debug/covariances.chr22.452.parquet"
   };
 
   // Run score/covariance calculations
@@ -553,15 +555,6 @@ void metastaar_region() {
 
   std::chrono::duration<double> elapsed = std::chrono::system_clock::now() - time_start;
   cout << "Time required: " << elapsed.count() << endl;
-
-  try {
-    auto test = read_parquet_metadata("../../../data/metastaar_invalid_metadata.parquet");
-  }
-  catch (LDServerGenericException& e) {
-    cout << e.what() << endl;
-    cout << e.get_secret() << endl;
-  }
-  cout << "DONE!" << endl;
 }
 
 void parquet_meta_empty_file() {
@@ -680,7 +673,7 @@ int main() {
   //perf_sav_55k();
   //sumstats();
   //metastaar_region();
-  perf_ld_server();
+  metastaar_region();
   //test3();
   return 0;
 }
