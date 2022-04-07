@@ -103,7 +103,7 @@ void getNthDataLine(const std::string& filepath, std::string& out, int n) {
   }
 }
 
-void RaremetalSummaryStatisticsLoader::parseHeader(const std::string& filepath) {
+ScoreCovFormat detectScoreCovFormat(const std::string& filepath) {
   Tabix tbfile(const_cast<string&>(filepath));
   string header;
   tbfile.getHeader(header);
@@ -115,6 +115,7 @@ void RaremetalSummaryStatisticsLoader::parseHeader(const std::string& filepath) 
   auto regex_detect_rvtest = regex(".*(N_INFORMATIVE\\tAF\\tINFORMATIVE_ALT_AC).*");
   auto regex_detect_raremetal = regex(".*(N_INFORMATIVE\tFOUNDER_AF\tALL_AF\tINFORMATIVE_ALT_AC).*");
 
+  ScoreCovFormat detected_format;
   string format;
   smatch m1;
   if (regex_search(header, m1, regex_prog_name) && m1.size() > 1) {
@@ -155,6 +156,16 @@ void RaremetalSummaryStatisticsLoader::parseHeader(const std::string& filepath) 
     }
   }
 
+  return detected_format;
+}
+
+void RaremetalSummaryStatisticsLoader::parseHeader(const std::string& filepath) {
+  Tabix tbfile(const_cast<string&>(filepath));
+  string header;
+  tbfile.getHeader(header);
+
+  detected_format = detectScoreCovFormat(filepath);
+
   /**
    * Parse sigma2 from score file header if it is available.
    */
@@ -192,20 +203,6 @@ void RaremetalSummaryStatisticsLoader::parseHeader(const std::string& filepath) 
     auto field_sep = regex("[ \t]");
     copy(sregex_token_iterator(line.begin(), line.end(), field_sep, -1), sregex_token_iterator(), back_inserter(tokens));
     nsamples = stoul(tokens[4]);
-  }
-}
-
-template <typename T>
-T extract_numeric(T func(const string&), const string& value, const ScoreCovColumn& col, const string& filepath, const string& variant) {
-  try {
-    return func(value);
-  }
-  catch (...) {
-    throw LDServerGenericException(
-      "Invalid value detected while parsing score statistic file"
-    ).set_secret(
-      boost::str(boost::format("File was: %s, offending value was '%s' in column '%s' for variant '%s'") % filepath % value % col.get_name() % variant)
-    );
   }
 }
 

@@ -78,6 +78,23 @@ const CovColumnSpec COV_COLUMNS_RVTEST = {
   {"COV", 5},
 };
 
+void getNthDataLine(const std::string& filepath, std::string& out, int n);
+ScoreCovFormat detectScoreCovFormat(const std::string& filepath);
+
+template <typename T>
+T extract_numeric(T func(const string&), const string& value, const ScoreCovColumn& col, const string& filepath, const string& variant) {
+  try {
+    return func(value);
+  }
+  catch (...) {
+    throw LDServerGenericException(
+      "Invalid value detected while parsing score statistic file"
+    ).set_secret(
+      boost::str(boost::format("File was: %s, offending value was '%s' in column '%s' for variant '%s'") % filepath % value % col.get_name() % variant)
+    );
+  }
+}
+
 /**
  * Loader for RAREMETAL or rvtest summary statistic datasets.
  */
