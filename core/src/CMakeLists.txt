@@ -62,7 +62,9 @@ set(SOURCE_FILES
     MetastaarSummaryStatisticsLoader.h
     MetastaarSummaryStatisticsLoader.cpp
     ScoreCovarianceRunner.cpp
-    ScoreCovarianceRunner.h)
+    ScoreCovarianceRunner.h
+    VariantCollator.h
+    VariantCollator.cpp)
 
 add_library(LDServer ${SOURCE_FILES})
 target_include_directories(LDServer PUBLIC ${Python3_INCLUDE_DIRS})
@@ -106,7 +108,9 @@ add_library(pywrapper SHARED
     MetastaarSummaryStatisticsLoader.h
     MetastaarSummaryStatisticsLoader.cpp
     ScoreCovarianceRunner.cpp
-    ScoreCovarianceRunner.h)
+    ScoreCovarianceRunner.h
+    VariantCollator.h
+    VariantCollator.cpp)
 
 set_target_properties(pywrapper PROPERTIES SUFFIX ".so")
 set_target_properties(pywrapper PROPERTIES PREFIX "")
