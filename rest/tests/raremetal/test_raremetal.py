@@ -1007,3 +1007,70 @@ def test_monomorphic(client):
         assert variant["pvalue"] > 0
         assert variant["pvalue"] <= 1
         assert "score" in variant
+
+def check_variant_response_ok(resp):
+    assert resp.status_code == 200
+    assert resp.is_json
+    assert len(resp.json["data"]["variants"]) > 0
+    for v in resp.json["data"]["variants"]:
+        assert "variant" in v
+        assert "chrom" in v
+        assert "pos" in v
+
+def check_variant_response_empty(resp):
+    assert resp.status_code == 200
+    assert resp.is_json
+    assert len(resp.json["data"]["variants"]) == 0
+    data = resp.json["data"]
+    assert "summaryStatisticDataset" in data or "genotypeDataset" in data
+
+def test_get_variants_from_genotype_file(client):
+    resp = client.post("/aggregation/variants", json={
+        "chrom": "22",
+        "start": 50276998,
+        "stop": 50357719,
+        "genotypeDataset": 2,
+        "genomeBuild": "GRCh37"
+    })
+    check_variant_response_ok(resp)
+
+def test_get_variants_from_summary_stats(client):
+    # Test a rvtest formatted dataset
+    resp = client.post("/aggregation/variants", json={
+        "chrom": "1",
+        "start": 2,
+        "stop": 307,
+        "summaryStatisticDataset": 2,
+        "genomeBuild": "GRCh37"
+    })
+    check_variant_response_ok(resp)
+
+    # Test a MetaSTAAR dataset
+    resp = client.post("/aggregation/variants", json={
+        "chrom": "1",
+        "start": 4957,
+        "stop": 5143,
+        "summaryStatisticDataset": 4,
+        "genomeBuild": "GRCh37"
+    })
+    check_variant_response_ok(resp)
+
+    # Test MetaSTAAR potential failure 1
+    resp = client.post("/aggregation/variants", json={
+        "chrom": "1",
+        "start": 9205,
+        "stop": 9210,
+        "summaryStatisticDataset": 4,
+        "genomeBuild": "GRCh37"
+    })
+    check_variant_response_empty(resp)
+
+    # Test MetaSTAAR potential failure 2
+    resp = client.post("/aggregation/variants", json={
+        "chrom": "1",
+        "start": 99205,
+        "stop": 99210,
+        "summaryStatisticDataset": 4,
+        "genomeBuild": "GRCh37"
+    })
+    check_variant_response_empty(resp)
