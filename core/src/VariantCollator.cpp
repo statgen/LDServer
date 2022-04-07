@@ -1,6 +1,22 @@
 #include "VariantCollator.h"
 using namespace std;
 
+string to_string(VariantFileFormat& fmt) {
+  switch (fmt) {
+    case VariantFileFormat::VCF:
+      return "vcf";
+    case VariantFileFormat::SAVVY:
+      return "savvy";
+    case VariantFileFormat::RAREMETAL:
+      return "RAREMETAL";
+    case VariantFileFormat::METASTAAR:
+      return "MetaSTAAR";
+
+    default:
+      return "";
+  }
+}
+
 VariantCollator::VariantCollator(vector<string> genotype_files, VariantFileFormat format) {
   this->format = format;
 

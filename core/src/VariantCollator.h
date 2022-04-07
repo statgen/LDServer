@@ -16,21 +16,7 @@
 
 enum class VariantFileFormat {VCF, SAVVY, RAREMETAL, METASTAAR};
 
-constexpr std::string_view to_string(VariantFileFormat fmt) {
-  switch (fmt) {
-    case VariantFileFormat::VCF:
-      return "vcf";
-    case VariantFileFormat::SAVVY:
-      return "savvy";
-    case VariantFileFormat::RAREMETAL:
-      return "RAREMETAL";
-    case VariantFileFormat::METASTAAR:
-      return "MetaSTAAR";
-
-    default:
-      return "";
-  }
-}
+std::string to_string(VariantFileFormat& fmt);
 
 class VariantCollator {
 protected:
