@@ -20,6 +20,7 @@
 #include "../src/Mask.h"
 #include "../src/ScoreCovarianceRunner.h"
 #include "../src/SummaryStatisticsLoader.h"
+#include "../src/VariantCollator.h"
 #include <armadillo>
 #include <cereal/external/rapidjson/document.h>
 
@@ -2476,4 +2477,27 @@ TEST_F(LDServerTest, score_segment_cache) {
 
     ASSERT_TRUE(segment2.has_scores());
     ASSERT_TRUE(segment1 == segment2);
+}
+
+TEST_F(LDServerTest, variant_collator) {
+  auto sav_collator = VariantCollator({"chr22.test.sav"}, VariantFileFormat::SAVVY);
+  auto sav_variants = sav_collator.get_variants("22", 1, 50244288);
+
+  ASSERT_EQ((*sav_variants)[0].position, 50244251);
+  ASSERT_EQ((*sav_variants)[3].position, 50244288);
+  ASSERT_EQ(sav_variants->size(), 4);
+
+  auto rm_collator = VariantCollator({"test_sumstat_loader_rm.scores.assoc.gz"}, {}, VariantFileFormat::RAREMETAL);
+  auto rm_variants = rm_collator.get_variants("22", 1, 27021853);
+
+  ASSERT_EQ((*rm_variants)[0].position, 27021502);
+  ASSERT_EQ((*rm_variants)[3].position, 27021853);
+  ASSERT_EQ(rm_variants->size(), 4);
+
+  auto ms_collator = VariantCollator({"test.qt.segment1.metastaar.sumstat.parquet"}, {"test.qt.segment1.metastaar.cov.parquet"}, VariantFileFormat::METASTAAR);
+  auto ms_variants = ms_collator.get_variants("1", 2750, 2769);
+
+  ASSERT_EQ(ms_variants->front().position, 2750);
+  ASSERT_EQ(ms_variants->back().position, 2765); // Variants from position 2766 to 2769 should be dropped because they are below cov MAF cutoff
+  ASSERT_EQ(ms_variants->size(), 16);
 }
