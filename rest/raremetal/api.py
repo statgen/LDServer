@@ -13,7 +13,7 @@ import os
 from core.pywrapper import (
   StringVec, ColumnType, ColumnTypeMap, Mask, MaskVec, VariantGroupType, LDServerGenericException,
   ScoreCovarianceRunner, ScoreCovarianceConfig, GroupIdentifierType, VariantGroup, VariantGroupVector, VariantFormat,
-  VariantFilter
+  VariantFilter, VariantCollator, VariantFileFormat
 )
 
 API_VERSION = "1.0"
@@ -185,6 +185,111 @@ def empty_response(data):
 
   resp = make_response(jsdata, 200)
   resp.mimetype = 'application/json'
+  return resp
+
+@bp.route('/aggregation/variants', methods = ['POST'])
+def get_variants():
+  """
+  This endpoint returns general information and annotations on each variant present in a requested region.
+  """
+
+  if request.content_type not in ("application/x-www-form-urlencoded", "application/json"):
+    raise FlaskException("Content-Type must be application/json or application/x-www-form-urlencoded", 415)
+
+  args_defined = {
+    'chrom': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'start': fields.Int(required=True, validate=lambda x: x >= 0, error_messages={'validator_failed': 'Value must be greater than or equal to 0.'}),
+    'stop': fields.Int(required=True, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be greater than 0.'}),
+    'genotypeDataset': fields.Int(required=False, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'summaryStatisticDataset': fields.Int(required=False, validate=lambda x: x > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'genomeBuild': fields.Str(required=True, validate=lambda x: len(x) > 0, error_messages={'validator_failed': 'Value must be a non-empty string.'}),
+    'variantFormat': fields.Str(required=False, default="EPACTS", validate=OneOf(["EPACTS", "COLONS"]))
+  }
+
+  args = parser.parse(
+    args_defined,
+    validate = partial(
+      validate_query,
+      all_fields = ['chrom', 'start', 'stop']
+    ),
+    location = "json_or_form"
+  )
+
+  if args.get("genotypeDataset") is None and args.get("summaryStatisticDataset") is None:
+    raise FlaskException("Must provide either genotypeDataset or summaryStatisticDataset")
+
+  chrom = str(args["chrom"])
+  start = args["start"]
+  stop = args["stop"]
+  build = args["genomeBuild"]
+  genotype_dataset_id = args.get("genotypeDataset")
+  phenotype_dataset_id = args.get("phenotypeDataset")
+  summary_stat_dataset_id = args.get("summaryStatisticDataset")
+  masks = args.get("masks")
+  mask_definitions = args.get("maskDefinitions")
+  variant_format = args.get("variantFormat", "EPACTS")
+
+  if (stop - start) > current_app.config["API_MAX_REGION_SIZE"]:
+    raise FlaskException("Region requested for analysis exceeds maximum width of {}".format(current_app.config["API_MAX_REGION_SIZE"]), 400)
+
+  result = {
+    "data": {
+      "variants": []
+    }
+  }
+
+  variants = []
+  if genotype_dataset_id:
+    result["data"]["genotypeDataset"] = genotype_dataset_id
+
+    if not model.has_genome_build(build):
+      raise FlaskException('Genome build \'{}\' was not found.'.format(build), 400)
+
+    if not model.has_genotype_dataset(genotype_dataset_id):
+      raise FlaskException('No genotype dataset \'{}\' available for genome build {}.'.format(genotype_dataset_id, build), 400)
+
+    genotype_files = StringVec()
+    genotype_files.extend([model.find_file(x) for x in model.get_genotype_files(genotype_dataset_id)])
+
+    col = VariantCollator(genotype_files, VariantFileFormat.SAVVY)
+    variants = col.get_variants(chrom, start, stop)
+
+  elif summary_stat_dataset_id:
+    result["data"]["summaryStatisticDataset"] = summary_stat_dataset_id
+    summary_stat_format = model.get_summary_stat_format(summary_stat_dataset_id)
+
+    score_files = model.get_score_files(summary_stat_dataset_id, chrom, start, stop)
+    cov_files = model.get_cov_files(summary_stat_dataset_id, chrom, start, stop)
+
+    if score_files and cov_files:
+      score_files = [model.find_file(f) for f in score_files]
+      cov_files = [model.find_file(f) for f in cov_files]
+
+      score_vec = StringVec()
+      cov_vec = StringVec()
+      score_vec.extend(score_files)
+      cov_vec.extend(cov_files)
+
+      if summary_stat_format == "METASTAAR":
+        variant_file_format = VariantFileFormat.METASTAAR
+      else:
+        variant_file_format = VariantFileFormat.RAREMETAL
+
+      col = VariantCollator(score_vec, cov_vec, variant_file_format)
+      variants = col.get_variants(chrom, start, stop)
+
+  for v in variants:
+    result["data"]["variants"].append({
+      "variant": v.as_epacts() if variant_format == "EPACTS" else v.as_colons(),
+      "chrom": v.chromosome,
+      "pos": v.position,
+      "ref": v.ref,
+      "alt": v.alt
+    })
+
+  resp = make_response(jsonify(result), 200)
+  resp.mimetype = 'application/json'
+
   return resp
 
 @bp.route('/aggregation/covariance', methods = ['POST'])
