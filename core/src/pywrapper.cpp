@@ -12,6 +12,7 @@
 #include "ScoreCovarianceRunner.h"
 #include "Raw.h"
 #include "MetastaarSummaryStatisticsLoader.h"
+#include "VariantCollator.h"
 using namespace boost::python;
 
 //template <class E, class... Policies, class... Args>
@@ -286,4 +287,28 @@ BOOST_PYTHON_MODULE(pywrapper) {
       ;
 
     boost::python::def("read_parquet_metadata", &read_parquet_metadata);
+
+    class_<VariantMeta, shared_ptr<VariantMeta>>("VariantMeta", init<string>())
+      .def(init<string, string, string, string, int>())
+      .def(init<string, string, string, int>())
+      .def_readonly("variant", &VariantMeta::variant)
+      .def_readonly("chromosome", &VariantMeta::chromosome)
+      .def_readonly("ref", &VariantMeta::ref)
+      .def_readonly("alt", &VariantMeta::alt)
+      .def_readonly("position", &VariantMeta::position)
+      .def("as_epacts", &VariantMeta::as_epacts)
+      .def("as_colons", &VariantMeta::as_colons);
+
+    class_<vector<VariantMeta>, shared_ptr<vector<VariantMeta>>>("VariantMetaVector")
+      .def(vector_indexing_suite<vector<VariantMeta>>());
+
+    enum_<VariantFileFormat>("VariantFileFormat")
+      .value("VCF", VariantFileFormat::VCF)
+      .value("SAVVY", VariantFileFormat::SAVVY)
+      .value("RAREMETAL", VariantFileFormat::RAREMETAL)
+      .value("METASTAAR", VariantFileFormat::METASTAAR);
+
+    class_<VariantCollator, boost::noncopyable>("VariantCollator", init<vector<string>, VariantFileFormat>())
+      .def(init<vector<string>, vector<string>, VariantFileFormat>())
+      .def("get_variants", &VariantCollator::get_variants);
 }
