@@ -1016,6 +1016,8 @@ def check_variant_response_ok(resp):
         assert "variant" in v
         assert "chrom" in v
         assert "pos" in v
+        assert isinstance(v["chrom"], str)
+        assert isinstance(v["pos"], int)
 
 def check_variant_response_empty(resp):
     assert resp.status_code == 200
