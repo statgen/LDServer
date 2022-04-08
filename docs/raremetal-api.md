@@ -15,6 +15,9 @@
   - [Retrieving pre-computed aggregation test results](#retrieving-pre-computed-aggregation-test-results)
     - [Request](#request-2)
     - [Response](#response-2)
+  - [Retrieving list of variants for a region](#retrieving-list-of-variants-for-a-region)
+    - [Request](#request-3)
+    - [Response](#response-3)
 
 <!-- /code_chunk_output -->
 
@@ -222,14 +225,14 @@ Additionally, groups can be specified as regions, rather than specific lists of 
 ```
 
 Each region uses the `chrom` specified at the top level of the request. The `start` and `stop` fields at the top level
-should also encompass all regions requested. 
+should also encompass all regions requested.
 
-The `group_type` must be set to `REGION` and `identifier_type` to `COORDINATES` (meaning genomic coordinates). 
+The `group_type` must be set to `REGION` and `identifier_type` to `COORDINATES` (meaning genomic coordinates).
 
-Variant filters can also be applied as well per region. 
+Variant filters can also be applied as well per region.
 
-Fields that can be filtered on: minor allele frequency - `maf`, and single variant association p-value - `pvalue`. Only two comparison operators are available: 
-`gte` for >=, and `lte` for <=. See below for an example. 
+Fields that can be filtered on: minor allele frequency - `maf`, and single variant association p-value - `pvalue`. Only two comparison operators are available:
+`gte` for >=, and `lte` for <=. See below for an example.
 
 ```json
 {
@@ -408,3 +411,51 @@ covariance data, `groups` in this endpoint provide calculation results.
   }
 }
 ```
+
+### Retrieving list of variants for a region
+
+Given a dataset, and region (chrom:start-stop), the server can provide a list of all available variants within the region.
+
+#### Request
+
+`POST /aggregation/variants`
+
+```json
+{
+  "chrom": 1,
+  "start": 4957,
+  "stop": 5143,
+  "summaryStatisticDataset": 4,
+  "genomeBuild": "GRCh37"
+}
+```
+
+If not providing a `summaryStatisticDataset`, you can provide a `genotypeDataset` instead. Information about available datasets can be retrieved from the `/aggregation/metadata` endpoint.
+
+#### Response
+
+```json
+{
+  "data": {
+    "summaryStatisticDataset": 4,
+    "variants": [
+      {
+        "variant": "1:1_G/A",
+        "chrom": "1",
+        "pos": 1,
+        "ref": "G",
+        "alt": "A"
+      },
+      {
+        "variant": "1:2_C/T",
+        "chrom": "1",
+        "pos": 2,
+        "ref": "C",
+        "alt": "T"
+      }
+    ]
+  }
+}
+```
+
+Each variant is returned as a separate object containing the full variant ID, chromosome, position, and ref/alt alleles. In the future, additional annotation information for each variant may be included from server-side annotation files.
