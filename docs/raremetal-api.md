@@ -416,13 +416,15 @@ covariance data, `groups` in this endpoint provide calculation results.
 
 Given a dataset, and region (chrom:start-stop), the server can provide a list of all available variants within the region.
 
+Note that chromsome should be provided as a string, not an integer.
+
 #### Request
 
 `POST /aggregation/variants`
 
 ```json
 {
-  "chrom": 1,
+  "chrom": "1",
   "start": 4957,
   "stop": 5143,
   "summaryStatisticDataset": 4,
