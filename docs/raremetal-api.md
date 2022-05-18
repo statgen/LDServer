@@ -336,7 +336,7 @@ interpret the calculation results. The same variant may appear in many groups, b
         "mask": 1,
         "variants": ["2:21228642_G/A"],
         "covariance": [0.3],
-        "meanAltFreq": 0.003
+        "meanMinorFreq": 0.003
       }
     ]
   }

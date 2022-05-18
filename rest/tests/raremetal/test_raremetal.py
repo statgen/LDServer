@@ -693,8 +693,8 @@ def test_user_masks(client):
         assert "groupType" in group
         assert group["groupType"] in ("REGION", "GENE")
         assert all([v in score_variants for v in group["variants"]])
-        assert "meanAltFreq" in group
-        assert group["meanAltFreq"] > 0
+        assert "meanMinorFreq" in group
+        assert group["meanMinorFreq"] > 0
 
     for variant in resp.json["data"]["variants"]:
         assert variant["altFreq"] > 0
@@ -804,8 +804,8 @@ def test_region_covar(client):
         assert "groupType" in group
         assert group["groupType"] in ("REGION", "GENE")
         assert all([v in score_variants for v in group["variants"]])
-        assert "meanAltFreq" in group
-        assert group["meanAltFreq"] > 0
+        assert "meanMinorFreq" in group
+        assert group["meanMinorFreq"] > 0
 
     for variant in resp.json["data"]["variants"]:
         assert variant["altFreq"] > 0
@@ -971,8 +971,8 @@ def test_user_masks_colon_format(client):
         assert "groupType" in group
         assert group["groupType"] in ("REGION", "GENE")
         assert all([v in score_variants for v in group["variants"]])
-        assert "meanAltFreq" in group
-        assert group["meanAltFreq"] > 0
+        assert "meanMinorFreq" in group
+        assert group["meanMinorFreq"] > 0
 
     for variant in resp.json["data"]["variants"]:
         assert variant["altFreq"] > 0
