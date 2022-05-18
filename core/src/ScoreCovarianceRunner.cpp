@@ -358,6 +358,30 @@ void ScoreCovarianceRunner::run() {
 
       this_group.AddMember("variants", group_variants, alloc);
       this_group.AddMember("covariance", group_covar, alloc);
+
+      /* Calculate mean allele frequency for all variants in this group:
+                      p
+                     ___
+         p           ╲    AAC      p
+        ___          ╱       j    ___
+        ╲    AAF     ‾‾‾          ╲    AAC
+        ╱       j   j = 1         ╱       j
+        ‾‾‾         ──────────    ‾‾‾
+       j = 1            2n       j = 1        total number of alt alleles seen across all variants in group
+       ────────── = ────────── = ────────── = ─────────────────────────────────────────────────────────────
+            p            p           2np             total number of possible alleles given n and p
+
+       where AAF = alternate allele frequency, AAC = alternate allele count
+       p = number of variants in group, n = sample size
+      */
+
+      double mean_alt_freq = 0.0;
+      for (auto& s : score_res->data) {
+        mean_alt_freq += s.alt_freq;
+      }
+      mean_alt_freq /= score_res->data.size();
+      this_group.AddMember("meanAltFreq", mean_alt_freq, alloc);
+
       groups.PushBack(this_group, alloc);
     }
   }
