@@ -14,9 +14,7 @@
  mid, and end position (sometimes referred to as "region" start, mid, end.)
 
  Each segment though may or may not contain genetic variants, depending on the particular dataset. There may be no known
- variants there, or the genotyping array did not have variants typed there, etc. We record below for each segment the position
- of the first actual variant seen in the file (pos_start), the position of the middle variant (pos_mid), and the position
- of the final variant (pos_end).
+ variants there, or the genotyping array did not have variants typed there, etc.
 
  The score files look like:
                                                                                                GtU
@@ -58,9 +56,6 @@ Segment──►3│..xxx.│
 struct MetastaarParquetMetadata {
   std::string filepath;
   std::string chrom;
-  uint64_t pos_start = 0;
-  uint64_t pos_end = 0;
-  uint64_t pos_mid = 0;
   uint64_t region_start = 0;
   uint64_t region_mid = 0;
   uint64_t region_end = 0;

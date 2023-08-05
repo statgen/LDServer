@@ -60,9 +60,6 @@ MetastaarParquetMetadata read_parquet_metadata(const string& s) {
   extract_parquet_value(s, meta, "nrows", spstoull_uint64, pq_meta.nrows, true);
   extract_parquet_value(s, meta, "ncols", spstoull_uint64, pq_meta.ncols, true);
   extract_parquet_value(s, meta, "cov_maf_cutoff", spstod, pq_meta.cov_maf_cutoff, true);
-  extract_parquet_value(s, meta, "pos_start", spstoull_uint64, pq_meta.pos_start);
-  extract_parquet_value(s, meta, "pos_end", spstoull_uint64, pq_meta.pos_end);
-  extract_parquet_value(s, meta, "pos_mid", spstoull_uint64, pq_meta.pos_mid, true);
   extract_parquet_value(s, meta, "region_start", spstoull_uint64, pq_meta.region_start);
   extract_parquet_value(s, meta, "region_mid", spstoull_uint64, pq_meta.region_mid);
   extract_parquet_value(s, meta, "region_end", spstoull_uint64, pq_meta.region_end);
@@ -70,8 +67,6 @@ MetastaarParquetMetadata read_parquet_metadata(const string& s) {
 
   if (pq_meta.nrows < 0 || pq_meta.ncols < 0) throw_ldserver_exception("nrows or ncols in parquet metadata were invalid", {}, "parquet file was: %s", {s});
   if (pq_meta.cov_maf_cutoff < 0 || pq_meta.cov_maf_cutoff > 1) throw_ldserver_exception("cov_maf_cutoff should be >= 0 and <= 1", {}, "parquet file was: %s", {s});
-  if (pq_meta.pos_start <= 0) throw_ldserver_exception("pos_start should be > 0", {}, "parquet file was: %s", {s});
-  if (pq_meta.pos_end <= 0) throw_ldserver_exception("pos_end should be > 0", {}, "parquet file was: %s", {s});
   if (pq_meta.region_start <= 0) throw_ldserver_exception("region_start should be > 0", {}, "parquet file was: %s", {s});
   if (pq_meta.region_mid <= 0) throw_ldserver_exception("region_mid should be > 0", {}, "parquet file was: %s", {s});
   if (pq_meta.region_end <= 0) throw_ldserver_exception("region_end should be > 0", {}, "parquet file was: %s", {s});
